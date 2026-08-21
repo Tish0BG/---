@@ -21,9 +21,17 @@
   --c-text: #101828;
   --c-muted: #667085;
   --c-faint: #98a2b3;
-  --c-accent: #4f46e5;
-  --c-accent-soft: #eef0fe;
+  /* Plauvia violet: cooler and deeper than the default SaaS indigo, so the
+     product is recognisable by colour alone rather than by its logo. */
+  --c-brand: #6d5ae6;
+  --c-brand-lift: #8b7bf0;
+  --c-brand-deep: #4b3bc4;
+  --c-accent: var(--c-brand);
+  --c-accent-soft: #f0edfe;
   --c-accent-text: #ffffff;
+  /* progress and growth — used by charts, streaks and completion */
+  --c-aurora: #12a594;
+  --c-ember: #f5a524;
   --c-danger: #d92d20;
   --c-danger-soft: #fef3f2;
   --c-success: #079455;
@@ -32,8 +40,8 @@
   --c-warn-soft: #fffaeb;
   --c-canvas: #7c828e;
   /* focus timer modes */
-  --c-focus: #4f46e5;
-  --c-rest: #0d9488;
+  --c-focus: #6d5ae6;
+  --c-rest: #12a594;
   --c-deep: #0284c7;
 
   /* one elevation scale, used everywhere */
@@ -57,9 +65,14 @@
   --c-text: #e8eaef;
   --c-muted: #98a1b2;
   --c-faint: #6a7386;
-  --c-accent: #7c7cf7;
-  --c-accent-soft: #1e2038;
+  --c-brand: #8b7bf0;
+  --c-brand-lift: #a494f7;
+  --c-brand-deep: #6d5ae6;
+  --c-accent: var(--c-brand);
+  --c-accent-soft: #201d3a;
   --c-accent-text: #ffffff;
+  --c-aurora: #2dd4bf;
+  --c-ember: #fdb022;
   --c-danger: #f97066;
   --c-danger-soft: #2a1512;
   --c-success: #47cd89;
@@ -67,7 +80,7 @@
   --c-warn: #fdb022;
   --c-warn-soft: #2a1e0a;
   --c-canvas: #05070a;
-  --c-focus: #8b8bf9;
+  --c-focus: #8b7bf0;
   --c-rest: #2dd4bf;
   --c-deep: #38bdf8;
 
@@ -94,6 +107,9 @@
   --color-success: var(--c-success);
   --color-warn: var(--c-warn);
   --color-canvas: var(--c-canvas);
+  --color-brand: var(--c-brand);
+  --color-aurora: var(--c-aurora);
+  --color-ember: var(--c-ember);
   --color-focus: var(--c-focus);
   --color-rest: var(--c-rest);
   --color-deep: var(--c-deep);

@@ -1,9 +1,9 @@
 /**
- * The SQL that turns an empty Supabase project into a StudyDesk backend.
+ * The SQL that turns an empty Supabase project into a Plauvia backend.
  * Kept in the bundle so the setup screen can offer a copy button instead of
  * sending the student off to find a file.
  */
-export const SETUP_SQL = `-- StudyDesk — облачна синхронизация
+export const SETUP_SQL = `-- Plauvia — облачна синхронизация
 create table if not exists public.records (
   user_id    uuid    not null references auth.users (id) on delete cascade,
   kind       text    not null,

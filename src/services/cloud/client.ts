@@ -29,9 +29,11 @@ export function getClient(): Promise<SupabaseClient | null> {
             persistSession: true,
             autoRefreshToken: true,
             detectSessionInUrl: true,
+            // Deliberately unchanged: renaming the storage key would sign
+            // every existing user out and orphan their local library.
             storageKey: 'studypdf.auth',
           },
-          global: { headers: { 'x-application-name': 'studydesk' } },
+          global: { headers: { 'x-application-name': 'plauvia' } },
         }),
       ),
     };

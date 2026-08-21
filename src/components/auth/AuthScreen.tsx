@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
+import { BRAND } from '@/brand';
+import { PlauviaMark, PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
 
@@ -54,22 +56,20 @@ function Aside() {
     <aside
       className="relative hidden w-[42%] max-w-[520px] shrink-0 flex-col justify-between overflow-hidden p-10 lg:flex"
       style={{
-        background: 'linear-gradient(150deg, var(--c-accent), color-mix(in srgb, var(--c-accent) 55%, #0ea5e9))',
+        background: 'linear-gradient(150deg, var(--c-brand-lift), var(--c-brand-deep))',
         color: '#fff',
       }}
     >
       <div className="flex items-center gap-2.5">
         <span className="grid h-9 w-9 place-items-center rounded-xl" style={{ background: 'rgb(255 255 255 / 18%)' }}>
-          <Icon name="book" size={18} />
+          <PlauviaMark size={19} />
         </span>
-        <span className="text-[16px] font-semibold tracking-tight">StudyDesk</span>
+        <PlauviaWordmark size={17} />
       </div>
 
       <div>
-        <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.02em]">
-          Едно място за ученето.
-          <br />
-          На всяко устройство.
+        <h2 className="text-[27px] font-semibold leading-[1.12] tracking-[-0.025em]">
+          {BRAND.tagline.bg}
         </h2>
         <ul className="mt-6 space-y-3">
           {points.map((p) => (
@@ -127,13 +127,8 @@ function Forms({ onClose }: { onClose: () => void }) {
     <>
       <header className="mb-6 lg:hidden">
         <span className="flex items-center gap-2.5">
-          <span
-            className="grid h-9 w-9 place-items-center rounded-xl"
-            style={{ background: 'var(--c-accent)', color: '#fff' }}
-          >
-            <Icon name="book" size={18} />
-          </span>
-          <span className="text-[16px] font-semibold tracking-tight">StudyDesk</span>
+          <PlauviaTile size={34} />
+          <PlauviaWordmark size={17} />
         </span>
       </header>
 

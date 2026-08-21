@@ -1,14 +1,16 @@
 {
-  "name": "StudyDesk — учебна работна среда",
-  "short_name": "StudyDesk",
-  "description": "Учебници, дъски за писане, флашкарти, планер и фокус таймер. Работи офлайн, а с профил библиотеката ти е на всяко устройство.",
+  "id": "/",
+  "name": "Plauvia — From plan to progress.",
+  "short_name": "Plauvia",
+  "description": "Plan, study, focus and track. Textbooks, whiteboards, flashcards and your study time in one place — works offline.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
   "background_color": "#0b0d12",
-  "theme_color": "#0b0d12",
+  "theme_color": "#6d5ae6",
   "lang": "bg",
+  "dir": "ltr",
   "categories": [
     "education",
     "productivity"
@@ -37,7 +39,7 @@
     {
       "name": "Табло",
       "short_name": "Табло",
-      "url": "/",
+      "url": "/?go=dashboard",
       "icons": [
         {
           "src": "/icons/icon-192.png",

@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { BRAND } from '@/brand';
 import { Icon } from '../Icon';
 
 interface Props {
@@ -34,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private report(): string {
     return [
-      `StudyDesk · ${new Date().toISOString()}`,
+      `${BRAND.name} · ${new Date().toISOString()}`,
       navigator.userAgent,
       `екран: ${window.innerWidth}×${window.innerHeight}`,
       '',

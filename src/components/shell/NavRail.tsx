@@ -4,6 +4,7 @@ import { useSettings } from '@/state/settingsStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { usePlanner, dueToday, overdue } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
+import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 import { Tip } from '../ui';
 
@@ -46,19 +47,8 @@ export function NavRail() {
       style={{ width }}
     >
       <div className={`flex items-center gap-2.5 px-3 py-3.5 ${collapsed ? 'justify-center' : ''}`}>
-        <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px]"
-          style={{
-            background: 'linear-gradient(140deg, var(--c-accent), color-mix(in srgb, var(--c-accent) 62%, #0ea5e9))',
-            color: 'var(--c-accent-text)',
-            boxShadow: 'var(--shadow-sm)',
-          }}
-        >
-          <Icon name="book" size={17} />
-        </span>
-        {!collapsed && (
-          <span className="truncate text-[14.5px] font-semibold tracking-[-0.01em]">StudyDesk</span>
-        )}
+        <PlauviaTile size={32} />
+        {!collapsed && <PlauviaWordmark size={16} className="truncate" />}
       </div>
 
       <div className="flex flex-col gap-0.5 px-2">

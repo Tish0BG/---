@@ -27,6 +27,7 @@ import { SettingsDialog } from '@/components/SettingsDialog';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { AuthScreen } from '@/components/auth/AuthScreen';
 import { RecoveryScreen } from '@/components/auth/RecoveryScreen';
+import { Landing } from '@/components/landing/Landing';
 import { ConnectionBar } from '@/components/system/ConnectionBar';
 import { Toaster } from '@/components/system/Toaster';
 import { TimerOverlay } from '@/components/timer/TimerOverlay';
@@ -38,6 +39,8 @@ import { clearThumbCache } from '@/components/sidebar/Thumbnails';
 import { InstrumentLayer } from '@/components/instruments/InstrumentLayer';
 import { DOCK_AREA_ID, UtilityDock, UtilityFloatLayer } from '@/components/utilities/UtilityLayer';
 import { Icon } from '@/components/Icon';
+import { BRAND } from '@/brand';
+import { PlauviaTile } from '@/components/brand/Logo';
 
 export default function App() {
   const view = useApp((s) => s.view);
@@ -136,6 +139,12 @@ export default function App() {
    * yanking the person back to the same screen.
    */
   useEffect(() => {
+    // /login, /signup and /app are real links people paste and bookmark.
+    const path = window.location.pathname.replace(/\/+$/, '');
+    if (path === '/login' || path === '/signup' || path === '/app') {
+      useApp.getState().setAuth(true);
+      history.replaceState(null, '', '/');
+    }
     const go = new URLSearchParams(window.location.search).get('go');
     if (!go) return;
     if (['dashboard', 'drive', 'planner', 'cards', 'subjects', 'stats'].includes(go)) {
@@ -171,31 +180,36 @@ export default function App() {
 
   // Waiting for the session check too, otherwise someone who is already
   // signed in sees the front door flash past on every reload.
-  if (!libraryLoaded || !workspaceLoaded || !authReady) {
-    return (
-      <div className="grid h-full place-items-center text-muted">
-        <Icon name="refresh" size={22} className="animate-spin" />
-      </div>
-    );
-  }
+  if (!libraryLoaded || !workspaceLoaded || !authReady) return <Splash />;
 
   // Arrived from a "reset your password" e-mail: ask for the new one before
   // anything else, or the link just logs them in with the old password.
   if (recovery) return <RecoveryScreen />;
 
   /**
-   * The front door. A product with accounts opens on "sign in or register" —
-   * and then lands you in the product. There is no questionnaire in between:
-   * the name comes from the account, everything else has a sane default and
-   * lives in settings, where it can be changed at any time instead of once.
+   * The public site, then the door, then the product.
+   *
+   * A stranger lands on the marketing page: a login form as a home page tells
+   * them nothing about what they would be logging into. "Get started" opens
+   * the door, and everything past it is the app itself — with no questionnaire
+   * in between, because the name comes from the account and everything else
+   * has a sane default that lives in settings.
    */
   if (cloudConfigured && !signedIn && !skippedAuth) {
+    if (!authOpen) {
+      return (
+        <Landing
+          onStart={() => useApp.getState().setAuth(true)}
+          onSignIn={() => useApp.getState().setAuth(true)}
+        />
+      );
+    }
     return (
       <AuthScreen
         onClose={() => {
-          // Closing after a successful sign-in must not be mistaken for
-          // "I don't want an account".
-          if (!useAuth.getState().user) useAuth.getState().skip();
+          // Closing after signing in is not a refusal; it is just the screen
+          // getting out of the way.
+          if (!useAuth.getState().user) useApp.getState().setAuth(false);
         }}
       />
     );
@@ -207,14 +221,7 @@ export default function App() {
    * sync on an empty library would blank the whole app for a few seconds.
    */
   if (signedIn && restoring && !documentsReady && !everSynced) {
-    return (
-      <div className="grid h-full place-items-center px-6 text-center text-muted">
-        <div>
-          <Icon name="refresh" size={22} className="mx-auto animate-spin" />
-          <p className="mt-3 text-[13px]">Изтегляме библиотеката ти…</p>
-        </div>
-      </div>
-    );
+    return <Splash label="Изтегляме библиотеката ти…" />;
   }
 
   /* A document takes the whole window: writing needs the space. */
@@ -319,6 +326,24 @@ export default function App() {
       </AppShell>
       {globals}
     </>
+  );
+}
+
+/**
+ * The first thing anyone sees. It carries the mark rather than a bare
+ * spinner: a blank screen with a turning circle belongs to no product in
+ * particular, and this is the moment the brand is establishing that it is one.
+ */
+function Splash({ label }: { label?: string }) {
+  return (
+    <div className="grid h-full place-items-center px-6 text-center" style={{ background: 'var(--c-bg)' }}>
+      <div className="animate-in">
+        <PlauviaTile size={52} className="mx-auto" />
+        <p className="mt-4 text-[15px] font-semibold tracking-[-0.02em]">{BRAND.name}</p>
+        <p className="mt-1 text-[12.5px] text-muted">{label ?? BRAND.tagline.bg}</p>
+        <Icon name="refresh" size={15} className="mx-auto mt-4 animate-spin text-faint" />
+      </div>
+    </div>
   );
 }
 

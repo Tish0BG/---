@@ -1,5 +1,5 @@
 /**
- * Offline shell for StudyDesk.
+ * Offline shell for Plauvia.
  *
  * The app is local-first: once the code is cached there is nothing else it
  * needs from the network, so the goal here is simply "never fail to start".
@@ -7,7 +7,7 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'studydesk-v3';
+const VERSION = 'plauvia-v4';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
