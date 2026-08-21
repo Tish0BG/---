@@ -445,6 +445,72 @@ export async function wipeCloud(): Promise<void> {
   await resetSyncState();
 }
 
+/**
+ * Removes the account and everything it holds.
+ *
+ * The files go first, from the browser, because Storage objects are not rows
+ * and no cascade reaches them. The user row is deleted by a `security
+ * definer` function: deleting a user needs the service key, which has no
+ * business being in a page anyone can open, so the privilege is lent to one
+ * function that can only ever delete its own caller.
+ */
+export async function deleteAccount(): Promise<void> {
+  const client = await getClient();
+  if (!client) throw new Error('Облакът не е настроен.');
+  const { data: auth } = await client.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) throw new Error('Не си влязъл в профил.');
+
+  for (const folder of ['file', 'asset']) {
+    const { data } = await client.storage.from(FILES_BUCKET).list(`${userId}/${folder}`, { limit: 1000 });
+    const paths = (data ?? []).map((f) => `${userId}/${folder}/${f.name}`);
+    if (paths.length) await client.storage.from(FILES_BUCKET).remove(paths);
+  }
+
+  const { error } = await client.rpc('delete_own_account');
+  if (error) {
+    const missing = /function .*delete_own_account/i.test(error.message) || error.code === 'PGRST202';
+    throw new Error(
+      missing
+        ? 'Липсва функцията delete_own_account. Пусни SQL скрипта отново в Supabase.'
+        : humanError(error),
+    );
+  }
+  await client.auth.signOut();
+  await resetSyncState();
+}
+
+/** What the account currently holds in the cloud, for the settings screen. */
+export async function cloudUsage(): Promise<{ records: number; files: number; bytes: number } | null> {
+  const client = await getClient();
+  if (!client) return null;
+  const { data: auth } = await client.auth.getUser();
+  const userId = auth.user?.id;
+  if (!userId) return null;
+
+  const { count } = await client
+    .from(RECORDS_TABLE)
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('deleted', false);
+
+  let files = 0;
+  let bytes = 0;
+  const { data: blobs } = await client
+    .from(RECORDS_TABLE)
+    .select('data')
+    .eq('user_id', userId)
+    .eq('kind', 'blobs')
+    .eq('deleted', false);
+  for (const row of blobs ?? []) {
+    const meta = (row as { data: { size?: number } | null }).data;
+    if (!meta) continue;
+    files++;
+    bytes += meta.size ?? 0;
+  }
+  return { records: count ?? 0, files, bytes };
+}
+
 /** How much of the library still has to be uploaded, for the settings screen. */
 export async function pendingUploadCount(): Promise<number> {
   const uploaded = await repo.uploadedKeys();

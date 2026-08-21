@@ -11,23 +11,41 @@ import { formatBytes, formatDate } from '@/lib/util';
 import { Modal, Slider, Toggle } from './ui';
 import { Icon } from './Icon';
 
-const SHORTCUTS: [string, string][] = [
-  ['⌘/Ctrl + Z', 'Отмени'],
-  ['⌘/Ctrl + ⇧ + Z', 'Върни'],
-  ['⌘/Ctrl + S', 'Запиши сега'],
-  ['⌘/Ctrl + F', 'Търсене в документа'],
-  ['⌘/Ctrl + D', 'Отметка на страницата'],
-  ['⌘/Ctrl + +  /  −', 'Мащаб'],
-  ['⌘/Ctrl + 0', 'Мащаб по ширина'],
-  ['V / H', 'Избор / Местене'],
-  ['P / M / E', 'Писалка / Маркер / Гума'],
-  ['L / R / O / A', 'Линия / Правоъгълник / Кръг / Стрелка'],
-  ['T / G / C', 'Текст / Маркиране на задача / Изрезка'],
-  ['⌥ + Space', 'Старт / пауза на таймера'],
-  ['⌥ + T', 'Покажи / скрий таймера'],
-  ['⌥ + F', 'Таймер на цял екран'],
-  ['← → или PgUp/PgDn', 'Предишна / следваща страница'],
-  ['Delete', 'Изтрий избраното'],
+/** Grouped, because a flat list of twenty rows is a list nobody reads. */
+const SHORTCUTS: { group: string; keys: [string, string][] }[] = [
+  {
+    group: 'Навсякъде',
+    keys: [
+      ['⌘/Ctrl + K', 'Търсене навсякъде'],
+      ['⌥ + Space', 'Старт / пауза на таймера'],
+      ['⌥ + T', 'Покажи / скрий таймера'],
+      ['⌥ + F', 'Таймер на цял екран'],
+    ],
+  },
+  {
+    group: 'В документ',
+    keys: [
+      ['⌘/Ctrl + Z', 'Отмени'],
+      ['⌘/Ctrl + ⇧ + Z', 'Върни'],
+      ['⌘/Ctrl + S', 'Запиши сега'],
+      ['⌘/Ctrl + F', 'Търсене в документа'],
+      ['⌘/Ctrl + E', 'Експорт'],
+      ['⌘/Ctrl + D', 'Отметка на страницата'],
+      ['⌘/Ctrl + +  /  −  /  0', 'Мащаб / по ширина'],
+      ['← → PgUp PgDn Home End', 'Навигация по страници'],
+      ['Delete', 'Изтрий избраното'],
+      ['Esc', 'Откажи избора'],
+    ],
+  },
+  {
+    group: 'Инструменти за писане',
+    keys: [
+      ['V / H', 'Избор / Местене'],
+      ['P / M / E', 'Писалка / Маркер / Гума'],
+      ['L / R / O / A', 'Линия / Правоъгълник / Кръг / Стрелка'],
+      ['T / G / C', 'Текст / Маркиране на задача / Изрезка'],
+    ],
+  },
 ];
 
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -144,10 +162,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               )}
             </div>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-muted">
-            Всички файлове и бележки се пазят локално в браузъра (IndexedDB). Нищо не се качва в интернет —
-            затова направи резервно копие, преди да чистиш данните на браузъра.
-          </p>
+          <StorageNote />
         </section>
 
         <section>
@@ -161,17 +176,89 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
         <section>
           <h3 className="mb-2 label">Клавишни комбинации</h3>
-          <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px]">
-            {SHORTCUTS.map(([k, v]) => (
-              <div key={k} className="contents">
-                <dt className="whitespace-nowrap font-mono text-[11px] text-muted">{k}</dt>
-                <dd className="text-ink">{v}</dd>
+          <div className="space-y-3">
+            {SHORTCUTS.map((section) => (
+              <div key={section.group}>
+                <div className="mb-1 text-[11px] font-medium text-muted">{section.group}</div>
+                <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-[12px]">
+                  {section.keys.map(([k, v]) => (
+                    <div key={k} className="contents">
+                      <dt className="whitespace-nowrap font-mono text-[11px] text-faint">{k}</dt>
+                      <dd className="text-ink">{v}</dd>
+                    </div>
+                  ))}
+                </dl>
               </div>
             ))}
-          </dl>
+          </div>
         </section>
+
+        <AboutSection />
       </div>
     </Modal>
+  );
+}
+
+/** The truth about where the data lives depends on whether you signed in. */
+function StorageNote() {
+  const user = useAuth((s) => s.user);
+  return (
+    <p className="mt-2 text-[11px] leading-relaxed text-muted">
+      {user ? (
+        <>
+          Всичко се записва първо тук, в браузъра, и приложението работи офлайн. Копие пътува и към
+          твоята Supabase база, за да го намериш и на другите си устройства. Резервното копие остава
+          полезно — то е единственото, което не зависи от нищо друго.
+        </>
+      ) : (
+        <>
+          Всички файлове и бележки се пазят локално в браузъра (IndexedDB) и нищо не тръгва към
+          интернет. Затова направи резервно копие, преди да чистиш данните на браузъра — или влез в
+          профил, за да ги имаш и другаде.
+        </>
+      )}
+    </p>
+  );
+}
+
+/**
+ * Version, build and what the app is. Small, but its absence is one of those
+ * things that quietly says "unfinished" — and the version is the first thing
+ * anyone needs when reporting a problem.
+ */
+function AboutSection() {
+  const [copied, setCopied] = useState(false);
+  const line = `StudyDesk ${__APP_VERSION__} · ${__BUILD_DATE__} · ${navigator.userAgent}`;
+
+  return (
+    <section>
+      <h3 className="mb-2 label">За приложението</h3>
+      <div className="panel flex items-center gap-3 p-3">
+        <span
+          className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+          style={{
+            background: 'linear-gradient(140deg, var(--c-accent), color-mix(in srgb, var(--c-accent) 62%, #0ea5e9))',
+            color: '#fff',
+          }}
+        >
+          <Icon name="book" size={19} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="text-[13px] font-medium">StudyDesk</div>
+          <div className="text-[11px] tabular-nums text-muted">
+            версия {__APP_VERSION__} · {__BUILD_DATE__}
+          </div>
+        </div>
+        <button
+          className="btn btn-outline shrink-0"
+          onClick={() => void navigator.clipboard.writeText(line).then(() => setCopied(true))}
+          title="Полезно при съобщаване на проблем"
+        >
+          <Icon name={copied ? 'check' : 'copy'} size={14} />
+          {copied ? 'Копирано' : 'Данни за проблем'}
+        </button>
+      </div>
+    </section>
   );
 }
 

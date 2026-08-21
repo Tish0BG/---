@@ -6,6 +6,7 @@ import { useCards, dueCount } from '@/state/cardStore';
 import { useTimer } from '@/state/timerStore';
 import { Icon } from '../Icon';
 import { Tip } from '../ui';
+import { ConnectionBar } from '../system/ConnectionBar';
 import { UtilityButton } from '../utilities/UtilityLayer';
 import { NavRail } from './NavRail';
 import { ProfileMenu } from './ProfileMenu';
@@ -42,6 +43,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <NavRail />
 
       <div className="flex min-w-0 flex-1 flex-col">
+        <ConnectionBar />
         <header
           className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4"
           style={{ background: 'color-mix(in srgb, var(--c-surface) 92%, transparent)', backdropFilter: 'blur(10px)' }}

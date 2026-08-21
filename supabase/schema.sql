@@ -62,6 +62,28 @@ create policy "own files delete" on storage.objects
     bucket_id = 'library' and (storage.foldername(name))[1] = auth.uid()::text
   );
 
+-- ─────────────────────────────────────────── изтриване на профил ──
+-- Браузърът няма право да трие потребители — това иска таен ключ, който
+-- никога не бива да стига до него. Затова правото се дава на една-единствена
+-- функция, която може да изтрие само този, който я вика.
+create or replace function public.delete_own_account()
+returns void
+language plpgsql
+security definer
+set search_path = public, auth
+as $$
+begin
+  if auth.uid() is null then
+    raise exception 'not signed in';
+  end if;
+  delete from public.records where user_id = auth.uid();
+  delete from auth.users where id = auth.uid();
+end;
+$$;
+
+revoke all on function public.delete_own_account() from public, anon;
+grant execute on function public.delete_own_account() to authenticated;
+
 -- ───────────────────────────────────────────────────────── проверка ──
 -- Пусни и това: и двата реда трябва да покажат 1.
 -- Ако „library bucket“ покаже 0, направи кофата от Storage → New bucket

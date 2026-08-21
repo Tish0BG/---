@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useApp } from '@/state/appStore';
+import { useApp, type AppView } from '@/state/appStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useViewer, installAutosaveGuards } from '@/state/viewerStore';
 import { useSettings, initTheme } from '@/state/settingsStore';
@@ -26,6 +26,9 @@ import { ExportDialog } from '@/components/ExportDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { AuthDialog } from '@/components/auth/AuthDialog';
 import { AuthScreen } from '@/components/auth/AuthScreen';
+import { RecoveryScreen } from '@/components/auth/RecoveryScreen';
+import { ConnectionBar } from '@/components/system/ConnectionBar';
+import { Toaster } from '@/components/system/Toaster';
 import { TimerOverlay } from '@/components/timer/TimerOverlay';
 import { SnipDialog } from '@/components/board/SnipDialog';
 import { NewBoardDialog } from '@/components/board/NewBoardDialog';
@@ -44,8 +47,10 @@ export default function App() {
   const cloudConfigured = useAuth((s) => s.configured);
   const signedIn = useAuth((s) => !!s.user);
   const skippedAuth = useAuth((s) => s.skipped);
+  const recovery = useAuth((s) => s.recovery);
   const syncPhase = useAuth((s) => s.sync.phase);
   const restoring = syncPhase !== 'idle' && syncPhase !== 'done' && syncPhase !== 'error';
+  const everSynced = useAuth((s) => s.sync.lastSyncAt !== null);
   /** anything at all in the library means there is something to show already */
   const documentsReady = useLibrary((s) => s.documents.length > 0);
   const docId = useViewer((s) => s.docId);
@@ -125,6 +130,20 @@ export default function App() {
     return () => cancelAnimationFrame(id);
   }, [uploadTick]);
 
+  /**
+   * The installed app's long-press shortcuts open `?go=drive` and friends.
+   * Honoured once, then wiped from the address bar so a reload does not keep
+   * yanking the person back to the same screen.
+   */
+  useEffect(() => {
+    const go = new URLSearchParams(window.location.search).get('go');
+    if (!go) return;
+    if (['dashboard', 'drive', 'planner', 'cards', 'subjects', 'stats'].includes(go)) {
+      useApp.getState().go(go as AppView);
+    }
+    history.replaceState(null, '', window.location.pathname);
+  }, []);
+
   const openSearch = useCallback(() => {
     setSidebarOpen(true);
     setTab('search');
@@ -144,6 +163,7 @@ export default function App() {
       <SettingsDialog open={settingsOpen} onClose={() => useApp.getState().setSettings(false)} />
       <AuthDialog open={authOpen} onClose={() => useApp.getState().setAuth(false)} />
       <UtilityFloatLayer />
+      <Toaster />
     </>
   );
 
@@ -158,6 +178,10 @@ export default function App() {
       </div>
     );
   }
+
+  // Arrived from a "reset your password" e-mail: ask for the new one before
+  // anything else, or the link just logs them in with the old password.
+  if (recovery) return <RecoveryScreen />;
 
   /**
    * The front door. A product with accounts opens on "sign in or register" —
@@ -177,9 +201,12 @@ export default function App() {
     );
   }
 
-  // Signing in on a new device pulls the library down; showing an empty app
-  // for those few seconds would look like the data was lost.
-  if (signedIn && restoring && !documentsReady) {
+  /**
+   * The very first sync after signing in on a new device, with nothing local
+   * to show yet. Guarded by `lastSyncAt` on purpose: without it every routine
+   * sync on an empty library would blank the whole app for a few seconds.
+   */
+  if (signedIn && restoring && !documentsReady && !everSynced) {
     return (
       <div className="grid h-full place-items-center px-6 text-center text-muted">
         <div>
@@ -194,6 +221,7 @@ export default function App() {
   if (docId) {
     return (
       <div className="flex h-full flex-col overflow-hidden">
+        <ConnectionBar />
         <TopBar
           onToggleSidebar={() => setSidebarOpen((v) => !v)}
           onExport={() => setExportOpen(true)}

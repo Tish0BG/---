@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useViewer } from '@/state/viewerStore';
 import { downloadBlob, exportPdf } from '@/services/exportService';
+import { notify } from '@/state/toastStore';
 import { repo } from '@/services/storageService';
 import { Modal } from './ui';
 import { Icon } from './Icon';
@@ -46,7 +47,9 @@ export function ExportDialog({ open, onClose }: { open: boolean; onClose: () => 
         getAsset: async (id) => (await repo.getAsset(id))?.blob,
       });
       const suffix = mode === 'annotated' ? ' (с бележки)' : '';
-      downloadBlob(blob, `${meta.name}${suffix}.pdf`);
+      const name = `${meta.name}${suffix}.pdf`;
+      downloadBlob(blob, name);
+      notify.ok('Експортирано', name);
       onClose();
     } catch (err) {
       console.error(err);

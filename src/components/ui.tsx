@@ -2,6 +2,7 @@ import { createPortal } from 'react-dom';
 import {
   useCallback,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -26,16 +27,57 @@ export function Modal({
   width?: number;
   footer?: ReactNode;
 }) {
+  const panelRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+
+  /**
+   * Escape closes, Tab stays inside, and the focus goes back where it came
+   * from afterwards. Without the trap, tabbing walks out of the dialog and
+   * into the page behind it — which for a screen-reader user means the dialog
+   * effectively is not there.
+   */
   useEffect(() => {
     if (!open) return;
+    const returnTo = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      [
+        ...(panelRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])',
+        ) ?? []),
+      ].filter((el) => el.offsetParent !== null);
+
+    const id = requestAnimationFrame(() => {
+      const first = focusables()[0];
+      (first ?? panelRef.current)?.focus();
+    });
+
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.stopPropagation();
         onClose();
+        return;
+      }
+      if (e.key !== 'Tab') return;
+      const items = focusables();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (e.shiftKey && (active === first || !panelRef.current?.contains(active))) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
       }
     };
+
     document.addEventListener('keydown', onKey, true);
-    return () => document.removeEventListener('keydown', onKey, true);
+    return () => {
+      cancelAnimationFrame(id);
+      document.removeEventListener('keydown', onKey, true);
+      returnTo?.focus?.();
+    };
   }, [open, onClose]);
 
   if (!open) return null;
@@ -47,9 +89,19 @@ export function Modal({
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="panel animate-in w-full max-h-[85vh] overflow-hidden flex flex-col" style={{ maxWidth: width }}>
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        className="panel animate-scale w-full max-h-[85vh] overflow-hidden flex flex-col outline-none"
+        style={{ maxWidth: width }}
+      >
         <header className="flex items-center justify-between px-4 h-12 border-b border-line shrink-0">
-          <h2 className="text-[14px] font-semibold">{title}</h2>
+          <h2 id={titleId} className="text-[14px] font-semibold">
+            {title}
+          </h2>
           <button className="icon-btn" onClick={onClose} aria-label="Затвори">
             <Icon name="x" size={16} />
           </button>
@@ -146,6 +198,7 @@ export function Popover({
         createPortal(
           <div
             ref={panelRef}
+            role="menu"
             className={`panel animate-in fixed z-50 p-1.5 ${className}`}
             style={{ top: pos?.top ?? -9999, left: pos?.left ?? -9999, width, visibility: pos ? 'visible' : 'hidden' }}
           >

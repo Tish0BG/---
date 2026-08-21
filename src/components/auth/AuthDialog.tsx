@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { cloudConfig } from '@/services/cloud/config';
-import { formatDate } from '@/lib/util';
+import { formatBytes, formatDate } from '@/lib/util';
 import { Modal, Toggle, useConfirm } from '../ui';
 import { Icon } from '../Icon';
+import { notify } from '@/state/toastStore';
 import { AuthScreen } from './AuthScreen';
+import { ConnectionCheck } from './ConnectionCheck';
 
 /**
  * Everything about the account in one place: connect a backend, sign in or
@@ -43,13 +45,19 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
   const notice = useAuth((s) => s.notice);
   const [pw, setPw] = useState('');
   const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const [usage, setUsage] = useState<{ records: number; files: number; bytes: number } | null>(null);
+  const [danger, setDanger] = useState(false);
+  const [confirmText, setConfirmText] = useState('');
+  const [busy, setBusy] = useState(false);
   const { confirm, element } = useConfirm();
 
   useEffect(() => {
     void useAuth.getState().refreshPending();
+    void useAuth.getState().usage().then(setUsage);
   }, []);
 
-  const busy = sync.phase === 'pulling' || sync.phase === 'pushing' || sync.phase === 'files' || sync.phase === 'checking';
+  const syncing =
+    sync.phase === 'pulling' || sync.phase === 'pushing' || sync.phase === 'files' || sync.phase === 'checking';
 
   return (
     <div className="space-y-5">
@@ -68,13 +76,21 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
             {sync.lastSyncAt ? `Последна синхронизация ${formatDate(sync.lastSyncAt)}` : 'Още не е синхронизирано'}
           </div>
         </div>
-        <button className="btn btn-primary" disabled={busy} onClick={() => void useAuth.getState().syncNow()}>
-          <Icon name="refresh" size={14} className={busy ? 'animate-spin' : ''} />
+        <button className="btn btn-primary" disabled={syncing} onClick={() => void useAuth.getState().syncNow()}>
+          <Icon name="refresh" size={14} className={syncing ? 'animate-spin' : ''} />
           Синхронизирай
         </button>
       </div>
 
       <SyncStatus />
+
+      {usage && (
+        <div className="grid grid-cols-3 gap-1.5">
+          <Metric value={String(usage.records)} label="записа" />
+          <Metric value={String(usage.files)} label="файла" />
+          <Metric value={formatBytes(usage.bytes)} label="в облака" />
+        </div>
+      )}
 
       <div className="panel p-3">
         <Toggle
@@ -103,14 +119,14 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
             autoComplete="new-password"
           />
           <button
-            className="btn shrink-0"
+            className="btn btn-outline shrink-0"
             disabled={pw.length < 8}
             onClick={() =>
               void useAuth
                 .getState()
                 .changePassword(pw)
                 .then((err) => {
-                  setPwMsg(err ?? 'Готово.');
+                  setPwMsg(err);
                   if (!err) setPw('');
                 })
             }
@@ -118,12 +134,20 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
             Смени
           </button>
         </div>
-        {(pwMsg || notice) && <p className="mt-1.5 text-[11px] text-muted">{pwMsg ?? notice}</p>}
+        {(pwMsg || notice) && (
+          <p className="mt-1.5 text-[11px]" style={{ color: pwMsg ? 'var(--c-danger)' : 'var(--c-muted)' }}>
+            {pwMsg ?? notice}
+          </p>
+        )}
       </section>
 
-      <div className="flex flex-wrap gap-2 border-t border-line pt-3">
+      <div className="border-t border-line pt-3">
+        <ConnectionCheck />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 border-t border-line pt-3">
         <button
-          className="btn"
+          className="btn btn-outline"
           onClick={() => {
             void useAuth.getState().signOut();
             onClose();
@@ -134,19 +158,72 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         </button>
         <button
           className="btn"
-          style={{ color: 'var(--c-danger)' }}
+          style={{ color: 'var(--c-warn)' }}
           onClick={() =>
             confirm(
-              'Това изтрива всичко от облака. Данните на това устройство остават непокътнати. Сигурен ли си?',
+              'Това изтрива всичко от облака, но оставя данните на това устройство. При следваща синхронизация те ще се качат отново. Сигурен ли си?',
               () => void useAuth.getState().wipeRemote(),
             )
           }
         >
-          <Icon name="trash" size={14} />
+          <Icon name="archive" size={14} />
           Изчисти облака
         </button>
         <ConnectionLine className="ml-auto self-center" />
       </div>
+
+      {/* Deleting the account is irreversible and must not sit one stray tap
+          away from "sign out" — hence its own drawer and a typed word. */}
+      <details
+        className="rounded-xl px-3 py-2"
+        style={{ background: 'var(--c-danger-soft)' }}
+        open={danger}
+        onToggle={(e) => setDanger((e.currentTarget as HTMLDetailsElement).open)}
+      >
+        <summary className="cursor-pointer text-[12px] font-medium" style={{ color: 'var(--c-danger)' }}>
+          Изтриване на профила
+        </summary>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
+          Профилът, всички качени файлове и всичко в облака изчезват безвъзвратно. Данните на това
+          устройство остават — приложението просто продължава без профил. Напиши{' '}
+          <b className="text-ink">ИЗТРИЙ</b>, за да потвърдиш.
+        </p>
+        <div className="mt-2 flex gap-2">
+          <input
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder="ИЗТРИЙ"
+            className="field"
+          />
+          <button
+            className="btn btn-danger shrink-0"
+            disabled={confirmText.trim().toUpperCase() !== 'ИЗТРИЙ' || busy}
+            onClick={() => {
+              setBusy(true);
+              void useAuth
+                .getState()
+                .removeAccount()
+                .then((err) => {
+                  setBusy(false);
+                  if (err) notify.error('Профилът не беше изтрит', err);
+                  else onClose();
+                });
+            }}
+          >
+            {busy && <Icon name="refresh" size={14} className="animate-spin" />}
+            Изтрий
+          </button>
+        </div>
+      </details>
+    </div>
+  );
+}
+
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="rounded-xl py-2 text-center" style={{ background: 'var(--c-surface-2)' }}>
+      <div className="text-[15px] font-medium leading-none tabular-nums">{value}</div>
+      <div className="mt-1 text-[10.5px] text-muted">{label}</div>
     </div>
   );
 }

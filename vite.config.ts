@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
@@ -15,6 +16,8 @@ import tailwindcss from '@tailwindcss/vite';
  * reads. The secret key is deliberately NOT among them: this is a browser
  * application, anything it is given is readable by anyone who opens it.
  */
+const pkg = createRequire(import.meta.url)('./package.json') as { version: string };
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const url = env.VITE_SUPABASE_URL || env.SUPABASE_URL || '';
@@ -55,6 +58,9 @@ export default defineConfig(({ mode }) => {
     define: {
       'import.meta.env.VITE_SUPABASE_URL': JSON.stringify(url),
       'import.meta.env.VITE_SUPABASE_ANON_KEY': JSON.stringify(key),
+      // Shown in settings, and the first thing worth knowing in a bug report.
+      __APP_VERSION__: JSON.stringify(pkg.version),
+      __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     },
     server: { port: 5180, host: true },
     // pdf.js ships a large worker; keep it out of the main chunk.
