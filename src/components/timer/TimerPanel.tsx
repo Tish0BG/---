@@ -105,24 +105,52 @@ function CycleDots({ done, of, color }: { done: number; of: number; color: strin
 }
 
 function FocusLine() {
-  const activeTaskId = useTimer((s) => s.activeTaskId);
-  const task = usePlanner((s) => s.items.find((t) => t.id === activeTaskId));
-  if (!activeTaskId || !task) {
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
+  const items = usePlanner((s) => s.items);
+  // Derived here, not in the selector: `filter` returns a fresh array on every
+  // call, so a selector doing the filtering never matches its own previous
+  // snapshot and React re-renders until it gives up.
+  const tasks = useMemo(() => items.filter((t) => activeTaskIds.includes(t.id)), [items, activeTaskIds]);
+
+  if (!tasks.length) {
     return (
       <button
-        className="text-[12px] text-faint transition-colors hover:text-muted cursor-pointer"
+        className="cursor-pointer text-[12px] text-faint transition-colors hover:text-muted"
         onClick={() => useTimer.getState().setTab('tasks')}
       >
-        Избери задача, върху която да се фокусираш
+        Избери задачи, върху които да се фокусираш
       </button>
     );
   }
+
+  // One task reads as a sentence; several read as a list, so they become
+  // chips — each removable on its own, without clearing the whole focus.
   return (
-    <div className="flex max-w-full items-center gap-1.5 text-[12px] text-muted">
-      <Icon name="target" size={13} className="shrink-0" />
-      <span className="truncate font-medium text-ink">{task.title}</span>
-      <button className="icon-btn h-5 w-5" onClick={() => useTimer.getState().setActiveTask(null)}>
-        <Icon name="x" size={12} />
+    <div className="flex max-w-full flex-wrap items-center justify-center gap-1">
+      <Icon name="target" size={13} className="shrink-0 text-muted" />
+      {tasks.map((t) => (
+        <span
+          key={t.id}
+          className="flex max-w-[150px] items-center gap-1 rounded-md py-0.5 pl-1.5 pr-0.5 text-[11.5px]"
+          style={{ background: 'var(--c-surface-3)' }}
+        >
+          <span className="truncate">{t.title}</span>
+          <button
+            className="icon-btn h-4 w-4 shrink-0"
+            onClick={() => useTimer.getState().toggleTask(t.id)}
+            aria-label={`Махни „${t.title}“ от фокуса`}
+          >
+            <Icon name="x" size={10} />
+          </button>
+        </span>
+      ))}
+      <button
+        className="icon-btn h-5 w-5"
+        onClick={() => useTimer.getState().setTab('tasks')}
+        aria-label="Добави задача към фокуса"
+        title="Добави задача"
+      >
+        <Icon name="plus" size={11} />
       </button>
     </div>
   );
@@ -132,7 +160,7 @@ function FocusLine() {
 
 export function TasksTab() {
   const items = usePlanner((s) => s.items);
-  const activeTaskId = useTimer((s) => s.activeTaskId);
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
   const [draft, setDraft] = useState('');
@@ -176,7 +204,7 @@ export function TasksTab() {
         )}
         {list.map((t) => {
           const subject = subjects.find((s) => s.id === t.subjectId) ?? null;
-          const active = activeTaskId === t.id;
+          const active = activeTaskIds.includes(t.id);
           return (
             <div
               key={t.id}
@@ -190,7 +218,9 @@ export function TasksTab() {
               />
               <button
                 className="min-w-0 flex-1 cursor-pointer text-left"
-                onClick={() => useTimer.getState().setActiveTask(active ? null : t.id)}
+                onClick={() => useTimer.getState().toggleTask(t.id)}
+                aria-pressed={active}
+                title={active ? 'Махни от фокуса' : 'Добави към фокуса'}
               >
                 <span
                   className="block truncate text-[13px]"
@@ -203,6 +233,7 @@ export function TasksTab() {
                   {t.due !== null && <DueChip due={t.due} bare />}
                 </span>
               </button>
+              {active && <Icon name="target" size={13} className="shrink-0 text-accent" />}
               {t.pomodoros > 0 && (
                 <span className="shrink-0 text-[11px] tabular-nums text-faint">{t.pomodoros} ●</span>
               )}

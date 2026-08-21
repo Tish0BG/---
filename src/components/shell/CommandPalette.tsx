@@ -80,7 +80,7 @@ export function CommandPalette() {
         icon: t.kind === 'exam' ? 'trophy' : 'listTodo',
         color: subject?.color,
         run: () => {
-          useTimer.getState().setActiveTask(t.id);
+          useTimer.getState().setActiveTasks([t.id]);
           app.go('planner');
         },
       });

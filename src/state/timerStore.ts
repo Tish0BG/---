@@ -42,7 +42,12 @@ interface TimerStore {
 
   sessions: FocusSession[];
   /** planner item the current focus block is credited to */
-  activeTaskId: string | null;
+  /**
+   * The tasks this focus block counts towards. Several, because a sitting
+   * before a test is rarely one task — and crediting only one of them makes
+   * the rest look untouched.
+   */
+  activeTaskIds: string[];
   loaded: boolean;
 
   init(): Promise<void>;
@@ -60,7 +65,10 @@ interface TimerStore {
   toggleWidget(): void;
   toggleFullscreen(): void;
 
-  setActiveTask(id: string | null): void;
+  /** adds or removes one task from the focus */
+  toggleTask(id: string): void;
+  setActiveTasks(ids: string[]): void;
+  clearTasks(): void;
   resetToday(): Promise<void>;
 }
 
@@ -80,11 +88,11 @@ export const useTimer = create<TimerStore>((set, get) => {
   };
 
   const saveRuntime = () => {
-    const { mode, running, left, cycle, activeTaskId } = get();
+    const { mode, running, left, cycle, activeTaskIds } = get();
     try {
       localStorage.setItem(
         RUNTIME_KEY,
-        JSON.stringify({ mode, running, left, cycle, activeTaskId, endAt, savedAt: Date.now() }),
+        JSON.stringify({ mode, running, left, cycle, activeTaskIds, endAt, savedAt: Date.now() }),
       );
     } catch {
       /* not critical */
@@ -131,10 +139,16 @@ export const useTimer = create<TimerStore>((set, get) => {
    * makes "time per subject" possible without asking the user anything.
    */
   const logSession = async (minutes: number) => {
-    const { activeTaskId } = get();
+    const { activeTaskIds } = get();
     const docId = useViewer.getState().docId;
     const doc = useLibrary.getState().documents.find((d) => d.id === docId);
-    const task = usePlanner.getState().items.find((i) => i.id === activeTaskId);
+    const tasks = usePlanner.getState().items.filter((i) => activeTaskIds.includes(i.id));
+
+    // One block of time gets one subject. The open document decides it; with
+    // no document, the tasks do — but only if they agree, because splitting a
+    // single sitting across three subjects would invent numbers.
+    const subjectsOfTasks = [...new Set(tasks.map((t) => t.subjectId).filter(Boolean))];
+    const subjectId = doc?.subjectId ?? (subjectsOfTasks.length === 1 ? subjectsOfTasks[0]! : null);
 
     const session: FocusSession = {
       id: uid('fs_'),
@@ -142,12 +156,12 @@ export const useTimer = create<TimerStore>((set, get) => {
       startedAt: Date.now() - minutes * 60_000,
       minutes,
       docId,
-      taskId: activeTaskId,
-      subjectId: doc?.subjectId ?? task?.subjectId ?? null,
+      taskIds: tasks.map((t) => t.id),
+      subjectId,
     };
     await repo.putSession(session);
     set((st) => ({ sessions: [...st.sessions, session] }));
-    if (task) await usePlanner.getState().addPomodoro(task.id);
+    for (const task of tasks) await usePlanner.getState().addPomodoro(task.id);
   };
 
   return {
@@ -158,11 +172,17 @@ export const useTimer = create<TimerStore>((set, get) => {
     view: useSettings.getState().timerVisible ? 'mini' : 'hidden',
     tab: 'timer',
     sessions: [],
-    activeTaskId: null,
+    activeTaskIds: [],
     loaded: false,
 
     async init() {
-      const sessions = await repo.listSessions();
+      const stored = await repo.listSessions();
+      // Sessions written before v1.1 (and any restored from an older backup)
+      // carry a single task; normalise on read so nothing downstream has to
+      // know that two shapes ever existed.
+      const sessions = stored.map((s) =>
+        s.taskIds ? s : { ...s, taskIds: s.taskId ? [s.taskId] : [] },
+      );
       set({ sessions, loaded: true });
 
       // Resume where the previous visit left off, including time spent away.
@@ -174,10 +194,17 @@ export const useTimer = create<TimerStore>((set, get) => {
           running: boolean;
           left: number;
           cycle: number;
-          activeTaskId: string | null;
+          activeTaskIds?: string[];
+          /** @deprecated pre-v1.1 runtime state carried exactly one task */
+          activeTaskId?: string | null;
           endAt: number;
         };
-        set({ mode: r.mode, cycle: r.cycle, activeTaskId: r.activeTaskId });
+        set({
+          mode: r.mode,
+          cycle: r.cycle,
+          // a session saved by an older build carried exactly one task
+          activeTaskIds: r.activeTaskIds ?? (r.activeTaskId ? [r.activeTaskId] : []),
+        });
         if (r.running && r.endAt > Date.now()) {
           endAt = r.endAt;
           set({ left: (r.endAt - Date.now()) / 1000, running: true });
@@ -265,8 +292,19 @@ export const useTimer = create<TimerStore>((set, get) => {
       get().setView(v === 'full' ? 'mini' : 'full');
     },
 
-    setActiveTask(id) {
-      set({ activeTaskId: id });
+    toggleTask(id) {
+      const current = get().activeTaskIds;
+      set({ activeTaskIds: current.includes(id) ? current.filter((x) => x !== id) : [...current, id] });
+      saveRuntime();
+    },
+
+    setActiveTasks(ids) {
+      set({ activeTaskIds: ids });
+      saveRuntime();
+    },
+
+    clearTasks() {
+      set({ activeTaskIds: [] });
       saveRuntime();
     },
 

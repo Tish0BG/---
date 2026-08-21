@@ -300,7 +300,15 @@ export interface FocusSession {
   startedAt: ISODate;
   minutes: number;
   docId: string | null;
-  taskId: string | null;
+  /**
+   * Everything this block was aimed at. Work rarely splits neatly into one
+   * task per sitting — a session before a test touches the homework, the
+   * revision and the notes at once, and crediting only one of them makes the
+   * other two look untouched.
+   */
+  taskIds: string[];
+  /** @deprecated single-task shape; read for sessions recorded before v1.1 */
+  taskId?: string | null;
   subjectId?: string | null;
 }
 
