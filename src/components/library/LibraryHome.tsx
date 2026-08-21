@@ -438,7 +438,7 @@ function EmptyState({
       <Icon name="upload" size={26} className="text-faint" />
       <span className="text-[14px] font-medium">Качи PDF учебник или започни на празна дъска</span>
       <span className="text-[12px] text-muted">
-        Пусни файловете направо тук. Всичко остава на това устройство.
+        Пусни файловете направо тук — или ги избери от бутона горе.
       </span>
       <div className="mt-1 flex gap-2">
         <button className="btn btn-primary" onClick={onPick}>

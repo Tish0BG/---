@@ -1,21 +1,71 @@
 {
   "name": "StudyDesk — учебна работна среда",
   "short_name": "StudyDesk",
-  "description": "Учебници, дъски за писане, флашкарти, планер и фокус таймер — всичко локално на устройството.",
+  "description": "Учебници, дъски за писане, флашкарти, планер и фокус таймер. Работи офлайн, а с профил библиотеката ти е на всяко устройство.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#0c0e13",
-  "theme_color": "#0c0e13",
+  "background_color": "#0b0d12",
+  "theme_color": "#0b0d12",
   "lang": "bg",
-  "categories": ["education", "productivity"],
+  "categories": [
+    "education",
+    "productivity"
+  ],
   "icons": [
-    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "/icons/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ],
   "shortcuts": [
-    { "name": "Табло", "url": "/", "icons": [{ "src": "/icons/icon-192.png", "sizes": "192x192" }] }
+    {
+      "name": "Табло",
+      "short_name": "Табло",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Библиотека",
+      "short_name": "Библиотека",
+      "url": "/?go=drive",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Флашкарти",
+      "short_name": "Карти",
+      "url": "/?go=cards",
+      "icons": [
+        {
+          "src": "/icons/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
   ]
 }

@@ -3,6 +3,7 @@ import type { CardKind, FlashCard, Rect } from '@/types';
 import { DEFAULT_DECK, decks, useCards } from '@/state/cardStore';
 import { newCard, occlusionCards, storeCardImage } from '@/services/cardService';
 import { useAssetUrl } from '@/hooks/useAssetUrl';
+import { notify } from '@/state/toastStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useLibrary } from '@/state/libraryStore';
 import { Modal, Select, type SelectOption } from '../ui';
@@ -122,6 +123,10 @@ export function CardEditor({
           : newCard({ ...base, kind: 'basic', frontAsset: assetId });
         await useCards.getState().save([card]);
       }
+      notify.ok(
+        editing ? 'Картата е запазена' : kind === 'occlusion' ? `${masks.length} карти са създадени` : 'Картата е създадена',
+        `в тестето „${base.deck}“`,
+      );
       onClose();
     } finally {
       setBusy(false);

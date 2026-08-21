@@ -5,6 +5,7 @@ import { useViewer } from '@/state/viewerStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
 import { formatBytes, formatDate } from '@/lib/util';
+import { notify } from '@/state/toastStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
 import { SubjectDot } from '../subjects/SubjectDot';
@@ -341,7 +342,13 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   className="btn"
                   style={{ color: 'var(--c-danger)' }}
                   onClick={() => {
-                    selectedDocs.forEach((d) => void useLibrary.getState().deleteDocument(d.id));
+                    const gone = selectedDocs.map((d) => d.id);
+                    gone.forEach((id) => void useLibrary.getState().deleteDocument(id));
+                    notify.undo(
+                      gone.length === 1 ? 'Преместено в кошчето' : `${gone.length} в кошчето`,
+                      'Върни',
+                      () => gone.forEach((id) => void useLibrary.getState().restoreDocument(id)),
+                    );
                     setSelected(new Set());
                   }}
                 >
@@ -802,6 +809,7 @@ function DocMenu({
               danger
               onClick={() => {
                 void deleteDocument(doc.id);
+                notify.undo('Преместено в кошчето', 'Върни', () => void restoreDocument(doc.id));
                 close();
               }}
             />
@@ -846,7 +854,7 @@ function EmptyState({
       <Icon name="upload" size={26} className="text-faint" />
       <span className="text-[14px] font-medium">Качи PDF учебник или започни на празна дъска</span>
       <span className="max-w-md text-center text-[12px] text-muted">
-        Пусни файловете направо тук. Всичко остава на това устройство.
+        Пусни файловете направо тук — или ги избери от бутона горе.
       </span>
       <div className="mt-1 flex gap-2">
         <button className="btn btn-primary" onClick={onPick}>

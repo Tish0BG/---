@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { notify } from './toastStore';
 import type { Session, User } from '@supabase/supabase-js';
 import type { SyncState } from '@/types';
 import { getClient, humanError, resetClient } from '@/services/cloud/client';
@@ -10,7 +11,15 @@ import {
   saveCloudConfig,
   validateConfig,
 } from '@/services/cloud/config';
-import { pendingUploadCount, resetSyncState, runSync, syncPointer, wipeCloud } from '@/services/cloud/syncService';
+import {
+  cloudUsage,
+  deleteAccount,
+  pendingUploadCount,
+  resetSyncState,
+  runSync,
+  syncPointer,
+  wipeCloud,
+} from '@/services/cloud/syncService';
 import { useLibrary } from './libraryStore';
 import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
@@ -53,6 +62,13 @@ interface AuthStore {
   /** last message from a sign-up / reset flow */
   notice: string | null;
   /**
+   * True while the app was opened from a "reset your password" e-mail.
+   * Supabase signs the person in with a short-lived recovery session, which
+   * without this would look like an ordinary login — and the new password
+   * they came to set would never get asked for.
+   */
+  recovery: boolean;
+  /**
    * Set after registering when the project asks for e-mail confirmation:
    * Supabase hands back a user but no session, so the app has to say plainly
    * that nothing is signed in yet and why.
@@ -64,6 +80,8 @@ interface AuthStore {
   disconnect(): void;
   /** continue without signing in, and stop asking */
   skip(): void;
+  /** leaves the recovery screen once the password is changed or abandoned */
+  endRecovery(): void;
 
   signIn(email: string, password: string): Promise<string | null>;
   signUp(email: string, password: string, name: string): Promise<string | null>;
@@ -76,6 +94,9 @@ interface AuthStore {
   setAutoSync(on: boolean): void;
   refreshPending(): Promise<void>;
   wipeRemote(): Promise<string | null>;
+  /** removes the account itself, along with everything it holds */
+  removeAccount(): Promise<string | null>;
+  usage(): Promise<{ records: number; files: number; bytes: number } | null>;
   clearNotice(): void;
 }
 
@@ -104,6 +125,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   pendingFiles: 0,
   skipped: localStorage.getItem(SKIP_KEY) === 'yes',
   notice: null,
+  recovery: false,
   awaitingConfirm: null,
 
   async init() {
@@ -128,8 +150,19 @@ export const useAuth = create<AuthStore>((set, get) => ({
     // init() runs on mount and again after the keys change; without this the
     // app would end up with a listener per call.
     authWatcher?.unsubscribe();
-    authWatcher = client.auth.onAuthStateChange((_event, session) => {
-      set({ session, user: session?.user ?? null, awaitingConfirm: session ? null : get().awaitingConfirm });
+    authWatcher = client.auth.onAuthStateChange((event, session) => {
+      set({
+        session,
+        user: session?.user ?? null,
+        awaitingConfirm: session ? null : get().awaitingConfirm,
+        // The link from the "forgot password" mail arrives as a real session.
+        // Without catching the event it would silently look like a login.
+        recovery: event === 'PASSWORD_RECOVERY' ? true : get().recovery,
+      });
+      if (event === 'SIGNED_IN' && new URL(window.location.href).hash.includes('type=signup')) {
+        notify.ok('Имейлът е потвърден', 'Профилът ти вече е активен.');
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      }
     }).data.subscription;
 
     if (data.session) {
@@ -158,6 +191,13 @@ export const useAuth = create<AuthStore>((set, get) => ({
   skip() {
     localStorage.setItem(SKIP_KEY, 'yes');
     set({ skipped: true });
+  },
+
+  endRecovery() {
+    // The token lives in the fragment; leaving it there would put the app
+    // back into recovery on the next reload.
+    history.replaceState(null, '', window.location.pathname + window.location.search);
+    set({ recovery: false });
   },
 
   disconnect() {
@@ -224,6 +264,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       redirectTo: window.location.origin,
     });
     if (error) return humanError(error);
+    notify.ok('Провери пощата си', 'Изпратихме ти връзка за нова парола.');
     set({ notice: 'Изпратихме ти писмо за нова парола.' });
     return null;
   },
@@ -233,6 +274,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (!client) return 'Облакът не е настроен.';
     const { error } = await client.auth.updateUser({ password: next });
     if (error) return humanError(error);
+    notify.ok('Паролата е сменена');
     set({ notice: 'Паролата е сменена.' });
     return null;
   },
@@ -247,6 +289,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
   async syncNow() {
     if (!get().user || get().sync.phase === 'pulling' || get().sync.phase === 'pushing') return;
+    if (!navigator.onLine) {
+      set({ sync: { ...get().sync, phase: 'idle', label: 'Изчаква връзка', progress: null } });
+      return;
+    }
     set({ sync: { ...get().sync, phase: 'checking', error: null, label: 'Свързване…', progress: null } });
     try {
       const result = await runSync((p) =>
@@ -274,10 +320,15 @@ export const useAuth = create<AuthStore>((set, get) => ({
           pushed: result.pushed,
         },
       });
+      if (result.warning) notify.info('Синхронизирано частично', result.warning);
       void get().refreshPending();
     } catch (err) {
+      const message = humanError(err);
+      // Background syncs fail silently otherwise: the panel reporting it is
+      // usually closed, and "my phone never got it" is found out far too late.
+      notify.error('Синхронизацията не мина', message);
       set({
-        sync: { ...get().sync, phase: 'error', label: '', progress: null, error: humanError(err) },
+        sync: { ...get().sync, phase: 'error', label: '', progress: null, error: message },
       });
     }
   },
@@ -307,6 +358,22 @@ export const useAuth = create<AuthStore>((set, get) => ({
     } catch (err) {
       return humanError(err);
     }
+  },
+
+  async removeAccount() {
+    try {
+      await deleteAccount();
+      localStorage.removeItem(SKIP_KEY);
+      set({ user: null, session: null, sync: EMPTY_SYNC, notice: null, skipped: false });
+      notify.ok('Профилът е изтрит', 'Данните на това устройство остават непокътнати.');
+      return null;
+    } catch (err) {
+      return humanError(err);
+    }
+  },
+
+  usage() {
+    return cloudUsage();
   },
 
   clearNotice() {
