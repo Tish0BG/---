@@ -112,7 +112,7 @@ export const useTimer = create<TimerStore>((set, get) => {
       const next = cycle + 1;
       if (next >= s.cycles) {
         set({ cycle: 0 });
-        notify('Готово 🎉', `Дълга почивка — ${s.long} мин.`);
+        notify('Кръгът е завършен', `Дълга почивка — ${s.long} мин.`);
         get().setMode('long', true);
       } else {
         set({ cycle: next });

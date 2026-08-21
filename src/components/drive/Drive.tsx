@@ -137,7 +137,10 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                 </span>
               ))}
             </div>
-            <h1 className="mt-0.5 text-[22px] font-semibold tracking-tight">
+            <h1
+              className="mt-0.5 font-semibold leading-[1.12]"
+              style={{ fontSize: 'var(--text-section)', letterSpacing: 'var(--track-section)' }}
+            >
               {path.at(-1)?.name ?? 'Библиотека'}
             </h1>
           </div>

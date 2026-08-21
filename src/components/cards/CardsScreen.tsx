@@ -82,7 +82,12 @@ function DeckList({
             <Icon name="arrowLeft" size={17} />
           </button>
         )}
-        <h1 className="flex-1 text-[15px] font-semibold">Флашкарти</h1>
+        <h1
+          className="flex-1 font-semibold leading-none"
+          style={{ fontSize: 'var(--text-section)', letterSpacing: 'var(--track-section)' }}
+        >
+          Флашкарти
+        </h1>
         <button className="btn" onClick={() => setNewDeck(true)}>
           <Icon name="folderPlus" size={15} />
           <span className="hidden sm:inline">Ново тесте</span>

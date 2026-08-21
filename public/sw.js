@@ -7,8 +7,17 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'plauvia-v4';
-const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
+const VERSION = 'plauvia-v5';
+const SHELL = [
+  '/',
+  '/index.html',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  // The typeface is part of the brand, so it is part of the offline shell.
+  '/fonts/inter.woff2',
+  '/fonts/inter-cyrillic.woff2',
+];
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

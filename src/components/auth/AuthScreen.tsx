@@ -68,7 +68,10 @@ function Aside() {
       </div>
 
       <div>
-        <h2 className="text-[27px] font-semibold leading-[1.12] tracking-[-0.025em]">
+        <h2
+          className="font-semibold leading-[1.12]"
+          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+        >
           {BRAND.tagline.bg}
         </h2>
         <ul className="mt-6 space-y-3">
@@ -132,7 +135,10 @@ function Forms({ onClose }: { onClose: () => void }) {
         </span>
       </header>
 
-      <h1 className="text-[24px] font-semibold tracking-[-0.02em]">
+      <h1
+        className="font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
         {forgot ? 'Нова парола' : tab === 'signin' ? 'Влез в профила си' : 'Създай профил'}
       </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
@@ -263,7 +269,12 @@ function ConfirmStep({ email }: { email: string }) {
       >
         <Icon name="send" size={24} />
       </span>
-      <h1 className="mt-4 text-[22px] font-semibold tracking-[-0.02em]">Провери пощата си</h1>
+      <h1
+        className="mt-4 font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
+        Провери пощата си
+      </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-muted">
         Профилът за <b className="text-ink">{email}</b> е създаден, но този проект иска потвърждение.
         Докато не отвориш връзката от писмото, влизането няма да мине — затова приложението още
@@ -323,7 +334,12 @@ function Setup() {
 
   return (
     <>
-      <h1 className="text-[24px] font-semibold tracking-[-0.02em]">Свържи база</h1>
+      <h1
+        className="font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
+        Свържи база
+      </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
         За да пренасяш библиотеката между устройства, приложението има нужда от собствена база.
         Supabase дава безплатен план. Прави се веднъж, за около пет минути.
