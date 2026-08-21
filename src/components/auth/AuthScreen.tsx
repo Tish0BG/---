@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
+import { BRAND } from '@/brand';
+import { PlauviaMark, PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
 
@@ -54,22 +56,23 @@ function Aside() {
     <aside
       className="relative hidden w-[42%] max-w-[520px] shrink-0 flex-col justify-between overflow-hidden p-10 lg:flex"
       style={{
-        background: 'linear-gradient(150deg, var(--c-accent), color-mix(in srgb, var(--c-accent) 55%, #0ea5e9))',
+        background: 'linear-gradient(150deg, var(--c-brand-lift), var(--c-brand-deep))',
         color: '#fff',
       }}
     >
       <div className="flex items-center gap-2.5">
         <span className="grid h-9 w-9 place-items-center rounded-xl" style={{ background: 'rgb(255 255 255 / 18%)' }}>
-          <Icon name="book" size={18} />
+          <PlauviaMark size={19} />
         </span>
-        <span className="text-[16px] font-semibold tracking-tight">StudyDesk</span>
+        <PlauviaWordmark size={17} />
       </div>
 
       <div>
-        <h2 className="text-[26px] font-semibold leading-tight tracking-[-0.02em]">
-          Едно място за ученето.
-          <br />
-          На всяко устройство.
+        <h2
+          className="font-semibold leading-[1.12]"
+          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+        >
+          {BRAND.tagline.bg}
         </h2>
         <ul className="mt-6 space-y-3">
           {points.map((p) => (
@@ -127,17 +130,15 @@ function Forms({ onClose }: { onClose: () => void }) {
     <>
       <header className="mb-6 lg:hidden">
         <span className="flex items-center gap-2.5">
-          <span
-            className="grid h-9 w-9 place-items-center rounded-xl"
-            style={{ background: 'var(--c-accent)', color: '#fff' }}
-          >
-            <Icon name="book" size={18} />
-          </span>
-          <span className="text-[16px] font-semibold tracking-tight">StudyDesk</span>
+          <PlauviaTile size={34} />
+          <PlauviaWordmark size={17} />
         </span>
       </header>
 
-      <h1 className="text-[24px] font-semibold tracking-[-0.02em]">
+      <h1
+        className="font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
         {forgot ? 'Нова парола' : tab === 'signin' ? 'Влез в профила си' : 'Създай профил'}
       </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
@@ -268,7 +269,12 @@ function ConfirmStep({ email }: { email: string }) {
       >
         <Icon name="send" size={24} />
       </span>
-      <h1 className="mt-4 text-[22px] font-semibold tracking-[-0.02em]">Провери пощата си</h1>
+      <h1
+        className="mt-4 font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
+        Провери пощата си
+      </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-muted">
         Профилът за <b className="text-ink">{email}</b> е създаден, но този проект иска потвърждение.
         Докато не отвориш връзката от писмото, влизането няма да мине — затова приложението още
@@ -328,7 +334,12 @@ function Setup() {
 
   return (
     <>
-      <h1 className="text-[24px] font-semibold tracking-[-0.02em]">Свържи база</h1>
+      <h1
+        className="font-semibold leading-[1.12]"
+        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+      >
+        Свържи база
+      </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
         За да пренасяш библиотеката между устройства, приложението има нужда от собствена база.
         Supabase дава безплатен план. Прави се веднъж, за около пет минути.

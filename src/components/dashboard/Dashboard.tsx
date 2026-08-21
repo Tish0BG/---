@@ -70,7 +70,10 @@ export function Dashboard({ onNewBoard, onUpload }: { onNewBoard: () => void; on
       <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8 sm:py-8">
         <header className="mb-6 flex flex-wrap items-end justify-between gap-3">
           <div>
-            <h1 className="text-[27px] font-semibold leading-tight tracking-[-0.02em]">
+            <h1
+              className="font-semibold leading-[1.1]"
+              style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+            >
               {greeting()}
               {profile.name ? (
                 <>

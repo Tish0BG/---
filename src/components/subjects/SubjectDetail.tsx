@@ -83,7 +83,12 @@ export function SubjectDetail({ id }: { id: string }) {
             <Icon name={subject.icon} size={26} />
           </span>
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-[24px] font-semibold tracking-tight">{subject.name}</h1>
+            <h1
+              className="truncate font-semibold leading-[1.12]"
+              style={{ fontSize: 'var(--text-section)', letterSpacing: 'var(--track-section)' }}
+            >
+              {subject.name}
+            </h1>
             <p className="text-[13px] text-muted">
               {[subject.teacher, `${materials.length} материала`, `${subjectCards.length} карти`]
                 .filter(Boolean)
@@ -348,7 +353,7 @@ function GradesTab({ subjectId, color }: { subjectId: string; color: string }) {
               </div>
               <div className="text-muted">
                 {needed === null
-                  ? 'Целта вече е постигната 🎉'
+                  ? 'Целта е постигната.'
                   : needed > scale.max
                     ? 'Няма как да стане само с една оценка.'
                     : `Трябва ти ${needed.toFixed(2)} на следващото контролно.`}

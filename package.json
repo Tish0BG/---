@@ -1,5 +1,5 @@
 {
-  "name": "studypdf",
+  "name": "plauvia",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit false --emitDeclarationOnly false --pretty",
     "postinstall": "node scripts/copy-pdfjs-assets.mjs",
-    "prebuild": "node scripts/copy-pdfjs-assets.mjs"
+    "prebuild": "node scripts/copy-pdfjs-assets.mjs && node scripts/make-brand-assets.mjs",
+    "brand": "node scripts/make-brand-assets.mjs"
   },
   "dependencies": {
     "@supabase/server": "^1.4.1",
@@ -28,9 +29,11 @@
     "@types/react": "^19.1.12",
     "@types/react-dom": "^19.1.9",
     "@vitejs/plugin-react": "^5.0.2",
+    "sharp": "^0.35.3",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.5"
   },
-  "description": "Учебна работна среда в браузъра: PDF учебници, дъски за писане, флашкарти, планер и фокус таймер."
+  "description": "Plauvia — plan, study, focus and track. Textbooks, whiteboards, flashcards and study time in one place.",
+  "homepage": "https://www.plauvia.com"
 }

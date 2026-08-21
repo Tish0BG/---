@@ -14,6 +14,7 @@ import {
   streak,
   useTimer,
 } from '@/state/timerStore';
+import { ScreenHeader } from '../shell/ScreenHeader';
 import { Icon } from '../Icon';
 
 const RANGES = [
@@ -55,11 +56,10 @@ export function StatsScreen() {
   return (
     <div className="scroll-thin h-full overflow-y-auto">
       <div className="mx-auto max-w-5xl px-5 py-6 sm:px-8">
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-[22px] font-semibold tracking-tight">Статистика</h1>
-            <p className="mt-0.5 text-[13px] text-muted">Само това, което наистина си учил — без ръчно въвеждане.</p>
-          </div>
+        <ScreenHeader
+          title="Статистика"
+          subtitle="Само това, което наистина си учил — без ръчно въвеждане."
+          actions={
           <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: 'var(--c-surface-3)' }}>
             {RANGES.map((r) => (
               <button
@@ -73,7 +73,8 @@ export function StatsScreen() {
               </button>
             ))}
           </div>
-        </div>
+          }
+        />
 
         <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Big value={`${Math.floor(total / 60)} ч ${total % 60} м`} label={`общо за ${range} дни`} icon="clock" />

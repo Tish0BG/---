@@ -6,6 +6,7 @@ import { useLibrary } from '@/state/libraryStore';
 import { usePlanner, averageFor, openItems } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
 import { minutesBySubject, useTimer } from '@/state/timerStore';
+import { ScreenHeader } from '../shell/ScreenHeader';
 import { Icon } from '../Icon';
 import { useConfirm } from '../ui';
 import { SubjectDialog } from './SubjectDialog';
@@ -48,13 +49,10 @@ export function SubjectsScreen() {
     <div className="scroll-thin h-full overflow-y-auto">
       {element}
       <div className="mx-auto max-w-5xl px-5 py-6 sm:px-8">
-        <div className="mb-5 flex items-center justify-between gap-3">
-          <div>
-            <h1 className="text-[22px] font-semibold tracking-tight">Предмети</h1>
-            <p className="mt-0.5 text-[13px] text-muted">
-              Всеки материал, карта, задача и минута учене се води към предмет.
-            </p>
-          </div>
+        <ScreenHeader
+          title="Предмети"
+          subtitle="Всеки материал, карта, задача и минута учене се води към предмет."
+          actions={
           <button
             className="btn btn-primary h-9"
             onClick={() => {
@@ -65,7 +63,8 @@ export function SubjectsScreen() {
             <Icon name="plus" size={16} />
             Нов предмет
           </button>
-        </div>
+          }
+        />
 
         {subjects.length === 0 ? (
           <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line-strong py-16 text-center">

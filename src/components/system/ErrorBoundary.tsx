@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
+import { BRAND } from '@/brand';
 import { Icon } from '../Icon';
 
 interface Props {
@@ -34,7 +35,7 @@ export class ErrorBoundary extends Component<Props, State> {
 
   private report(): string {
     return [
-      `StudyDesk · ${new Date().toISOString()}`,
+      `${BRAND.name} · ${new Date().toISOString()}`,
       navigator.userAgent,
       `екран: ${window.innerWidth}×${window.innerHeight}`,
       '',
@@ -56,7 +57,12 @@ export class ErrorBoundary extends Component<Props, State> {
             <Icon name="alert" size={22} />
           </span>
 
-          <h1 className="mt-4 text-[22px] font-semibold tracking-[-0.02em]">Нещо се обърка</h1>
+          <h1
+            className="mt-4 font-semibold leading-[1.12]"
+            style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+          >
+            Нещо се обърка
+          </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-muted">
             Приложението спря неочаквано. <b className="text-ink">Записките ти са непокътнати</b> — те се
             пазят в браузъра много преди екранът да се начертае, а не в него.

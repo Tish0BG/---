@@ -9,6 +9,7 @@ import { downloadBlob } from '@/services/exportService';
 import { useInstall } from '@/hooks/useInstall';
 import { formatBytes, formatDate } from '@/lib/util';
 import { Modal, Slider, Toggle } from './ui';
+import { BRAND } from '@/brand';
 import { Icon } from './Icon';
 
 /** Grouped, because a flat list of twenty rows is a list nobody reads. */
@@ -228,7 +229,7 @@ function StorageNote() {
  */
 function AboutSection() {
   const [copied, setCopied] = useState(false);
-  const line = `StudyDesk ${__APP_VERSION__} · ${__BUILD_DATE__} · ${navigator.userAgent}`;
+  const line = `${BRAND.name} ${__APP_VERSION__} · ${__BUILD_DATE__} · ${navigator.userAgent}`;
 
   return (
     <section>
@@ -244,7 +245,7 @@ function AboutSection() {
           <Icon name="book" size={19} />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[13px] font-medium">StudyDesk</div>
+          <div className="text-[13px] font-medium">{BRAND.name}</div>
           <div className="text-[11px] tabular-nums text-muted">
             версия {__APP_VERSION__} · {__BUILD_DATE__}
           </div>

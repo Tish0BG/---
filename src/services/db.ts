@@ -16,6 +16,11 @@ import type {
   Tombstone,
 } from '@/types';
 
+/**
+ * Deliberately still `studypdf`, from before the product was named Plauvia.
+ * The name is invisible to anyone but the browser, and renaming it would point
+ * the app at an empty database — every existing library, orphaned.
+ */
 export const DB_NAME = 'studypdf';
 /**
  * v2 added whiteboards, flashcards, tasks and focus sessions.

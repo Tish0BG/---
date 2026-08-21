@@ -47,7 +47,7 @@ export default defineConfig(({ mode }) => {
         : fileUrl
           ? `от public/cloud.json → ${fileUrl}`
           : 'НЯМА — сайтът ще работи само локално, без вход';
-    console.log(`\n  StudyDesk · облак: ${line}\n`);
+    console.log(`\n  Plauvia · облак: ${line}\n`);
   }
 
   return {

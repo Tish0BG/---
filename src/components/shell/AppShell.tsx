@@ -48,9 +48,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="flex h-14 shrink-0 items-center gap-3 border-b border-line px-4"
           style={{ background: 'color-mix(in srgb, var(--c-surface) 92%, transparent)', backdropFilter: 'blur(10px)' }}
         >
-          <h1 className="hidden shrink-0 text-[14.5px] font-semibold sm:block">
+          {/* A label, not a heading: each screen states its own title, and two
+              competing h1s is how a page ends up with no clear one. */}
+          <span className="hidden shrink-0 text-[13.5px] font-medium text-muted sm:block">
             {subjectId && view === 'subjects' ? 'Предмет' : VIEW_TITLES[view]}
-          </h1>
+          </span>
 
           <button
             onClick={() => useApp.getState().setPalette(true)}

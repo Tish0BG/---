@@ -1,5 +1,32 @@
 @import 'tailwindcss';
 
+/**
+ * The typeface ships with the app rather than being fetched from a CDN.
+ *
+ * Plauvia works offline by design; a brand whose letterforms only appear when
+ * the network does is not a brand. Two subsets — Latin for the interface
+ * chrome, Cyrillic because the product is written in Bulgarian — total about
+ * 67 KB, and `swap` means text is readable before either arrives.
+ */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('/fonts/inter-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 /* Theme is driven by data-theme on <html> (set before paint by settingsStore). */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
@@ -21,9 +48,17 @@
   --c-text: #101828;
   --c-muted: #667085;
   --c-faint: #98a2b3;
-  --c-accent: #4f46e5;
-  --c-accent-soft: #eef0fe;
+  /* Plauvia violet: cooler and deeper than the default SaaS indigo, so the
+     product is recognisable by colour alone rather than by its logo. */
+  --c-brand: #6d5ae6;
+  --c-brand-lift: #8b7bf0;
+  --c-brand-deep: #4b3bc4;
+  --c-accent: var(--c-brand);
+  --c-accent-soft: #f0edfe;
   --c-accent-text: #ffffff;
+  /* progress and growth — used by charts, streaks and completion */
+  --c-aurora: #12a594;
+  --c-ember: #f5a524;
   --c-danger: #d92d20;
   --c-danger-soft: #fef3f2;
   --c-success: #079455;
@@ -32,8 +67,8 @@
   --c-warn-soft: #fffaeb;
   --c-canvas: #7c828e;
   /* focus timer modes */
-  --c-focus: #4f46e5;
-  --c-rest: #0d9488;
+  --c-focus: #6d5ae6;
+  --c-rest: #12a594;
   --c-deep: #0284c7;
 
   /* one elevation scale, used everywhere */
@@ -44,6 +79,19 @@
 
   --radius: 10px;
   --radius-lg: 14px;
+
+  /**
+   * One type scale. Optical tracking tightens as the size grows — Inter set at
+   * 40 px with the same letter-spacing as a 12 px label reads loose and
+   * amateur, and that single detail is most of the difference between a
+   * product and a template.
+   */
+  --text-display: 40px;
+  --track-display: -0.032em;
+  --text-title: 27px;
+  --track-title: -0.024em;
+  --text-section: 19px;
+  --track-section: -0.016em;
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
 }
 
@@ -57,9 +105,14 @@
   --c-text: #e8eaef;
   --c-muted: #98a1b2;
   --c-faint: #6a7386;
-  --c-accent: #7c7cf7;
-  --c-accent-soft: #1e2038;
+  --c-brand: #8b7bf0;
+  --c-brand-lift: #a494f7;
+  --c-brand-deep: #6d5ae6;
+  --c-accent: var(--c-brand);
+  --c-accent-soft: #201d3a;
   --c-accent-text: #ffffff;
+  --c-aurora: #2dd4bf;
+  --c-ember: #fdb022;
   --c-danger: #f97066;
   --c-danger-soft: #2a1512;
   --c-success: #47cd89;
@@ -67,7 +120,7 @@
   --c-warn: #fdb022;
   --c-warn-soft: #2a1e0a;
   --c-canvas: #05070a;
-  --c-focus: #8b8bf9;
+  --c-focus: #8b7bf0;
   --c-rest: #2dd4bf;
   --c-deep: #38bdf8;
 
@@ -94,10 +147,13 @@
   --color-success: var(--c-success);
   --color-warn: var(--c-warn);
   --color-canvas: var(--c-canvas);
+  --color-brand: var(--c-brand);
+  --color-aurora: var(--c-aurora);
+  --color-ember: var(--c-ember);
   --color-focus: var(--c-focus);
   --color-rest: var(--c-rest);
   --color-deep: var(--c-deep);
-  --font-sans: 'Inter var', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
 }
 
 * {
@@ -132,10 +188,15 @@ body {
   border-radius: 6px;
 }
 
-h1,
-h2,
+/* Headings carry the brand's optical tracking without each screen restating it. */
+h1 {
+  letter-spacing: var(--track-title);
+}
+h2 {
+  letter-spacing: var(--track-section);
+}
 h3 {
-  letter-spacing: -0.011em;
+  letter-spacing: -0.012em;
 }
 
 /* ------------------------------------------------------------ scrollbars */

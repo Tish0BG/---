@@ -41,7 +41,12 @@ export function RecoveryScreen() {
           <Icon name="shield" size={22} />
         </span>
 
-        <h1 className="mt-4 text-[24px] font-semibold tracking-[-0.02em]">Нова парола</h1>
+        <h1
+          className="mt-4 font-semibold leading-[1.12]"
+          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
+        >
+          Нова парола
+        </h1>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
           {email ? (
             <>

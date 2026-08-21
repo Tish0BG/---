@@ -14,6 +14,7 @@ import {
   sortByDue,
   startOfDay,
 } from '@/state/plannerStore';
+import { ScreenHeader } from '../shell/ScreenHeader';
 import { Icon } from '../Icon';
 import { MenuItem, Popover, useConfirm } from '../ui';
 import { DueChip } from './DueChip';
@@ -82,17 +83,16 @@ export function PlannerScreen() {
     <div className="scroll-thin h-full overflow-y-auto">
       {element}
       <div className="mx-auto max-w-4xl px-5 py-6 sm:px-8">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <h1 className="text-[22px] font-semibold tracking-tight">Планер</h1>
-            <p className="mt-0.5 text-[13px] text-muted">
-              {late.length > 0
-                ? `${late.length} закъснели · ${today.length} за днес`
-                : today.length > 0
-                  ? `${today.length} за днес`
-                  : 'Чист график'}
-            </p>
-          </div>
+        <ScreenHeader
+          title="Планер"
+          subtitle={
+            late.length > 0
+              ? `${late.length} закъснели · ${today.length} за днес`
+              : today.length > 0
+                ? `${today.length} за днес`
+                : 'Чист график'
+          }
+          actions={
           <div className="flex items-center gap-2">
             {subjects.length > 0 && (
               <Popover
@@ -132,7 +132,8 @@ export function PlannerScreen() {
               </Popover>
             )}
           </div>
-        </div>
+          }
+        />
 
         <nav className="mb-4 flex gap-0.5 rounded-lg p-0.5" style={{ background: 'var(--c-surface-3)' }}>
           {TABS.map((t) => (
