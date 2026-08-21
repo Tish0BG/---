@@ -1,0 +1,13 @@
+node_modules
+dist
+.DS_Store
+*.local
+# local Supabase keys, if the build-time route is used (.env.example is tracked)
+.env
+.env.*
+!.env.example
+# pdf.js runtime assets are copied here by scripts/copy-pdfjs-assets.mjs
+public/cmaps
+public/standard_fonts
+public/wasm
+public/iccs

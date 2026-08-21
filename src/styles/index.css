@@ -1,0 +1,443 @@
+@import 'tailwindcss';
+
+/* Theme is driven by data-theme on <html> (set before paint by settingsStore). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/**
+ * Colour is defined once, as tokens, and everything else refers to them.
+ * Two rules keep the palette honest:
+ *   surfaces climb — bg < surface < surface-2 < surface-3 — so a panel on a
+ *   panel is always distinguishable without another border;
+ *   text has exactly three weights — ink, muted, faint — so a screen never
+ *   ends up with five shades of grey saying five slightly different things.
+ */
+:root {
+  --c-bg: #f2f4f7;
+  --c-surface: #ffffff;
+  --c-surface-2: #f7f8fa;
+  --c-surface-3: #eceff4;
+  --c-line: #e2e6ed;
+  --c-line-strong: #cfd5e0;
+  --c-text: #101828;
+  --c-muted: #667085;
+  --c-faint: #98a2b3;
+  --c-accent: #4f46e5;
+  --c-accent-soft: #eef0fe;
+  --c-accent-text: #ffffff;
+  --c-danger: #d92d20;
+  --c-danger-soft: #fef3f2;
+  --c-success: #079455;
+  --c-success-soft: #ecfdf3;
+  --c-warn: #dc6803;
+  --c-warn-soft: #fffaeb;
+  --c-canvas: #7c828e;
+  /* focus timer modes */
+  --c-focus: #4f46e5;
+  --c-rest: #0d9488;
+  --c-deep: #0284c7;
+
+  /* one elevation scale, used everywhere */
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%);
+  --shadow-panel: 0 1px 2px rgb(16 24 40 / 5%), 0 6px 18px -8px rgb(16 24 40 / 12%);
+  --shadow-float: 0 2px 6px rgb(16 24 40 / 8%), 0 16px 40px -12px rgb(16 24 40 / 24%);
+  --shadow-page: 0 1px 3px rgb(0 0 0 / 18%), 0 12px 30px -14px rgb(0 0 0 / 32%);
+
+  --radius: 10px;
+  --radius-lg: 14px;
+  --ease: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+[data-theme='dark'] {
+  --c-bg: #0b0d12;
+  --c-surface: #14171d;
+  --c-surface-2: #1a1e26;
+  --c-surface-3: #232833;
+  --c-line: #272c36;
+  --c-line-strong: #363c49;
+  --c-text: #e8eaef;
+  --c-muted: #98a1b2;
+  --c-faint: #6a7386;
+  --c-accent: #7c7cf7;
+  --c-accent-soft: #1e2038;
+  --c-accent-text: #ffffff;
+  --c-danger: #f97066;
+  --c-danger-soft: #2a1512;
+  --c-success: #47cd89;
+  --c-success-soft: #10231a;
+  --c-warn: #fdb022;
+  --c-warn-soft: #2a1e0a;
+  --c-canvas: #05070a;
+  --c-focus: #8b8bf9;
+  --c-rest: #2dd4bf;
+  --c-deep: #38bdf8;
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+  --shadow-panel: 0 1px 2px rgb(0 0 0 / 45%), 0 6px 18px -8px rgb(0 0 0 / 55%);
+  --shadow-float: 0 2px 8px rgb(0 0 0 / 50%), 0 20px 48px -14px rgb(0 0 0 / 72%);
+  --shadow-page: 0 1px 3px rgb(0 0 0 / 55%), 0 14px 34px -14px rgb(0 0 0 / 70%);
+}
+
+@theme inline {
+  --color-app: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-text);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-accent: var(--c-accent);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-text: var(--c-accent-text);
+  --color-danger: var(--c-danger);
+  --color-success: var(--c-success);
+  --color-warn: var(--c-warn);
+  --color-canvas: var(--c-canvas);
+  --color-focus: var(--c-focus);
+  --color-rest: var(--c-rest);
+  --color-deep: var(--c-deep);
+  --font-sans: 'Inter var', Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-sans);
+  font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overscroll-behavior: none;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--c-accent) 26%, transparent);
+}
+
+/* One focus ring for the whole app, and only for keyboard users. */
+:focus-visible {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: -0.011em;
+}
+
+/* ------------------------------------------------------------ scrollbars */
+
+.scroll-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-line-strong) transparent;
+}
+.scroll-thin::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: var(--c-line-strong);
+  border-radius: 99px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+.scroll-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--c-faint);
+  background-clip: content-box;
+}
+
+/** Scrolls, but never spends 10 px of a 44 px toolbar on a scrollbar. */
+.scroll-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scroll-none::-webkit-scrollbar {
+  display: none;
+}
+
+/* --------------------------------------------------------------- widgets */
+
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-[10px] px-2.5 h-8 text-[13px] font-medium
+      text-ink/85 select-none cursor-pointer disabled:opacity-40 disabled:cursor-default;
+    border: 1px solid transparent;
+    transition:
+      background-color 0.14s var(--ease),
+      border-color 0.14s var(--ease),
+      color 0.14s var(--ease),
+      box-shadow 0.14s var(--ease);
+  }
+  .btn:hover:not(:disabled) {
+    background: var(--c-surface-3);
+  }
+  .btn:active:not(:disabled) {
+    transform: translateY(0.5px);
+  }
+  /** The one button on a screen that carries the action. */
+  .btn-primary {
+    background: var(--c-accent);
+    color: var(--c-accent-text);
+    box-shadow: var(--shadow-sm);
+  }
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--c-accent) 88%, #000);
+  }
+  /** Everything that is a real choice but not the main one. */
+  .btn-outline {
+    border-color: var(--c-line);
+    background: var(--c-surface);
+  }
+  .btn-outline:hover:not(:disabled) {
+    background: var(--c-surface-2);
+    border-color: var(--c-line-strong);
+  }
+  .btn-ghost-active {
+    background: var(--c-accent-soft);
+    color: var(--c-accent);
+  }
+  .btn-danger {
+    background: var(--c-danger);
+    color: #fff;
+  }
+  .icon-btn {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-[10px]
+      cursor-pointer text-muted disabled:opacity-35 disabled:cursor-default;
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease);
+  }
+  .icon-btn:hover:not(:disabled) {
+    background: var(--c-surface-3);
+    color: var(--c-text);
+  }
+  .panel {
+    background: var(--c-surface);
+    border: 1px solid var(--c-line);
+    box-shadow: var(--shadow-panel);
+    border-radius: var(--radius-lg);
+  }
+  /** A panel that reacts to the pointer — cards in the library, decks, rows. */
+  .panel-hover {
+    transition:
+      border-color 0.16s var(--ease),
+      box-shadow 0.16s var(--ease),
+      transform 0.16s var(--ease);
+  }
+  .panel-hover:hover {
+    border-color: var(--c-line-strong);
+    box-shadow: var(--shadow-float);
+  }
+  .field {
+    @apply h-8 w-full rounded-[10px] px-2.5 text-[13px] outline-none;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-line);
+    color: var(--c-text);
+    transition:
+      border-color 0.14s var(--ease),
+      box-shadow 0.14s var(--ease),
+      background-color 0.14s var(--ease);
+  }
+  .field::placeholder {
+    color: var(--c-faint);
+  }
+  .field:hover:not(:focus) {
+    border-color: var(--c-line-strong);
+  }
+  .field:focus {
+    background: var(--c-surface);
+    border-color: var(--c-accent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-accent) 16%, transparent);
+  }
+  .chip {
+    @apply inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] font-medium;
+  }
+  /** Section label: the small capitals above a group of things. */
+  .label {
+    @apply text-[10.5px] font-semibold uppercase tracking-[0.06em];
+    color: var(--c-faint);
+  }
+  /** Segmented control used for theme, paper, card kind and so on. */
+  .segmented {
+    @apply flex gap-0.5 rounded-[10px] p-0.5;
+    background: var(--c-surface-2);
+    border: 1px solid var(--c-line);
+  }
+  .segmented > button {
+    @apply h-7 flex-1 cursor-pointer rounded-lg text-[12.5px] font-medium;
+    color: var(--c-muted);
+    transition:
+      background-color 0.14s var(--ease),
+      color 0.14s var(--ease),
+      box-shadow 0.14s var(--ease);
+  }
+  .segmented > button:hover {
+    color: var(--c-text);
+  }
+  .segmented > button[aria-pressed='true'] {
+    background: var(--c-surface);
+    color: var(--c-text);
+    box-shadow: var(--shadow-sm);
+  }
+}
+
+/* ---------------------------------------------------------------- viewer */
+
+.pdf-scroll {
+  background: var(--c-canvas);
+  overscroll-behavior: contain;
+}
+
+.page-shell {
+  background: #fff;
+  box-shadow: var(--shadow-page);
+  border-radius: 3px;
+}
+
+/* Optional readability modes for the PDF itself; annotations stay untouched. */
+.pdf-dim .pdf-canvas {
+  filter: brightness(0.86) contrast(1.03);
+}
+.pdf-invert .pdf-canvas {
+  filter: invert(1) hue-rotate(180deg) brightness(0.92) contrast(0.95);
+}
+.pdf-invert .page-shell {
+  background: #111;
+}
+
+.ink-canvas,
+.live-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.pdf-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* While a drawing tool is active the page must not scroll under the stylus. */
+.capture-pointer {
+  touch-action: none;
+  cursor: crosshair;
+}
+.capture-pointer-pan {
+  touch-action: pan-x pan-y pinch-zoom;
+}
+
+.thumb-active {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 2px;
+}
+
+.search-mark {
+  position: absolute;
+  background: color-mix(in srgb, #facc15 55%, transparent);
+  border-radius: 2px;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+}
+.search-mark-active {
+  background: color-mix(in srgb, #fb923c 70%, transparent);
+}
+
+/* --------------------------------------------------------------- motion */
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-in {
+  animation: fade-in 0.16s var(--ease);
+}
+
+@keyframes scale-in {
+  from {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-scale {
+  animation: scale-in 0.18s var(--ease);
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.animate-rise {
+  animation: rise 0.22s var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ----------------------------------------------------------- focus timer */
+
+/* The widget floats over everything, but only its own chrome is clickable —
+   the page underneath keeps receiving the stylus. Above dialogs and the
+   flashcard screen: the timer is a companion, not part of any one screen. */
+.timer-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 66;
+  pointer-events: none;
+}
+.timer-layer > * {
+  pointer-events: auto;
+}
+
+.ring-track {
+  stroke: var(--c-line-strong);
+  opacity: 0.45;
+}
+.ring-fill {
+  transition:
+    stroke-dashoffset 0.35s linear,
+    stroke 0.4s ease;
+}
+
+@media print {
+  body {
+    display: none;
+  }
+}
