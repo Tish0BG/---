@@ -407,7 +407,7 @@ function Row({
 }) {
   const subject = useWorkspace((s) => s.subject(item.subjectId));
   const doc = useLibrary((s) => s.documents.find((d) => d.id === item.docId));
-  const activeTaskId = useTimer((s) => s.activeTaskId);
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(item.title);
 
@@ -490,9 +490,12 @@ function Row({
         {!item.done && (
           <button
             className="icon-btn h-7 w-7"
-            title="Фокусирай таймера върху това"
-            onClick={() => useTimer.getState().setActiveTask(activeTaskId === item.id ? null : item.id)}
-            style={activeTaskId === item.id ? { color: 'var(--c-accent)' } : undefined}
+            title={
+              activeTaskIds.includes(item.id) ? 'Махни от фокуса на таймера' : 'Добави към фокуса на таймера'
+            }
+            aria-pressed={activeTaskIds.includes(item.id)}
+            onClick={() => useTimer.getState().toggleTask(item.id)}
+            style={activeTaskIds.includes(item.id) ? { color: 'var(--c-accent)' } : undefined}
           >
             <Icon name="target" size={14} />
           </button>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TimerMode } from '@/types';
 import { useSettings } from '@/state/settingsStore';
@@ -201,8 +201,10 @@ const ALL_MODES: TimerMode[] = ['work', 'break', 'long'];
 function FullScreen() {
   const { mode, running, left, cycle } = useTimer();
   const timer = useSettings((s) => s.timer);
-  const activeTaskId = useTimer((s) => s.activeTaskId);
-  const task = usePlanner((s) => s.items.find((t) => t.id === activeTaskId));
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
+  const items = usePlanner((s) => s.items);
+  // See FocusLine: filtering inside the selector loops forever.
+  const tasks = useMemo(() => items.filter((t) => activeTaskIds.includes(t.id)), [items, activeTaskIds]);
   const [now, setNow] = useState(() => new Date());
   const store = useTimer.getState;
 
@@ -269,10 +271,15 @@ function FullScreen() {
       </div>
 
       <div className="flex flex-col items-center gap-4">
-        {task && (
-          <div className="flex items-center gap-1.5 text-[14px] text-muted">
-            <Icon name="target" size={14} />
-            <span className="font-medium text-ink">{task.title}</span>
+        {tasks.length > 0 && (
+          <div className="flex max-w-2xl flex-wrap items-center justify-center gap-x-2 gap-y-1 px-6 text-[14px] text-muted">
+            <Icon name="target" size={14} className="shrink-0" />
+            {tasks.map((t, i) => (
+              <span key={t.id} className="font-medium text-ink">
+                {t.title}
+                {i < tasks.length - 1 && <span className="ml-2 font-normal text-faint">·</span>}
+              </span>
+            ))}
           </div>
         )}
         <div className="flex items-center gap-6">
