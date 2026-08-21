@@ -442,8 +442,16 @@ npm run build
 
 ### Vercel или Cloudflare Pages (свързани с Git, обновяват се сами)
 
+В Vercel: **Framework Preset → Vite**. Останалото се попълва само — build `npm run build`,
+изход `dist`. Променливи на средата не трябват: връзката към базата пътува в `cloud.json`.
+
+`_redirects` е формат на Netlify и Vercel не го чете, затова в хранилището стои и
+[`vercel.json`](vercel.json). Той не е толкова за пренасочването (приложението е една страница),
+колкото за кеша: `sw.js` и `cloud.json` трябва да се проверяват при всяко зареждане, иначе нов
+деплой или смяна на база засяда в CDN-а.
+
 ```bash
-npm i -g vercel && vercel        # следва въпросите; build: npm run build, output: dist
+npm i -g vercel && vercel        # или направо от уеб интерфейса
 ```
 
 Или в Cloudflare Pages → Create project → Connect to Git:
