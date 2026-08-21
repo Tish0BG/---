@@ -388,9 +388,11 @@ export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 /* ------------------------------------------------------------------ profile */
 
 /**
- * The person using this browser. There is no account and no server: a profile
- * is simply what makes the app feel like yours — the greeting, the goal, the
- * colours. Every browser holds exactly one.
+ * The person using the app: the greeting, the accent, the school details.
+ *
+ * It is filled in from the account on first sign-in and edited in settings
+ * afterwards — never through a wizard standing between registering and using
+ * the thing.
  */
 export interface Profile {
   name: string;
@@ -403,8 +405,6 @@ export interface Profile {
   createdAt: ISODate;
   /** last edit, so the cloud can merge two devices by recency */
   updatedAt: ISODate;
-  /** false until the welcome flow is finished */
-  onboarded: boolean;
 }
 
 /* ----------------------------------------------------------------- subjects */

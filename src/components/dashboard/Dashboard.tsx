@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import type { DocumentMeta } from '@/types';
 import { useApp } from '@/state/appStore';
-import { useWorkspace } from '@/state/workspaceStore';
+import { SUBJECT_COLORS, SUGGESTED_SUBJECTS, useWorkspace } from '@/state/workspaceStore';
 import { progressOf, useLibrary } from '@/state/libraryStore';
 import { useViewer } from '@/state/viewerStore';
 import { useCards, dueCount } from '@/state/cardStore';
@@ -280,16 +280,7 @@ export function Dashboard({ onNewBoard, onUpload }: { onNewBoard: () => void; on
             )}
 
             {subjects.length === 0 ? (
-              <Card title="Първа стъпка">
-                <Empty
-                  icon="layers"
-                  text="Добави предметите си и всичко останало — материали, карти, задачи, време — ще се подрежда само."
-                />
-                <button className="btn btn-primary mt-2 w-full" onClick={() => useApp.getState().go('subjects')}>
-                  <Icon name="plus" size={15} />
-                  Добави предмети
-                </button>
-              </Card>
+              <FirstRun onUpload={onUpload} />
             ) : (
               bySubject.length === 0 &&
               !now &&
@@ -299,6 +290,73 @@ export function Dashboard({ onNewBoard, onUpload }: { onNewBoard: () => void; on
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * What the old welcome wizard used to ask, moved to where it belongs: inside
+ * the app, after the door, and skippable. Nothing here blocks anything — the
+ * dashboard is already usable, this only saves the first few clicks.
+ */
+function FirstRun({ onUpload }: { onUpload: () => void }) {
+  const [picked, setPicked] = useState<string[]>(() => SUGGESTED_SUBJECTS.slice(0, 5).map((s) => s.name));
+  const [busy, setBusy] = useState(false);
+
+  return (
+    <Card title="Започни оттук">
+      <p className="mb-3 text-[12.5px] leading-relaxed text-muted">
+        Предметите са оста на всичко останало — материалите, картите, задачите и статистиката се
+        подреждат по тях. Избери своите:
+      </p>
+
+      <div className="flex flex-wrap gap-1.5">
+        {SUGGESTED_SUBJECTS.map((s, i) => {
+          const on = picked.includes(s.name);
+          const c = SUBJECT_COLORS[i % SUBJECT_COLORS.length];
+          return (
+            <button
+              key={s.name}
+              onClick={() => setPicked((p) => (on ? p.filter((x) => x !== s.name) : [...p, s.name]))}
+              className="flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12.5px] transition-colors"
+              style={{
+                background: on ? `color-mix(in srgb, ${c} 16%, transparent)` : 'var(--c-surface-2)',
+                color: on ? c : 'var(--c-muted)',
+                outline: on ? `1px solid ${c}` : '1px solid var(--c-line)',
+              }}
+            >
+              <Icon name={on ? 'check' : s.icon} size={13} />
+              {s.name}
+            </button>
+          );
+        })}
+      </div>
+
+      <button
+        className="btn btn-primary mt-3 w-full"
+        disabled={!picked.length || busy}
+        onClick={() => {
+          setBusy(true);
+          void useWorkspace
+            .getState()
+            .createSubjects(picked)
+            .finally(() => setBusy(false));
+        }}
+      >
+        {busy ? <Icon name="refresh" size={15} className="animate-spin" /> : <Icon name="plus" size={15} />}
+        Добави {picked.length} {picked.length === 1 ? 'предмет' : 'предмета'}
+      </button>
+
+      <div className="mt-2 flex gap-2">
+        <button className="btn btn-outline flex-1" onClick={onUpload}>
+          <Icon name="upload" size={14} />
+          Качи учебник
+        </button>
+        <button className="btn btn-outline flex-1" onClick={() => useApp.getState().go('subjects')}>
+          <Icon name="sliders" size={14} />
+          Ръчно
+        </button>
+      </div>
+    </Card>
   );
 }
 

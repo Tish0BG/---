@@ -22,7 +22,6 @@ import { Drive } from '@/components/drive/Drive';
 import { PlannerScreen } from '@/components/planner/PlannerScreen';
 import { SubjectsScreen } from '@/components/subjects/SubjectsScreen';
 import { StatsScreen } from '@/components/stats/StatsScreen';
-import { Welcome } from '@/components/onboarding/Welcome';
 import { ExportDialog } from '@/components/ExportDialog';
 import { SettingsDialog } from '@/components/SettingsDialog';
 import { AuthDialog } from '@/components/auth/AuthDialog';
@@ -47,13 +46,14 @@ export default function App() {
   const skippedAuth = useAuth((s) => s.skipped);
   const syncPhase = useAuth((s) => s.sync.phase);
   const restoring = syncPhase !== 'idle' && syncPhase !== 'done' && syncPhase !== 'error';
+  /** anything at all in the library means there is something to show already */
+  const documentsReady = useLibrary((s) => s.documents.length > 0);
   const docId = useViewer((s) => s.docId);
   const loadState = useViewer((s) => s.loadState);
   const loadLabel = useViewer((s) => s.loadLabel);
   const error = useViewer((s) => s.error);
   const libraryLoaded = useLibrary((s) => s.loaded);
   const workspaceLoaded = useWorkspace((s) => s.loaded);
-  const onboarded = useWorkspace((s) => s.profile.onboarded);
   const cards = useCards((s) => s.cards);
   const activeFolderId = useLibrary((s) => s.activeFolderId);
 
@@ -160,15 +160,12 @@ export default function App() {
   }
 
   /**
-   * The front door. A site with accounts opens on "sign in or register" —
-   * asking a stranger for their name before they have an account reads like a
-   * setup wizard, not like a site.
-   *
-   * It is skipped entirely when this build has no backend configured: there
-   * would be nothing to sign in to, and the database setup is the owner's
-   * business, not something to put in front of a student.
+   * The front door. A product with accounts opens on "sign in or register" —
+   * and then lands you in the product. There is no questionnaire in between:
+   * the name comes from the account, everything else has a sane default and
+   * lives in settings, where it can be changed at any time instead of once.
    */
-  if (cloudConfigured && !signedIn && !skippedAuth && !onboarded) {
+  if (cloudConfigured && !signedIn && !skippedAuth) {
     return (
       <AuthScreen
         onClose={() => {
@@ -180,20 +177,18 @@ export default function App() {
     );
   }
 
-  // Just signed in on a new device: the profile is on its way down, and
-  // asking for a name in the meantime would be asking twice.
-  if (signedIn && !onboarded && restoring) {
+  // Signing in on a new device pulls the library down; showing an empty app
+  // for those few seconds would look like the data was lost.
+  if (signedIn && restoring && !documentsReady) {
     return (
       <div className="grid h-full place-items-center px-6 text-center text-muted">
         <div>
           <Icon name="refresh" size={22} className="mx-auto animate-spin" />
-          <p className="mt-3 text-[13px]">Изтегляме профила ти…</p>
+          <p className="mt-3 text-[13px]">Изтегляме библиотеката ти…</p>
         </div>
       </div>
     );
   }
-
-  if (!onboarded) return <Welcome />;
 
   /* A document takes the whole window: writing needs the space. */
   if (docId) {
