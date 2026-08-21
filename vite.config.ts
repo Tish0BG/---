@@ -1,3 +1,5 @@
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
 import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
@@ -23,12 +25,26 @@ export default defineConfig(({ mode }) => {
     env.SUPABASE_ANON_KEY ||
     '';
 
-  // Shipping a build with no keys is the classic way to end up with a live
-  // site that asks its visitors to connect a database. Say so at build time,
-  // while it can still be fixed.
+  // Shipping a build with no backend at all is the classic way to end up with
+  // a live site that asks its visitors to connect a database. Say which of the
+  // two routes is carrying it, while it can still be fixed.
   if (mode === 'production') {
-    const where = url && key ? `→ ${url}` : '— приложението ще работи само локално';
-    console.log(`\n  StudyDesk · облак: ${url && key ? 'вграден' : 'НЯМА'} ${where}\n`);
+    let fileUrl = '';
+    const file = resolve(process.cwd(), 'public/cloud.json');
+    if (existsSync(file)) {
+      try {
+        fileUrl = (JSON.parse(readFileSync(file, 'utf8')) as { url?: string }).url ?? '';
+      } catch {
+        fileUrl = '';
+      }
+    }
+    const line =
+      url && key
+        ? `вграден в кода → ${url}`
+        : fileUrl
+          ? `от public/cloud.json → ${fileUrl}`
+          : 'НЯМА — сайтът ще работи само локално, без вход';
+    console.log(`\n  StudyDesk · облак: ${line}\n`);
   }
 
   return {

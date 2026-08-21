@@ -7,7 +7,7 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'studydesk-v2';
+const VERSION = 'studydesk-v3';
 const SHELL = ['/', '/index.html', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png'];
 
 self.addEventListener('install', (event) => {
@@ -45,6 +45,13 @@ self.addEventListener('fetch', (event) => {
         })
         .catch(() => caches.match('/index.html').then((hit) => hit ?? Response.error())),
     );
+    return;
+  }
+
+  // The cloud settings must not come from a months-old cache: changing the
+  // project would otherwise need a cache bust to take effect.
+  if (url.pathname.endsWith('/cloud.json')) {
+    event.respondWith(fetch(request).catch(() => caches.match(request).then((hit) => hit ?? Response.error())));
     return;
   }
 

@@ -1,0 +1,5 @@
+{
+  "_readme": "Връзката към базата. Този файл се качва както си е — затова работи и при влачене на dist, и при деплой от GitHub, без променливи на средата и без ново сглобяване. И двете стойности са ПУБЛИЧНИ по замисъл: те така или иначе стоят в JavaScript-а на всеки сайт със Supabase. Защитата е в row-level security, не в скриването им. НИКОГА не слагай тук secret / service_role ключ.",
+  "url": "https://gkgpwlbxvqylqarnxglv.supabase.co",
+  "anonKey": "sb_publishable_PEpYcWtmsfByI56B9EmyJQ_9UI_Ulqb"
+}
