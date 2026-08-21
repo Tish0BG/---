@@ -1,5 +1,5 @@
 import { FILES_BUCKET, RECORDS_TABLE, getClient } from './client';
-import { cloudConfig, configSource, isSecretKey } from './config';
+import { cloudConfig, configSource, isSecretKey, SOURCE_LABEL } from './config';
 
 /**
  * A connection self-test.
@@ -40,7 +40,7 @@ export async function diagnose(): Promise<CheckResult[]> {
       label: 'Настройка',
       state: 'fail',
       detail: 'Приложението няма адрес и ключ за база.',
-      fix: 'Въведи ги на екрана за вход, или ги сложи в .env като SUPABASE_URL и SUPABASE_PUBLISHABLE_KEY и рестартирай `npm run dev`.',
+      fix: 'Попълни public/cloud.json с адреса и publishable ключа — файлът се качва както си е и не иска ново сглобяване.',
     });
     return out;
   }
@@ -52,7 +52,7 @@ export async function diagnose(): Promise<CheckResult[]> {
     state: isSecretKey(cfg.anonKey) ? 'fail' : 'ok',
     detail: isSecretKey(cfg.anonKey)
       ? 'Използва се ТАЕН ключ. Смени го веднага в Supabase.'
-      : `${host} · ключът е от ${source === 'env' ? '.env файла' : 'настройките в приложението'}`,
+      : `${host} · ${SOURCE_LABEL[source]}`,
     fix: isSecretKey(cfg.anonKey)
       ? 'Браузърният код е видим за всички. Вземи „publishable“ ключа и завърти тайния в Supabase → API Keys.'
       : undefined,

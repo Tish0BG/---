@@ -6,6 +6,7 @@ import {
   cloudConfig,
   isCloudConfigured,
   isCloudFixed,
+  loadRuntimeConfig,
   saveCloudConfig,
   validateConfig,
 } from '@/services/cloud/config';
@@ -106,6 +107,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
   awaitingConfirm: null,
 
   async init() {
+    // The site may carry its own cloud.json; it has to be read before we can
+    // say whether this install has a backend at all.
+    await loadRuntimeConfig();
     const client = await getClient();
     if (!client) {
       set({ ready: true, configured: false });

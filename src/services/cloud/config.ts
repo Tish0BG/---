@@ -28,12 +28,48 @@ function fromEnv(): CloudConfig | null {
 }
 
 /** Where the current configuration came from, for the diagnostics screen. */
-export type ConfigSource = 'env' | 'settings' | 'none';
+export type ConfigSource = 'env' | 'settings' | 'file' | 'none';
+
+export const SOURCE_LABEL: Record<ConfigSource, string> = {
+  env: 'от сглобката (.env)',
+  settings: 'от настройките в този браузър',
+  file: 'от файла cloud.json на сайта',
+  none: 'няма',
+};
 
 export function configSource(): ConfigSource {
   if (fromEnv()) return 'env';
   if (fromStorage()) return 'settings';
+  if (runtime) return 'file';
   return 'none';
+}
+
+/**
+ * Configuration shipped as a plain file next to `index.html`.
+ *
+ * Build-time variables are the classic way to lose a deployment: `.env` is
+ * (rightly) not in the repository, so a host that builds from Git produces a
+ * bundle with no keys at all — a live site that asks its visitors to connect
+ * a database. A file that is simply copied into `dist` has none of that
+ * failure mode: it survives drag-and-drop uploads, Git deploys and key
+ * changes without a rebuild.
+ */
+let runtime: CloudConfig | null = null;
+let runtimeLoaded = false;
+
+export async function loadRuntimeConfig(): Promise<void> {
+  if (runtimeLoaded) return;
+  runtimeLoaded = true;
+  try {
+    const res = await fetch(`${import.meta.env.BASE_URL || '/'}cloud.json`, { cache: 'no-cache' });
+    if (!res.ok) return;
+    const parsed = (await res.json()) as Partial<CloudConfig>;
+    if (parsed.url && parsed.anonKey && !parsed.url.includes('xxxx')) {
+      runtime = { url: parsed.url.replace(/\/+$/, ''), anonKey: parsed.anonKey };
+    }
+  } catch {
+    // no file, or not JSON — the app simply stays local-only
+  }
 }
 
 function fromStorage(): CloudConfig | null {
@@ -48,9 +84,12 @@ function fromStorage(): CloudConfig | null {
   }
 }
 
-/** Build-time settings win; otherwise whatever was pasted into settings. */
+/**
+ * Build-time settings win, then anything pasted into this browser's settings,
+ * then the file shipped with the site.
+ */
 export function cloudConfig(): CloudConfig | null {
-  return fromEnv() ?? fromStorage();
+  return fromEnv() ?? fromStorage() ?? runtime;
 }
 
 export function isCloudConfigured(): boolean {
