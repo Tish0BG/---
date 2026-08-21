@@ -135,6 +135,12 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (data.session) {
       void get().refreshPending();
       if (get().autoSync) void get().syncNow();
+      else {
+        void useWorkspace.getState().adoptAccount({
+          email: data.session.user.email,
+          name: (data.session.user.user_metadata?.name as string | undefined) ?? null,
+        });
+      }
     }
     get().setAutoSync(get().autoSync);
   },
@@ -247,6 +253,15 @@ export const useAuth = create<AuthStore>((set, get) => ({
         set({ sync: { ...get().sync, phase: p.phase, label: p.label, progress: p.progress, error: null } }),
       );
       if (result.pulled > 0) await reloadStores();
+      // After the cloud copy has landed, so a name that already exists wins
+      // over one derived from the e-mail address.
+      const account = get().user;
+      if (account) {
+        await useWorkspace.getState().adoptAccount({
+          email: account.email,
+          name: (account.user_metadata?.name as string | undefined) ?? null,
+        });
+      }
       set({
         sync: {
           phase: 'done',

@@ -53,7 +53,6 @@ export const EMPTY_PROFILE: Profile = {
   grade: '',
   createdAt: 0,
   updatedAt: 0,
-  onboarded: false,
 };
 
 interface WorkspaceStore {
@@ -63,6 +62,14 @@ interface WorkspaceStore {
 
   init(): Promise<void>;
   saveProfile(patch: Partial<Profile>): Promise<void>;
+  /**
+   * Fills in whatever the account already knows, so signing in lands straight
+   * in the app. A questionnaire between "I just registered" and "I can use
+   * the thing" is a setup wizard, not a product.
+   */
+  adoptAccount(account: { email?: string | null; name?: string | null }): Promise<void>;
+  /** Adds several subjects at once, for the first-run picker. */
+  createSubjects(names: string[]): Promise<void>;
 
   createSubject(patch: Partial<Subject>): Promise<Subject>;
   updateSubject(id: string, patch: Partial<Subject>): Promise<void>;
@@ -91,6 +98,23 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     if (!next.createdAt) next.createdAt = Date.now();
     set({ profile: next });
     await repo.setMeta(PROFILE_KEY, next);
+  },
+
+  async adoptAccount(account) {
+    const profile = get().profile;
+    const fromAccount = (account.name ?? '').trim();
+    const fromEmail = (account.email ?? '').split('@')[0].replace(/[._-]+/g, ' ').trim();
+    const name = profile.name.trim() || fromAccount || titleCase(fromEmail);
+    if (profile.name.trim() === name && profile.createdAt) return;
+    await get().saveProfile({ name, createdAt: profile.createdAt || Date.now() });
+  },
+
+  async createSubjects(names) {
+    for (const name of names) {
+      if (get().subjects.some((s) => s.name === name)) continue;
+      const suggestion = SUGGESTED_SUBJECTS.find((s) => s.name === name);
+      await get().createSubject({ name, icon: suggestion?.icon ?? 'book' });
+    }
   },
 
   async createSubject(patch) {
@@ -143,6 +167,13 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     return get().subjects.find((s) => s.id === id) ?? null;
   },
 }));
+
+const titleCase = (s: string): string =>
+  s
+    .split(' ')
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 
 /** Colour to paint anything tagged with this subject; grey when untagged. */
 export const subjectColor = (subject: Subject | null): string => subject?.color ?? 'var(--c-faint)';
