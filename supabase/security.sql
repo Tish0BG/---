@@ -321,12 +321,19 @@ $$;
 revoke all on function public.storage_bytes_used(uuid) from public, anon;
 grant execute on function public.storage_bytes_used(uuid) to authenticated;
 
-/** Таванът на един профил. Смени числото тук и важи веднага, без деплой. */
+/**
+ * Таванът на един профил. Смени числото тук и важи веднага, без деплой.
+ *
+ * Първият множител е bigint нарочно: `2 * 1024 * 1024 * 1024` се смята като
+ * 32-битово цяло и се препълва с точно единица, преди изобщо да стигне до
+ * превръщането — а функция, която гърми, спира всяко качване, защото правилото
+ * по-долу я вика.
+ */
 create or replace function public.storage_quota_bytes()
 returns bigint
 language sql
 immutable
-as $$ select (2 * 1024 * 1024 * 1024)::bigint; $$;  -- 2 GB
+as $$ select 2::bigint * 1024 * 1024 * 1024; $$;  -- 2 GB
 
 grant execute on function public.storage_quota_bytes() to authenticated, anon;
 
