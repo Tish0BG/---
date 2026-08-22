@@ -17,6 +17,7 @@ import {
   useTimer,
 } from '@/state/timerStore';
 import { Icon } from '../Icon';
+import { tr } from '@/i18n';
 import { Toggle, useConfirm } from '../ui';
 import { Ring } from './Ring';
 import { useApp } from '@/state/appStore';
@@ -58,7 +59,7 @@ export function TimerTab() {
       </div>
 
       <Ring progress={total ? left / total : 0} size={182} stroke={5.5} color={MODE_COLOR[mode]}>
-        <span className="text-[12px] text-muted">{MODE_LABEL[mode]}</span>
+        <span className="text-[12px] text-muted">{tr(MODE_LABEL[mode])}</span>
         <span className="text-[42px] font-extralight leading-none tabular-nums tracking-tight">
           {formatClock(left)}
         </span>
@@ -215,7 +216,7 @@ export function TasksTab() {
         <span>{list.length ? `${list.length} отворени` : ''}</span>
         <button
           className="cursor-pointer text-accent"
-          onClick={() => useApp.getState().go('planner')}
+          onClick={() => useApp.getState().go('tasks')}
         >
           Отвори Планера
         </button>

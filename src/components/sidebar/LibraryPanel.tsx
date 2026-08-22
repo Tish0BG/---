@@ -4,9 +4,11 @@ import { documentsInTree, progressOf, useLibrary } from '@/state/libraryStore';
 import { useViewer } from '@/state/viewerStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
+import { useT, L } from '@/i18n';
 
 /** Folder + document tree shown in the sidebar while reading. */
 export function LibraryPanel() {
+  const t = useT();
   const { folders, documents, expanded, toggleExpanded, createFolder } = useLibrary();
   const [query, setQuery] = useState('');
   const { confirm, element } = useConfirm();
@@ -35,7 +37,7 @@ export function LibraryPanel() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.stopPropagation()}
-            placeholder="Търси документ…"
+            placeholder={t(L("Търси документ…", "Search documents…"))}
             className="field pl-7"
           />
         </div>
@@ -46,7 +48,7 @@ export function LibraryPanel() {
           filtered.length ? (
             filtered.map((d) => <DocRow key={d.id} doc={d} depth={0} confirm={confirm} />)
           ) : (
-            <p className="px-2 py-3 text-[12px] text-faint">Няма съвпадения.</p>
+            <p className="px-2 py-3 text-[12px] text-faint">{t(L("Няма съвпадения.", "No matches."))}</p>
           )
         ) : (
           <>
@@ -72,10 +74,10 @@ export function LibraryPanel() {
       <div className="border-t border-line p-2">
         <button
           className="btn w-full justify-start"
-          onClick={() => void createFolder('Нова папка', null)}
+          onClick={() => void createFolder(t(L('Нова папка', 'New folder')), null)}
         >
           <Icon name="folderPlus" size={15} />
-          Нова папка
+          {t(L("Нова папка", "New folder"))}
         </button>
       </div>
     </div>
@@ -99,6 +101,7 @@ function FolderNode({
   toggle: (id: string) => void;
   confirm: (m: string, cb: () => void) => void;
 }) {
+  const t = useT();
   const { createFolder, renameFolder, deleteFolder, moveDocument } = useLibrary();
   const [dragOver, setDragOver] = useState(false);
   const open = expanded[folder.id];
@@ -142,17 +145,17 @@ function FolderNode({
             <>
               <MenuItem
                 icon="folderPlus"
-                label="Подпапка"
+                label={t(L("Подпапка", "Subfolder"))}
                 onClick={() => {
-                  void createFolder('Нова папка', folder.id);
+                  void createFolder(t(L('Нова папка', 'New folder')), folder.id);
                   close();
                 }}
               />
               <MenuItem
                 icon="pencil"
-                label="Преименувай"
+                label={t(L("Преименувай", "Rename"))}
                 onClick={() => {
-                  const name = prompt('Име на папката', folder.name);
+                  const name = prompt(t(L('Име на папката', 'Folder name')), folder.name);
                   if (name) void renameFolder(folder.id, name);
                   close();
                 }}
@@ -160,11 +163,11 @@ function FolderNode({
               <MenuSep />
               <MenuItem
                 icon="trash"
-                label="Изтрий папката"
+                label={t(L("Изтрий папката", "Delete the folder"))}
                 danger
                 onClick={() => {
                   close();
-                  confirm(`Да изтрия ли «${folder.name}»? Документите вътре ще се преместят нагоре.`, () =>
+                  confirm(t(L(`Да изтрия ли «${folder.name}»? Документите вътре ще се преместят нагоре.`, `Delete "${folder.name}"? The documents inside move up a level.`)), () =>
                     deleteFolder(folder.id),
                   );
                 }}
@@ -206,6 +209,7 @@ function DocRow({
   depth: number;
   confirm: (m: string, cb: () => void) => void;
 }) {
+  const t = useT();
   const openDocument = useViewer((s) => s.openDocument);
   const activeId = useViewer((s) => s.docId);
   const { renameDocument, deleteDocument, folders, moveDocument } = useLibrary();
@@ -241,19 +245,19 @@ function DocRow({
           <>
             <MenuItem
               icon="pencil"
-              label="Преименувай"
+              label={t(L("Преименувай", "Rename"))}
               onClick={() => {
-                const name = prompt('Име на документа', doc.name);
+                const name = prompt(t(L('Име на документа', 'Document name')), doc.name);
                 if (name) void renameDocument(doc.id, name);
                 close();
               }}
             />
             <MenuSep />
-            <div className="px-2 py-1 text-[11px] text-faint">Премести в</div>
+            <div className="px-2 py-1 text-[11px] text-faint">{t(L("Премести в", "Move to"))}</div>
             <div className="max-h-44 overflow-auto scroll-thin">
               <MenuItem
                 icon="home"
-                label="Библиотека (root)"
+                label={t(L("Библиотека (root)", "Library (root)"))}
                 active={!doc.folderId}
                 onClick={() => {
                   void moveDocument(doc.id, null);
@@ -276,11 +280,11 @@ function DocRow({
             <MenuSep />
             <MenuItem
               icon="trash"
-              label="Изтрий"
+              label={t(L("Изтрий", "Delete"))}
               danger
               onClick={() => {
                 close();
-                confirm(`Да изтрия ли «${doc.name}» заедно с всички бележки?`, () => {
+                confirm(t(L(`Да изтрия ли «${doc.name}» заедно с всички бележки?`, `Delete "${doc.name}" and all its notes?`)), () => {
                   if (useViewer.getState().docId === doc.id) void useViewer.getState().closeDocument();
                   void deleteDocument(doc.id);
                 });

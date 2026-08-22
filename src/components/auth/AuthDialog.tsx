@@ -7,6 +7,8 @@ import { Icon } from '../Icon';
 import { notify } from '@/state/toastStore';
 import { AuthScreen } from './AuthScreen';
 import { ConnectionCheck } from './ConnectionCheck';
+import { useT, L } from '@/i18n';
+import { S } from '@/i18n/strings';
 
 /**
  * Everything about the account in one place: connect a backend, sign in or
@@ -23,13 +25,14 @@ import { ConnectionCheck } from './ConnectionCheck';
  * account is not a detour.
  */
 export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const t = useT();
   const user = useAuth((s) => s.user);
 
   if (!open) return null;
   if (!user) return <AuthScreen onClose={onClose} />;
 
   return (
-    <Modal open onClose={onClose} width={520} title="Профил в облака">
+    <Modal open onClose={onClose} width={520} title={t(L('Профил в облака', 'Cloud account'))}>
       <AccountPanel onClose={onClose} />
     </Modal>
   );
@@ -38,6 +41,7 @@ export function AuthDialog({ open, onClose }: { open: boolean; onClose: () => vo
 /* ------------------------------------------------------------- account */
 
 function AccountPanel({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const user = useAuth((s) => s.user);
   const sync = useAuth((s) => s.sync);
   const autoSync = useAuth((s) => s.autoSync);
@@ -73,12 +77,14 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         <div className="min-w-0 flex-1">
           <div className="truncate text-[13px] font-medium">{user?.email}</div>
           <div className="text-[11px] text-muted">
-            {sync.lastSyncAt ? `Последна синхронизация ${formatDate(sync.lastSyncAt)}` : 'Още не е синхронизирано'}
+            {sync.lastSyncAt
+              ? t(L(`Последна синхронизация ${formatDate(sync.lastSyncAt)}`, `Last sync ${formatDate(sync.lastSyncAt)}`))
+              : t(L('Още не е синхронизирано', 'Not synced yet'))}
           </div>
         </div>
         <button className="btn btn-primary" disabled={syncing} onClick={() => void useAuth.getState().syncNow()}>
           <Icon name="refresh" size={14} className={syncing ? 'animate-spin' : ''} />
-          Синхронизирай
+          {t(L('Синхронизирай', 'Sync now'))}
         </button>
       </div>
 
@@ -86,9 +92,9 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
 
       {usage && (
         <div className="grid grid-cols-3 gap-1.5">
-          <Metric value={String(usage.records)} label="записа" />
-          <Metric value={String(usage.files)} label="файла" />
-          <Metric value={formatBytes(usage.bytes)} label="в облака" />
+          <Metric value={String(usage.records)} label={t(L('записа', 'records'))} />
+          <Metric value={String(usage.files)} label={t(L('файла', 'files'))} />
+          <Metric value={formatBytes(usage.bytes)} label={t(L('в облака', 'in the cloud'))} />
         </div>
       )}
 
@@ -96,25 +102,25 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         <Toggle
           checked={autoSync}
           onChange={(v) => useAuth.getState().setAutoSync(v)}
-          label="Автоматична синхронизация"
-          hint="На всеки 5 минути и когато затваряш приложението."
+          label={t(L('Автоматична синхронизация', 'Automatic sync'))}
+          hint={t(L('На всеки 5 минути и когато затваряш приложението.', 'Every five minutes, and when you close the app.'))}
         />
         {pending > 0 && (
           <p className="mt-1.5 flex items-center gap-1.5 text-[11px] text-muted">
             <Icon name="upload" size={12} />
-            {pending} {pending === 1 ? 'файл чака' : 'файла чакат'} да бъдат качени.
+            {t(L(`${pending} файла чакат да бъдат качени.`, `${pending} files are waiting to upload.`))}
           </p>
         )}
       </div>
 
       <section>
-        <h3 className="mb-2 label">Смяна на парола</h3>
+        <h3 className="t-label mb-2">{t(L('Смяна на парола', 'Change password'))}</h3>
         <div className="flex gap-2">
           <input
             value={pw}
             onChange={(e) => setPw(e.target.value)}
             type="password"
-            placeholder="Нова парола"
+            placeholder={t(L('Нова парола', 'New password'))}
             className="field"
             autoComplete="new-password"
           />
@@ -131,7 +137,7 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
                 })
             }
           >
-            Смени
+            {t(L('Смени', 'Change'))}
           </button>
         </div>
         {(pwMsg || notice) && (
@@ -154,20 +160,20 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
           }}
         >
           <Icon name="logOut" size={14} />
-          Излез
+          {t(L('Излез', 'Sign out'))}
         </button>
         <button
           className="btn"
           style={{ color: 'var(--c-warn)' }}
           onClick={() =>
             confirm(
-              'Това изтрива всичко от облака, но оставя данните на това устройство. При следваща синхронизация те ще се качат отново. Сигурен ли си?',
+              t(L('Това изтрива всичко от облака, но оставя данните на това устройство. При следваща синхронизация те ще се качат отново. Сигурен ли си?', 'This wipes everything from the cloud but leaves the data on this device — the next sync uploads it again. Are you sure?')),
               () => void useAuth.getState().wipeRemote(),
             )
           }
         >
           <Icon name="archive" size={14} />
-          Изчисти облака
+          {t(L('Изчисти облака', 'Clear the cloud'))}
         </button>
         <ConnectionLine className="ml-auto self-center" />
       </div>
@@ -181,23 +187,26 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         onToggle={(e) => setDanger((e.currentTarget as HTMLDetailsElement).open)}
       >
         <summary className="cursor-pointer text-[12px] font-medium" style={{ color: 'var(--c-danger)' }}>
-          Изтриване на профила
+          {t(L('Изтриване на профила', 'Delete the account'))}
         </summary>
         <p className="mt-2 text-[11.5px] leading-relaxed text-muted">
-          Профилът, всички качени файлове и всичко в облака изчезват безвъзвратно. Данните на това
-          устройство остават — приложението просто продължава без профил. Напиши{' '}
-          <b className="text-ink">ИЗТРИЙ</b>, за да потвърдиш.
+          {t(
+            L(
+              'Профилът, всички качени файлове и всичко в облака изчезват безвъзвратно. Данните на това устройство остават. Напиши ИЗТРИЙ, за да потвърдиш.',
+              'The account, every uploaded file and everything in the cloud disappear for good. The data on this device stays. Type DELETE to confirm.',
+            ),
+          )}
         </p>
         <div className="mt-2 flex gap-2">
           <input
             value={confirmText}
             onChange={(e) => setConfirmText(e.target.value)}
-            placeholder="ИЗТРИЙ"
+            placeholder={t(L('ИЗТРИЙ', 'DELETE'))}
             className="field"
           />
           <button
             className="btn btn-danger shrink-0"
-            disabled={confirmText.trim().toUpperCase() !== 'ИЗТРИЙ' || busy}
+            disabled={!['ИЗТРИЙ', 'DELETE'].includes(confirmText.trim().toUpperCase()) || busy}
             onClick={() => {
               setBusy(true);
               void useAuth
@@ -205,13 +214,13 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
                 .removeAccount()
                 .then((err) => {
                   setBusy(false);
-                  if (err) notify.error('Профилът не беше изтрит', err);
+                  if (err) notify.error(t(L('Профилът не беше изтрит', 'The account was not deleted')), err);
                   else onClose();
                 });
             }}
           >
             {busy && <Icon name="refresh" size={14} className="animate-spin" />}
-            Изтрий
+            {t(S.delete)}
           </button>
         </div>
       </details>
@@ -230,14 +239,15 @@ function Metric({ value, label }: { value: string; label: string }) {
 
 /** Live read-out of the sync engine: what it is doing and how it ended. */
 export function SyncStatus() {
+  const t = useT();
   const sync = useAuth((s) => s.sync);
   if (sync.phase === 'idle') return null;
 
   if (sync.phase === 'error') {
-    return <Banner tone="danger" text={sync.error ?? 'Синхронизацията се провали.'} />;
+    return <Banner tone="danger" text={sync.error ?? t(L('Синхронизацията се провали.', 'The sync failed.'))} />;
   }
   if (sync.phase === 'done') {
-    return <Banner tone="ok" text={sync.label || 'Всичко е синхронизирано'} />;
+    return <Banner tone="ok" text={sync.label || t(L('Всичко е синхронизирано', 'Everything is in sync'))} />;
   }
   return (
     <div className="panel p-3">
@@ -275,6 +285,7 @@ function Banner({ tone, text }: { tone: 'danger' | 'ok'; text: string }) {
 
 /** Which project this browser talks to, and a way out of it. */
 function ConnectionLine({ className = '' }: { className?: string }) {
+  const t = useT();
   const fixed = useAuth((s) => s.fixed);
   const cfg = cloudConfig();
   if (!cfg || fixed) return null;
@@ -287,7 +298,7 @@ function ConnectionLine({ className = '' }: { className?: string }) {
         className="cursor-pointer underline underline-offset-2 hover:text-ink"
         onClick={() => useAuth.getState().disconnect()}
       >
-        смени
+        {t(L('смени', 'change'))}
       </button>
     </span>
   );

@@ -12,7 +12,6 @@ import {
   neededForTarget,
   openItems,
   sortByDue,
-  DAY_NAMES,
   toMinutes,
 } from '@/state/plannerStore';
 import { minutesBySubject, useTimer } from '@/state/timerStore';
@@ -20,18 +19,23 @@ import { formatDate } from '@/lib/util';
 import { Icon } from '../Icon';
 import { useConfirm } from '../ui';
 import { DueChip } from '../planner/DueChip';
+import { useT, useLang, tr, L, formatDuration, weekdayNames, type Msg } from '@/i18n';
+import { S } from '@/i18n/strings';
+import { Button, Card, EmptyState, Tabs } from '../kit';
 
 type Tab = 'overview' | 'materials' | 'grades' | 'schedule';
 
-const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'overview', label: 'Преглед', icon: 'dashboard' },
-  { id: 'materials', label: 'Материали', icon: 'drive' },
-  { id: 'grades', label: 'Оценки', icon: 'trophy' },
-  { id: 'schedule', label: 'Часове', icon: 'calendar' },
+const TABS: { id: Tab; label: Msg; icon: string }[] = [
+  { id: 'overview', label: L('Преглед', 'Overview'), icon: 'dashboard' },
+  { id: 'materials', label: L('Материали', 'Materials'), icon: 'drive' },
+  { id: 'grades', label: L('Оценки', 'Grades'), icon: 'trophy' },
+  { id: 'schedule', label: L('Часове', 'Classes'), icon: 'calendar' },
 ];
 
 /** Everything about one subject in one place. */
 export function SubjectDetail({ id }: { id: string }) {
+  const t = useT();
+  const lang = useLang();
   const subject = useWorkspace((s) => s.subject(id));
   const documents = useLibrary((s) => s.documents);
   const items = usePlanner((s) => s.items);
@@ -57,9 +61,9 @@ export function SubjectDetail({ id }: { id: string }) {
   if (!subject) {
     return (
       <div className="grid h-full place-items-center text-muted">
-        <button className="btn" onClick={() => useApp.getState().go('subjects')}>
-          Предметът не съществува — назад
-        </button>
+        <Button variant="outline" icon="arrowLeft" onClick={() => useApp.getState().go('subjects')}>
+          {t(L('Предметът не съществува — назад', 'That subject is gone — go back'))}
+        </Button>
       </div>
     );
   }
@@ -72,7 +76,7 @@ export function SubjectDetail({ id }: { id: string }) {
           onClick={() => useApp.getState().go('subjects')}
         >
           <Icon name="chevronLeft" size={13} />
-          Всички предмети
+          {t(L('Всички предмети', 'All subjects'))}
         </button>
 
         <header className="mb-5 flex flex-wrap items-center gap-3">
@@ -83,75 +87,69 @@ export function SubjectDetail({ id }: { id: string }) {
             <Icon name={subject.icon} size={26} />
           </span>
           <div className="min-w-0 flex-1">
-            <h1
-              className="truncate font-semibold leading-[1.12]"
-              style={{ fontSize: 'var(--text-section)', letterSpacing: 'var(--track-section)' }}
-            >
-              {subject.name}
-            </h1>
-            <p className="text-[13px] text-muted">
-              {[subject.teacher, `${materials.length} материала`, `${subjectCards.length} карти`]
+            <h1 className="t-h1 truncate">{subject.name}</h1>
+            <p className="mt-1 text-[13px] text-muted">
+              {[
+                subject.teacher,
+                t(L(`${materials.length} материала`, `${materials.length} materials`)),
+                t(L(`${subjectCards.length} карти`, `${subjectCards.length} cards`)),
+              ]
                 .filter(Boolean)
                 .join(' · ')}
             </p>
           </div>
           {avg.count > 0 && (
             <div className="text-right">
-              <div className="text-[26px] font-medium leading-none tabular-nums" style={{ color: subject.color }}>
+              <div className="t-num text-[28px] font-semibold leading-none" style={{ color: subject.color }}>
                 {avg.average.toFixed(2)}
               </div>
-              <div className="text-[11px] text-muted">среден успех</div>
+              <div className="text-[11px] text-muted">{t(L('среден успех', 'average'))}</div>
             </div>
           )}
         </header>
 
-        <nav className="mb-4 flex gap-0.5 rounded-lg p-0.5" style={{ background: 'var(--c-surface-3)' }}>
-          {TABS.map((t) => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className={`flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-md py-1.5 text-[12.5px] transition-colors ${
-                tab === t.id ? 'bg-surface font-medium shadow-[var(--shadow-panel)]' : 'text-muted'
-              }`}
-            >
-              <Icon name={t.icon} size={14} />
-              {t.label}
-            </button>
-          ))}
-        </nav>
+        <Tabs
+          className="mb-4"
+          value={tab}
+          onChange={setTab}
+          items={TABS.map((item) => ({ id: item.id, label: t(item.label), icon: item.icon }))}
+        />
 
         {tab === 'overview' && (
           <div className="grid gap-4 lg:grid-cols-2">
-            <section className="panel p-4">
-              <h2 className="mb-2.5 label">Задачи</h2>
+            <Card title={t(S.tasks)} icon="listTodo">
               {work.length === 0 ? (
-                <p className="py-4 text-center text-[12px] text-muted">Няма отворени задачи.</p>
+                <p className="py-4 text-center text-[12.5px] text-muted">
+                  {t(L('Няма отворени задачи.', 'No open tasks.'))}
+                </p>
               ) : (
                 <div className="space-y-0.5">
-                  {work.slice(0, 6).map((t) => (
-                    <div key={t.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-surface-2">
+                  {work.slice(0, 6).map((item) => (
+                    <div key={item.id} className="flex items-center gap-2.5 rounded-lg px-1.5 py-1.5 hover:bg-surface-2">
                       <button
-                        onClick={() => void usePlanner.getState().toggleItem(t.id)}
+                        onClick={() => void usePlanner.getState().toggleItem(item.id)}
                         className="h-[17px] w-[17px] shrink-0 cursor-pointer rounded-full border"
                         style={{ borderColor: subject.color }}
-                        aria-label="Готово"
+                        aria-label={t(S.done)}
                       />
-                      <span className="min-w-0 flex-1 truncate text-[13px]">{t.title}</span>
-                      {t.due !== null && <DueChip due={t.due} />}
+                      <span className="min-w-0 flex-1 truncate text-[13px]">{item.title}</span>
+                      {item.due !== null && <DueChip due={item.due} />}
                     </div>
                   ))}
                 </div>
               )}
-            </section>
+            </Card>
 
-            <section className="panel p-4">
-              <h2 className="mb-2.5 label">Учене</h2>
+            <Card title={t(L('Учене', 'Studying'))} icon="timer">
               <div className="grid grid-cols-2 gap-2">
-                <Stat value={`${Math.floor(minutes / 60)} ч ${minutes % 60}`} label="за 30 дни" />
-                <Stat value={String(dueCount(subjectCards))} label="карти за днес" />
+                <Stat value={formatDuration(minutes, lang)} label={t(L('за 30 дни', 'in 30 days'))} />
+                <Stat value={String(dueCount(subjectCards))} label={t(L('карти за днес', 'cards due'))} />
               </div>
-              <button
-                className="btn btn-primary mt-3 w-full"
+              <Button
+                variant="primary"
+                icon="brain"
+                block
+                className="mt-3"
                 disabled={!dueCount(subjectCards)}
                 onClick={() => {
                   const deck = subjectCards[0]?.deck ?? null;
@@ -159,16 +157,12 @@ export function SubjectDetail({ id }: { id: string }) {
                   useApp.getState().go('cards');
                 }}
               >
-                <Icon name="brain" size={15} />
-                Учи картите
-              </button>
-            </section>
+                {t(L('Учи картите', 'Review the cards'))}
+              </Button>
+            </Card>
 
             {slots.length > 0 && (
-              <section className="panel p-4 lg:col-span-2">
-                <h2 className="mb-2.5 label">
-                  Часове през седмицата
-                </h2>
+              <Card className="lg:col-span-2" title={t(L('Часове през седмицата', 'Classes this week'))} icon="calendar">
                 <div className="flex flex-wrap gap-1.5">
                   {slots.map((s) => (
                     <span
@@ -176,12 +170,12 @@ export function SubjectDetail({ id }: { id: string }) {
                       className="chip"
                       style={{ background: `color-mix(in srgb, ${subject.color} 12%, transparent)`, color: subject.color }}
                     >
-                      {DAY_NAMES[s.day].slice(0, 3)} {s.start}–{s.end}
+                      {weekdayNames(lang)[(s.day + 6) % 7]} {s.start}–{s.end}
                       {s.room ? ` · ${s.room}` : ''}
                     </span>
                   ))}
                 </div>
-              </section>
+              </Card>
             )}
           </div>
         )}
@@ -189,15 +183,21 @@ export function SubjectDetail({ id }: { id: string }) {
         {tab === 'materials' && (
           <div className="space-y-1.5">
             {materials.length === 0 ? (
-              <p className="py-10 text-center text-[13px] text-faint">
-                Няма материали с този предмет. Отбележи ги от библиотеката.
-              </p>
+              <Card>
+                <EmptyState
+                  compact
+                  icon="drive"
+                  title={t(L('Няма материали с този предмет', 'No materials tagged with this subject'))}
+                  body={t(L('Отбележи ги от библиотеката и се появяват тук.', 'Tag them in the library and they show up here.'))}
+                  action={{ label: t(S.library), icon: 'arrowRight', onClick: () => useApp.getState().go('drive') }}
+                />
+              </Card>
             ) : (
               materials.map((d) => (
                 <button
                   key={d.id}
                   onClick={() => void useViewer.getState().openDocument(d.id)}
-                  className="panel flex w-full cursor-pointer items-center gap-3 p-2.5 text-left transition-colors hover:bg-surface-2"
+                  className="card flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors hover:bg-surface-2"
                 >
                   <Icon
                     name={d.kind === 'board' ? 'board' : 'file'}
@@ -241,13 +241,14 @@ function Stat({ value, label }: { value: string; label: string }) {
 
 /* ------------------------------------------------------------------ grades */
 
-const WEIGHTS: { value: number; label: string }[] = [
-  { value: 1, label: 'Текуща' },
-  { value: 2, label: 'Контролно' },
-  { value: 3, label: 'Изпит' },
+const WEIGHTS: { value: number; label: Msg }[] = [
+  { value: 1, label: L('Текуща', 'Ordinary') },
+  { value: 2, label: L('Контролно', 'Test') },
+  { value: 3, label: L('Изпит', 'Exam') },
 ];
 
 function GradesTab({ subjectId, color }: { subjectId: string; color: string }) {
+  const t = useT();
   // Select the raw array and narrow it in a memo: a selector that filters
   // hands React a new array on every render and spins forever.
   const all = usePlanner((s) => s.grades);
@@ -264,28 +265,32 @@ function GradesTab({ subjectId, color }: { subjectId: string; color: string }) {
   const needed = neededForTarget(grades, subjectId, target, 2, scale.max);
 
   const add = () => {
-    void usePlanner.getState().addGrade({ subjectId, label: label.trim() || 'Оценка', value, weight });
+    void usePlanner.getState().addGrade({
+      subjectId,
+      label: label.trim() || t(L('Оценка', 'Grade')),
+      value,
+      weight,
+    });
     setLabel('');
   };
 
   return (
     <div className="space-y-4">
       {element}
-      <section className="panel p-4">
-        <h2 className="mb-2.5 label">Нова оценка</h2>
+      <Card title={t(L('Нова оценка', 'New grade'))} icon="plus">
         <div className="flex flex-wrap items-end gap-2">
           <label className="min-w-[140px] flex-1">
-            <span className="mb-1 block text-[11px] text-muted">За какво</span>
+            <span className="t-label mb-1 block">{t(L('За какво', 'What for'))}</span>
             <input
               value={label}
               onChange={(e) => setLabel(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && add()}
-              placeholder="напр. Контролно 2"
+              placeholder={t(L('напр. Контролно 2', 'e.g. Test 2'))}
               className="field"
             />
           </label>
           <label>
-            <span className="mb-1 block text-[11px] text-muted">Оценка</span>
+            <span className="t-label mb-1 block">{t(L('Оценка', 'Grade'))}</span>
             <div className="flex gap-1">
               {range(scale.min, scale.max).map((n) => (
                 <button
@@ -304,38 +309,39 @@ function GradesTab({ subjectId, color }: { subjectId: string; color: string }) {
             </div>
           </label>
           <label>
-            <span className="mb-1 block text-[11px] text-muted">Тежест</span>
+            <span className="t-label mb-1 block">{t(L('Тежест', 'Weight'))}</span>
             <div className="flex gap-1">
               {WEIGHTS.map((w) => (
                 <button
                   key={w.value}
                   onClick={() => setWeight(w.value)}
-                  className={`btn ${weight === w.value ? 'btn-ghost-active' : ''}`}
+                  className={`btn ${weight === w.value ? 'btn-ghost-active' : 'btn-outline'}`}
                 >
-                  {w.label}
+                  {t(w.label)}
                 </button>
               ))}
             </div>
           </label>
-          <button className="btn btn-primary" onClick={add}>
-            <Icon name="plus" size={15} />
-            Добави
-          </button>
+          <Button variant="primary" icon="plus" onClick={add}>
+            {t(S.add)}
+          </Button>
         </div>
-      </section>
+      </Card>
 
       {avg.count > 0 && (
-        <section className="panel p-4">
+        <Card>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[12px] text-muted">Среден успех от {avg.count} оценки</div>
-              <div className="text-[28px] font-medium leading-tight tabular-nums" style={{ color }}>
+              <div className="text-[12px] text-muted">
+                {t(L(`Среден успех от ${avg.count} оценки`, `Average of ${avg.count} grades`))}
+              </div>
+              <div className="t-num text-[30px] font-semibold leading-tight" style={{ color }}>
                 {avg.average.toFixed(2)}
               </div>
             </div>
             <div className="text-right text-[12px]">
               <div className="mb-1 flex items-center gap-1.5">
-                <span className="text-muted">Целя се на</span>
+                <span className="text-muted">{t(L('Целя се на', 'Aiming for'))}</span>
                 {range(scale.pass, scale.max).map((n) => (
                   <button
                     key={n}
@@ -353,19 +359,31 @@ function GradesTab({ subjectId, color }: { subjectId: string; color: string }) {
               </div>
               <div className="text-muted">
                 {needed === null
-                  ? 'Целта е постигната.'
+                  ? t(L('Целта е постигната.', 'Target reached.'))
                   : needed > scale.max
-                    ? 'Няма как да стане само с една оценка.'
-                    : `Трябва ти ${needed.toFixed(2)} на следващото контролно.`}
+                    ? t(L('Няма как да стане само с една оценка.', 'One more grade cannot get you there.'))
+                    : t(
+                        L(
+                          `Трябва ти ${needed.toFixed(2)} на следващото контролно.`,
+                          `You need ${needed.toFixed(2)} on the next test.`,
+                        ),
+                      )}
               </div>
             </div>
           </div>
-        </section>
+        </Card>
       )}
 
       <div className="space-y-1">
         {sorted.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-faint">Още няма оценки по този предмет.</p>
+          <Card>
+            <EmptyState
+              compact
+              icon="trophy"
+              title={t(L('Още няма оценки', 'No grades yet'))}
+              body={t(L('Добави първата и средният успех се смята сам.', 'Add the first one and the average takes care of itself.'))}
+            />
+          </Card>
         ) : (
           sorted.map((g) => <GradeRow key={g.id} grade={g} color={color} confirm={confirm} />)
         )}
@@ -394,12 +412,16 @@ function GradeRow({
       <span className="min-w-0 flex-1">
         <span className="block truncate text-[13px]">{grade.label}</span>
         <span className="block text-[11px] text-muted">
-          {WEIGHTS.find((w) => w.value === grade.weight)?.label} · {formatDate(grade.date)}
+          {tr(WEIGHTS.find((w) => w.value === grade.weight)?.label ?? L('', ''))} · {formatDate(grade.date)}
         </span>
       </span>
       <button
         className="icon-btn h-7 w-7 opacity-0 group-hover:opacity-100"
-        onClick={() => confirm('Да изтрия ли оценката?', () => void usePlanner.getState().removeGrade(grade.id))}
+        onClick={() =>
+          confirm(tr(L('Да изтрия ли оценката?', 'Delete this grade?')), () =>
+            void usePlanner.getState().removeGrade(grade.id),
+          )
+        }
       >
         <Icon name="trash" size={14} />
       </button>
@@ -413,6 +435,8 @@ const range = (from: number, to: number): number[] =>
 /* --------------------------------------------------------------- schedule */
 
 function ScheduleTab({ subjectId, color }: { subjectId: string; color: string }) {
+  const t = useT();
+  const lang = useLang();
   const all = usePlanner((s) => s.schedule);
   const slots = useMemo(
     () =>
@@ -429,28 +453,28 @@ function ScheduleTab({ subjectId, color }: { subjectId: string; color: string })
   return (
     <div className="space-y-4">
       <section className="panel p-4">
-        <h2 className="mb-2.5 label">Добави час</h2>
+        <h2 className="t-label mb-2.5">{t(L('Добави час', 'Add a class'))}</h2>
         <div className="flex flex-wrap items-end gap-2">
           <label>
-            <span className="mb-1 block text-[11px] text-muted">Ден</span>
+            <span className="t-label mb-1 block">{t(L('Ден', 'Day'))}</span>
             <select value={day} onChange={(e) => setDay(Number(e.target.value))} className="field w-32">
               {[1, 2, 3, 4, 5, 6, 0].map((d) => (
                 <option key={d} value={d}>
-                  {DAY_NAMES[d]}
+                  {weekdayNames(lang, 'long')[(d + 6) % 7]}
                 </option>
               ))}
             </select>
           </label>
           <label>
-            <span className="mb-1 block text-[11px] text-muted">От</span>
+            <span className="t-label mb-1 block">{t(L('От', 'From'))}</span>
             <input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="field w-28" />
           </label>
           <label>
-            <span className="mb-1 block text-[11px] text-muted">До</span>
+            <span className="t-label mb-1 block">{t(L('До', 'To'))}</span>
             <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className="field w-28" />
           </label>
           <label className="min-w-[100px] flex-1">
-            <span className="mb-1 block text-[11px] text-muted">Кабинет</span>
+            <span className="t-label mb-1 block">{t(L('Кабинет', 'Room'))}</span>
             <input value={room} onChange={(e) => setRoom(e.target.value)} className="field" />
           </label>
           <button
@@ -461,14 +485,16 @@ function ScheduleTab({ subjectId, color }: { subjectId: string; color: string })
             }}
           >
             <Icon name="plus" size={15} />
-            Добави
+            {t(S.add)}
           </button>
         </div>
       </section>
 
       <div className="space-y-1">
         {slots.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-faint">Няма записани часове.</p>
+          <p className="py-10 text-center text-[13px] text-faint">
+            {t(L('Няма записани часове.', 'No classes yet.'))}
+          </p>
         ) : (
           slots.map((s) => (
             <div
@@ -476,10 +502,10 @@ function ScheduleTab({ subjectId, color }: { subjectId: string; color: string })
               className="group flex items-center gap-3 rounded-lg px-2.5 py-2 transition-colors hover:bg-surface-2"
             >
               <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: color }} />
-              <span className="w-28 shrink-0 text-[13px]">{DAY_NAMES[s.day]}</span>
+              <span className="w-28 shrink-0 text-[13px]">{weekdayNames(lang, 'long')[(s.day + 6) % 7]}</span>
               <span className="flex-1 text-[13px] tabular-nums text-muted">
                 {s.start}–{s.end}
-                {s.room ? ` · каб. ${s.room}` : ''}
+                {s.room ? ` · ${s.room}` : ''}
               </span>
               <button
                 className="icon-btn h-7 w-7 opacity-0 group-hover:opacity-100"

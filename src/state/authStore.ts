@@ -25,6 +25,7 @@ import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
 import { useWorkspace } from './workspaceStore';
 import { useTimer } from './timerStore';
+import { tr, L } from '@/i18n';
 
 const AUTO_KEY = 'studypdf.autosync';
 /** Remembers "I'll use this without an account", so the door is only held open once. */
@@ -160,7 +161,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
         recovery: event === 'PASSWORD_RECOVERY' ? true : get().recovery,
       });
       if (event === 'SIGNED_IN' && new URL(window.location.href).hash.includes('type=signup')) {
-        notify.ok('Имейлът е потвърден', 'Профилът ти вече е активен.');
+        notify.ok(tr(L('Имейлът е потвърден', 'E-mail confirmed')), tr(L('Профилът ти вече е активен.', 'Your account is active.')));
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
     }).data.subscription;
@@ -209,7 +210,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
   async signIn(email, password) {
     const client = await getClient();
-    if (!client) return 'Облакът не е настроен.';
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return humanError(error);
     localStorage.removeItem(SKIP_KEY);
@@ -220,7 +221,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
   async signUp(email, password, name) {
     const client = await getClient();
-    if (!client) return 'Облакът не е настроен.';
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { data, error } = await client.auth.signUp({
       email: email.trim(),
       password,
@@ -246,36 +247,36 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
   async resendConfirmation(email) {
     const client = await getClient();
-    if (!client) return 'Облакът не е настроен.';
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { error } = await client.auth.resend({
       type: 'signup',
       email: email.trim(),
       options: { emailRedirectTo: window.location.origin },
     });
     if (error) return humanError(error);
-    set({ notice: 'Писмото е изпратено отново.' });
+    set({ notice: tr(L('Писмото е изпратено отново.', 'The e-mail has been sent again.')) });
     return null;
   },
 
   async resetPassword(email) {
     const client = await getClient();
-    if (!client) return 'Облакът не е настроен.';
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
       redirectTo: window.location.origin,
     });
     if (error) return humanError(error);
-    notify.ok('Провери пощата си', 'Изпратихме ти връзка за нова парола.');
-    set({ notice: 'Изпратихме ти писмо за нова парола.' });
+    notify.ok(tr(L('Провери пощата си', 'Check your inbox')), tr(L('Изпратихме ти връзка за нова парола.', 'We sent you a link to set a new password.')));
+    set({ notice: tr(L('Изпратихме ти писмо за нова парола.', 'We sent you an e-mail about a new password.')) });
     return null;
   },
 
   async changePassword(next) {
     const client = await getClient();
-    if (!client) return 'Облакът не е настроен.';
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { error } = await client.auth.updateUser({ password: next });
     if (error) return humanError(error);
-    notify.ok('Паролата е сменена');
-    set({ notice: 'Паролата е сменена.' });
+    notify.ok(tr(L('Паролата е сменена', 'Password changed')));
+    set({ notice: tr(L('Паролата е сменена.', 'The password has been changed.')) });
     return null;
   },
 
@@ -290,10 +291,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async syncNow() {
     if (!get().user || get().sync.phase === 'pulling' || get().sync.phase === 'pushing') return;
     if (!navigator.onLine) {
-      set({ sync: { ...get().sync, phase: 'idle', label: 'Изчаква връзка', progress: null } });
+      set({ sync: { ...get().sync, phase: 'idle', label: tr(L('Изчаква връзка', 'Waiting for a connection')), progress: null } });
       return;
     }
-    set({ sync: { ...get().sync, phase: 'checking', error: null, label: 'Свързване…', progress: null } });
+    set({ sync: { ...get().sync, phase: 'checking', error: null, label: tr(L('Свързване…', 'Connecting…')), progress: null } });
     try {
       const result = await runSync((p) =>
         set({ sync: { ...get().sync, phase: p.phase, label: p.label, progress: p.progress, error: null } }),
@@ -320,13 +321,13 @@ export const useAuth = create<AuthStore>((set, get) => ({
           pushed: result.pushed,
         },
       });
-      if (result.warning) notify.info('Синхронизирано частично', result.warning);
+      if (result.warning) notify.info(tr(L('Синхронизирано частично', 'Partly synced')), result.warning);
       void get().refreshPending();
     } catch (err) {
       const message = humanError(err);
       // Background syncs fail silently otherwise: the panel reporting it is
       // usually closed, and "my phone never got it" is found out far too late.
-      notify.error('Синхронизацията не мина', message);
+      notify.error(tr(L('Синхронизацията не мина', 'The sync did not go through')), message);
       set({
         sync: { ...get().sync, phase: 'error', label: '', progress: null, error: message },
       });
@@ -353,7 +354,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async wipeRemote() {
     try {
       await wipeCloud();
-      set({ sync: { ...EMPTY_SYNC }, pendingFiles: 0, notice: 'Облакът е изчистен.' });
+      set({ sync: { ...EMPTY_SYNC }, pendingFiles: 0, notice: tr(L('Облакът е изчистен.', 'The cloud has been cleared.')) });
       return null;
     } catch (err) {
       return humanError(err);
@@ -365,7 +366,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       await deleteAccount();
       localStorage.removeItem(SKIP_KEY);
       set({ user: null, session: null, sync: EMPTY_SYNC, notice: null, skipped: false });
-      notify.ok('Профилът е изтрит', 'Данните на това устройство остават непокътнати.');
+      notify.ok(tr(L('Профилът е изтрит', 'Account deleted')), tr(L('Данните на това устройство остават непокътнати.', 'The data on this device is untouched.')));
       return null;
     } catch (err) {
       return humanError(err);
@@ -382,10 +383,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
 }));
 
 function summarise(pulled: number, pushed: number): string {
-  if (!pulled && !pushed) return 'Всичко е синхронизирано';
+  if (!pulled && !pushed) return tr(L('Всичко е синхронизирано', 'Everything is in sync'));
   const parts: string[] = [];
-  if (pulled) parts.push(`${pulled} изтеглени`);
-  if (pushed) parts.push(`${pushed} изпратени`);
+  if (pulled) parts.push(tr(L(`${pulled} изтеглени`, `${pulled} in`)));
+  if (pushed) parts.push(tr(L(`${pushed} изпратени`, `${pushed} out`)));
   return parts.join(' · ');
 }
 

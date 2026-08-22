@@ -6,6 +6,7 @@ import { useViewer } from '@/state/viewerStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useSettings } from '@/state/settingsStore';
 import { annotationBounds, uid } from '@/lib/util';
+import { tr, L } from '@/i18n';
 
 /** Longest edge of a clip, in pixels. Enough for print, small enough to store. */
 const MAX_EDGE = 2200;
@@ -149,7 +150,7 @@ export async function appendToBoard(boardId: string, snip: Snip): Promise<void> 
 export async function boardFromSnip(snip: Snip): Promise<string> {
   const settings = useSettings.getState();
   const config = makeBoardConfig(settings.boardFlow, settings.boardTemplate, 'a4', false);
-  const id = await useLibrary.getState().createBoard(`${snip.docName} — решения`, config, null);
+  const id = await useLibrary.getState().createBoard(tr(L(`${snip.docName} — решения`, `${snip.docName} — worked out`)), config, null);
   await appendToBoard(id, snip);
   return id;
 }

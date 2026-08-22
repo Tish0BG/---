@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { Icon } from '../Icon';
+import { useT, L } from '@/i18n';
 
 /**
  * Where the "forgot your password" e-mail actually lands.
@@ -11,6 +12,7 @@ import { Icon } from '../Icon';
  * loop never closes.
  */
 export function RecoveryScreen() {
+  const t = useT();
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
   const [show, setShow] = useState(false);
@@ -45,12 +47,12 @@ export function RecoveryScreen() {
           className="mt-4 font-semibold leading-[1.12]"
           style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
         >
-          Нова парола
+          {t(L("Нова парола", "New password"))}
         </h1>
         <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
           {email ? (
             <>
-              Задай нова парола за <b className="text-ink">{email}</b>.
+              {t(L(`Задай нова парола за ${email}.`, `Set a new password for ${email}.`))}
             </>
           ) : (
             'Задай нова парола за профила си.'
@@ -65,14 +67,14 @@ export function RecoveryScreen() {
           }}
         >
           <label className="block">
-            <span className="mb-1 block label">Нова парола</span>
+            <span className="mb-1 block label">{t(L("Нова парола", "New password"))}</span>
             <span className="relative block">
               <input
                 autoFocus
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 type={show ? 'text' : 'password'}
-                placeholder="Поне 8 знака"
+                placeholder={t(L("Поне 8 знака", "At least 8 characters"))}
                 autoComplete="new-password"
                 className="field h-10 pr-10"
                 style={tooShort ? { borderColor: 'var(--c-danger)' } : undefined}
@@ -81,32 +83,32 @@ export function RecoveryScreen() {
                 type="button"
                 className="icon-btn absolute right-1 top-1 h-8 w-8"
                 onClick={() => setShow((v) => !v)}
-                aria-label={show ? 'Скрий паролата' : 'Покажи паролата'}
+                aria-label={show ? t(L("Скрий паролата", "Hide the password")) : t(L("Покажи паролата", "Show the password"))}
               >
                 <Icon name={show ? 'eyeOff' : 'eye'} size={15} />
               </button>
             </span>
             {tooShort && (
               <span className="mt-1 block text-[11.5px]" style={{ color: 'var(--c-danger)' }}>
-                Още {8 - password.length} знака.
+                {t(L(`Още ${8 - password.length} знака.`, `${8 - password.length} more characters.`))}
               </span>
             )}
           </label>
 
           <label className="block">
-            <span className="mb-1 block label">Повтори я</span>
+            <span className="mb-1 block label">{t(L("Повтори я", "Repeat it"))}</span>
             <input
               value={repeat}
               onChange={(e) => setRepeat(e.target.value)}
               type={show ? 'text' : 'password'}
-              placeholder="Същата парола"
+              placeholder={t(L("Същата парола", "The same password again"))}
               autoComplete="new-password"
               className="field h-10"
               style={mismatch ? { borderColor: 'var(--c-danger)' } : undefined}
             />
             {mismatch && (
               <span className="mt-1 block text-[11.5px]" style={{ color: 'var(--c-danger)' }}>
-                Двете не съвпадат.
+                {t(L("Двете не съвпадат.", "They do not match."))}
               </span>
             )}
           </label>
@@ -134,7 +136,7 @@ export function RecoveryScreen() {
           className="mt-3 w-full cursor-pointer text-[12px] text-muted underline-offset-2 hover:underline"
           onClick={() => useAuth.getState().endRecovery()}
         >
-          Ще я сменя по-късно
+          {t(L('Ще я сменя по-късно', 'I will change it later'))}
         </button>
       </div>
     </div>

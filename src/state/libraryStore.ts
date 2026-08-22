@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { BoardConfig, DocumentMeta, Folder, StudyStatus } from '@/types';
 import { repo } from '@/services/storageService';
-import { probeDocument } from '@/services/pdfService';
+
 import { uid } from '@/lib/util';
 
 /** Shared skeleton so PDFs and boards agree on every study-tracking field. */
@@ -178,6 +178,9 @@ export const useLibrary = create<LibraryStore>((set, get) => ({
       set({ importing: { total: pdfs.length, done: i, current: file.name } });
       try {
         const bytes = await file.arrayBuffer();
+        // pdf.js is 430 KB and is only needed once a PDF is actually
+        // imported or opened, so it is fetched then rather than at start-up.
+        const { probeDocument } = await import('@/services/pdfService');
         const { pageCount } = await probeDocument(bytes);
         const doc: DocumentMeta = {
           ...blankDocument(file.name.replace(/\.pdf$/i, ''), folderId, get().documents.length + i),

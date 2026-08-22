@@ -9,6 +9,7 @@ import { useLibrary } from '@/state/libraryStore';
 import { Modal, Select, type SelectOption } from '../ui';
 import { Icon } from '../Icon';
 import { MaskEditor } from './MaskEditor';
+import { useT, L } from '@/i18n';
 
 export interface CardDraft {
   /** picture the card is being built from, if any */
@@ -33,6 +34,7 @@ export function CardEditor({
   draft: CardDraft | null;
   onClose: () => void;
 }) {
+  const t = useT();
   const editing = draft?.card ?? null;
   const [kind, setKind] = useState<CardKind>('basic');
   const [front, setFront] = useState('');
@@ -52,14 +54,14 @@ export function CardEditor({
       decks(cards, [...deckNames, DEFAULT_DECK]).map((d) => ({
         value: d.deck,
         label: d.deck,
-        hint: d.total ? `${d.total}` : 'празно',
+        hint: d.total ? `${d.total}` : t(L("празно", "empty")),
       })),
     [cards, deckNames],
   );
 
   const subjectOptions = useMemo<SelectOption[]>(
     () => [
-      { value: '', label: 'Без предмет', icon: 'layers' },
+      { value: '', label: t(L("Без предмет", "No subject")), icon: 'layers' },
       ...subjects.map((s) => ({ value: s.id, label: s.name, color: s.color, icon: s.icon })),
     ],
     [subjects],
@@ -124,8 +126,8 @@ export function CardEditor({
         await useCards.getState().save([card]);
       }
       notify.ok(
-        editing ? 'Картата е запазена' : kind === 'occlusion' ? `${masks.length} карти са създадени` : 'Картата е създадена',
-        `в тестето „${base.deck}“`,
+        editing ? t(L("Картата е запазена", "Card saved")) : kind === 'occlusion' ? `${masks.length} карти са създадени` : 'Картата е създадена',
+        t(L(`в тестето „${base.deck}“`, `in the deck "${base.deck}"`)),
       );
       onClose();
     } finally {
@@ -139,16 +141,18 @@ export function CardEditor({
     <Modal
       open={open}
       onClose={onClose}
-      title={editing ? 'Редакция на карта' : 'Нова карта'}
+      title={editing ? t(L("Редакция на карта", "Edit card")) : t(L("Нова карта", "New card"))}
       width={520}
       footer={
         <>
           <button className="btn" onClick={onClose} disabled={busy}>
-            Отказ
+            {t(L("Отказ", "Cancel"))}
           </button>
           <button className="btn btn-primary" onClick={() => void save()} disabled={busy || !canSave}>
             <Icon name="cards" size={14} />
-            {kind === 'occlusion' && masks.length > 1 ? `Запази ${masks.length} карти` : 'Запази'}
+            {kind === 'occlusion' && masks.length > 1
+              ? t(L(`Запази ${masks.length} карти`, `Save ${masks.length} cards`))
+              : t(L('Запази', 'Save'))}
           </button>
         </>
       }
@@ -158,8 +162,8 @@ export function CardEditor({
           <div className="flex gap-1.5">
             {(
               [
-                ['basic', 'Въпрос и отговор'],
-                ['occlusion', 'Закрий части'],
+                ['basic', t(L("Въпрос и отговор", "Question and answer"))],
+                ['occlusion', t(L("Закрий части", "Hide regions"))],
               ] as const
             ).map(([id, label]) => (
               <button
@@ -187,13 +191,13 @@ export function CardEditor({
 
         <label className="block">
           <span className="mb-1 block label">
-            {kind === 'occlusion' ? 'Подсказка (по избор)' : 'Лице — въпросът'}
+            {kind === 'occlusion' ? t(L("Подсказка (по избор)", "Hint (optional)")) : t(L("Лице — въпросът", "Front — the question"))}
           </span>
           <textarea
             value={front}
             onChange={(e) => setFront(e.target.value)}
             rows={2}
-            placeholder={kind === 'occlusion' ? 'напр. Части на клетката' : 'Какво питаш?'}
+            placeholder={kind === 'occlusion' ? t(L("напр. Части на клетката", "e.g. Parts of a cell")) : t(L("Какво питаш?", "What are you asking?"))}
             className="field h-auto py-1.5 leading-snug"
           />
         </label>
@@ -201,13 +205,13 @@ export function CardEditor({
         {kind === 'basic' && (
           <label className="block">
             <span className="mb-1 block label">
-              Гръб — отговорът
+              {t(L("Гръб — отговорът", "Back — the answer"))}
             </span>
             <textarea
               value={back}
               onChange={(e) => setBack(e.target.value)}
               rows={3}
-              placeholder="Отговорът или обяснението"
+              placeholder={t(L("Отговорът или обяснението", "The answer, or the explanation"))}
               className="field h-auto py-1.5 leading-snug"
             />
           </label>
@@ -215,13 +219,13 @@ export function CardEditor({
 
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1 block label">Тесте</span>
+            <span className="mb-1 block label">{t(L("Тесте", "Deck"))}</span>
             <Select
               value={deck}
               options={deckOptions}
               onChange={setDeck}
               width={230}
-              createLabel="Ново тесте…"
+              createLabel={t(L("Ново тесте…", "New deck…"))}
               onCreate={(name) => {
                 void useCards
                   .getState()
@@ -232,7 +236,7 @@ export function CardEditor({
           </label>
 
           <label className="block">
-            <span className="mb-1 block label">Предмет</span>
+            <span className="mb-1 block label">{t(L("Предмет", "Subject"))}</span>
             <Select
               value={subjectId ?? ''}
               options={subjectOptions}

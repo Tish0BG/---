@@ -68,12 +68,21 @@ export default defineConfig(({ mode }) => {
       target: 'es2022',
       rollupOptions: {
         output: {
-          manualChunks: {
-            pdfjs: ['pdfjs-dist'],
-            pdflib: ['pdf-lib'],
-            // Only fetched once an account is configured; a local-only install
-            // never downloads it.
-            supabase: ['@supabase/supabase-js'],
+          /**
+           * Three heavy dependencies, each fetched only when it is actually
+           * needed: the PDF renderer when a document opens, pdf-lib when
+           * something is exported, Supabase once an account is configured.
+           *
+           * Written as a function rather than a map so Rollup's shared CommonJS
+           * helpers get a chunk of their own — inside `pdflib` they dragged all
+           * 428 KB of it into the first load for the sake of one function.
+           */
+          manualChunks(id: string) {
+            if (id.includes('commonjsHelpers') || id.includes('commonjs-dynamic-modules')) return 'vendor';
+            if (id.includes('node_modules/pdfjs-dist')) return 'pdfjs';
+            if (id.includes('node_modules/pdf-lib') || id.includes('node_modules/@pdf-lib')) return 'pdflib';
+            if (id.includes('node_modules/@supabase')) return 'supabase';
+            return undefined;
           },
         },
       },

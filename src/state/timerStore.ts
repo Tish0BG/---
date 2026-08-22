@@ -6,15 +6,17 @@ import { useSettings } from './settingsStore';
 import { useViewer } from './viewerStore';
 import { usePlanner } from './plannerStore';
 import { useLibrary } from './libraryStore';
+import { announceProgress } from '@/services/progressBus';
+import { L, tr, type Msg } from '@/i18n';
 
 /** How the widget is showing itself right now. */
 export type TimerView = 'hidden' | 'mini' | 'panel' | 'full';
 export type TimerTab = 'timer' | 'tasks' | 'stats' | 'settings';
 
-export const MODE_LABEL: Record<TimerMode, string> = {
-  work: 'Учене',
-  break: 'Почивка',
-  long: 'Дълга почивка',
+export const MODE_LABEL: Record<TimerMode, Msg> = {
+  work: L('Учене', 'Focus'),
+  break: L('Почивка', 'Break'),
+  long: L('Дълга почивка', 'Long break'),
 };
 
 const RUNTIME_KEY = 'studypdf.timer.runtime.v1';
@@ -62,6 +64,15 @@ interface TimerStore {
 
   setActiveTask(id: string | null): void;
   resetToday(): Promise<void>;
+  /**
+   * Ends the block early and logs only the minutes actually spent.
+   * `skip` rolls straight on to the next mode and credits the whole block,
+   * which is right for a break and dishonest for focus.
+   */
+  stop(): Promise<void>;
+  /** The block that just finished, for the completion screen. */
+  lastSession: { minutes: number; at: number } | null;
+  clearLast(): void;
 }
 
 let ticker: ReturnType<typeof setInterval> | null = null;
@@ -112,15 +123,15 @@ export const useTimer = create<TimerStore>((set, get) => {
       const next = cycle + 1;
       if (next >= s.cycles) {
         set({ cycle: 0 });
-        notify('Кръгът е завършен', `Дълга почивка — ${s.long} мин.`);
+        notify(tr(L('Кръгът е завършен', 'Round complete')), tr(L(`Дълга почивка — ${s.long} мин.`, `Long break — ${s.long} min.`)));
         get().setMode('long', true);
       } else {
         set({ cycle: next });
-        notify('Сесията приключи', `Почивка — ${s.break} мин.`);
+        notify(tr(L('Сесията приключи', 'Session complete')), tr(L(`Почивка — ${s.break} мин.`, `Break — ${s.break} min.`)));
         get().setMode('break', true);
       }
     } else {
-      notify('Почивката свърши', `Учене — ${s.work} мин.`);
+      notify(tr(L('Почивката свърши', 'Break over')), tr(L(`Учене — ${s.work} мин.`, `Focus — ${s.work} min.`)));
       get().setMode('work', true);
     }
   };
@@ -146,8 +157,13 @@ export const useTimer = create<TimerStore>((set, get) => {
       subjectId: doc?.subjectId ?? task?.subjectId ?? null,
     };
     await repo.putSession(session);
-    set((st) => ({ sessions: [...st.sessions, session] }));
+    set((st) => ({
+      sessions: [...st.sessions, session],
+      lastSession: st.view === 'full' ? { minutes, at: Date.now() } : null,
+    }));
     if (task) await usePlanner.getState().addPomodoro(task.id);
+    // Minutes just moved: goals, XP and achievements all want another look.
+    announceProgress();
   };
 
   return {
@@ -160,6 +176,7 @@ export const useTimer = create<TimerStore>((set, get) => {
     sessions: [],
     activeTaskId: null,
     loaded: false,
+    lastSession: null,
 
     async init() {
       const sessions = await repo.listSessions();
@@ -250,7 +267,7 @@ export const useTimer = create<TimerStore>((set, get) => {
     },
 
     setView(view) {
-      set({ view });
+      set({ view, lastSession: view === 'full' ? get().lastSession : null });
       useSettings.getState().set('timerVisible', view !== 'hidden');
     },
     setTab(tab) {
@@ -268,6 +285,24 @@ export const useTimer = create<TimerStore>((set, get) => {
     setActiveTask(id) {
       set({ activeTaskId: id });
       saveRuntime();
+    },
+
+    async stop() {
+      const { mode, left, running } = get();
+      const total = duration(mode);
+      const spent = Math.round((total - left) / 60);
+      stopTicker();
+      set({ running: false, left: total });
+      void keepAwake(false);
+      saveRuntime();
+      if (mode === 'work' && spent >= 1) {
+        await logSession(spent);
+        if (useSettings.getState().timer.sound && running) chime(true);
+      }
+    },
+
+    clearLast() {
+      set({ lastSession: null });
     },
 
     async resetToday() {
@@ -416,7 +451,7 @@ function notify(title: string, body: string): void {
 export function installTimerEffects(): () => void {
   const original = document.title;
   const unsub = useTimer.subscribe((s) => {
-    document.title = s.running ? `${formatClock(s.left)} · ${MODE_LABEL[s.mode]}` : original;
+    document.title = s.running ? `${formatClock(s.left)} · ${tr(MODE_LABEL[s.mode])}` : original;
   });
   const onVisible = () => {
     if (!document.hidden && useTimer.getState().running) void keepAwake(true);

@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from 'react';
 import { Icon } from './Icon';
+import { useT, tr, L } from '@/i18n';
 
 /* ------------------------------------------------------------------ modal */
 
@@ -27,6 +28,7 @@ export function Modal({
   width?: number;
   footer?: ReactNode;
 }) {
+  const t = useT();
   const panelRef = useRef<HTMLDivElement>(null);
   const titleId = useId();
 
@@ -102,7 +104,7 @@ export function Modal({
           <h2 id={titleId} className="text-[14px] font-semibold">
             {title}
           </h2>
-          <button className="icon-btn" onClick={onClose} aria-label="Затвори">
+          <button className="icon-btn" onClick={onClose} aria-label={t(L("Затвори", "Close"))}>
             <Icon name="x" size={16} />
           </button>
         </header>
@@ -260,11 +262,11 @@ export function Select({
   value,
   options,
   onChange,
-  placeholder = 'Избери…',
+  placeholder = tr(L('Избери…', 'Choose…')),
   width = 240,
   className = '',
   onCreate,
-  createLabel = 'Ново…',
+  createLabel = tr(L('Ново…', 'New…')),
 }: {
   value: string | null;
   options: SelectOption[];
@@ -276,6 +278,7 @@ export function Select({
   onCreate?: (name: string) => void;
   createLabel?: string;
 }) {
+  const t = useT();
   const [draft, setDraft] = useState('');
   const [adding, setAdding] = useState(false);
   const current = options.find((o) => o.value === value);
@@ -342,7 +345,7 @@ export function Select({
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => e.stopPropagation()}
-                  placeholder="Име"
+                  placeholder={t(L("Име", "Name"))}
                   className="field h-7"
                 />
                 <button className="btn h-7 shrink-0 px-2" type="submit">
@@ -444,6 +447,7 @@ export function Toggle({
 /* -------------------------------------------------------------- confirm */
 
 export function useConfirm() {
+  const t = useT();
   const [state, setState] = useState<{ message: string; onYes: () => void; danger?: boolean } | null>(null);
   const confirm = useCallback((message: string, onYes: () => void, danger = true) => {
     setState({ message, onYes, danger });
@@ -452,12 +456,12 @@ export function useConfirm() {
     <Modal
       open={!!state}
       onClose={() => setState(null)}
-      title="Потвърждение"
+      title={t(L("Потвърждение", "Are you sure?"))}
       width={380}
       footer={
         <>
           <button className="btn" onClick={() => setState(null)}>
-            Отказ
+            {t(L("Отказ", "Cancel"))}
           </button>
           <button
             className="btn btn-primary"
@@ -467,7 +471,7 @@ export function useConfirm() {
               setState(null);
             }}
           >
-            Продължи
+            {t(L("Продължи", "Continue"))}
           </button>
         </>
       }

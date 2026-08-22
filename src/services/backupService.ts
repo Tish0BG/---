@@ -12,6 +12,7 @@ import type {
   Subject,
 } from '@/types';
 import { repo } from './storageService';
+import { tr, L } from '@/i18n';
 
 /**
  * A backup is one self-describing file:
@@ -72,7 +73,7 @@ export interface BackupSummary {
 /* ------------------------------------------------------------------ export */
 
 export async function createBackup(onProgress?: (label: string) => void): Promise<Blob> {
-  onProgress?.('Събиране на записите…');
+  onProgress?.(tr(L('Събиране на записите…', 'Collecting the records…')));
   const [folders, documents, cards, sessions, subjects, planner, grades, schedule, profile] =
     await Promise.all([
       repo.listFolders(),
@@ -147,7 +148,7 @@ export async function createBackup(onProgress?: (label: string) => void): Promis
     blobs,
   };
 
-  onProgress?.('Записване на файла…');
+  onProgress?.(tr(L('Записване на файла…', 'Writing the file…')));
   const json = new TextEncoder().encode(JSON.stringify(manifest));
   const header = new Uint8Array(HEADER);
   header.set(new TextEncoder().encode(MAGIC), 0);
@@ -161,7 +162,7 @@ export async function createBackup(onProgress?: (label: string) => void): Promis
 async function readManifest(file: File): Promise<{ manifest: Manifest; offset: number }> {
   const head = new Uint8Array(await file.slice(0, HEADER).arrayBuffer());
   if (new TextDecoder().decode(head.slice(0, MAGIC.length)) !== MAGIC) {
-    throw new Error('Това не е архив на StudyPDF.');
+    throw new Error(tr(L('Това не е архив на Plauvia.', 'That is not a Plauvia backup.')));
   }
   const length = new DataView(head.buffer).getUint32(MAGIC.length, true);
   const json = await file.slice(HEADER, HEADER + length).text();
@@ -189,14 +190,14 @@ export async function restoreBackup(
   onProgress?: (label: string) => void,
 ): Promise<void> {
   const { manifest, offset } = await readManifest(file);
-  if (manifest.version > 2) throw new Error('Архивът е от по-нова версия на приложението.');
+  if (manifest.version > 2) throw new Error(tr(L('Архивът е от по-нова версия на приложението.', 'The backup comes from a newer version of the app.')));
 
   if (mode === 'replace') {
-    onProgress?.('Изчистване на текущата библиотека…');
+    onProgress?.(tr(L('Изчистване на текущата библиотека…', 'Clearing the current library…')));
     await repo.clearAll();
   }
 
-  onProgress?.('Възстановяване на записите…');
+  onProgress?.(tr(L('Възстановяване на записите…', 'Restoring the records…')));
   for (const f of manifest.folders) await repo.putFolder(f);
   for (const d of manifest.documents) await repo.putDocument({ ...d, kind: d.kind ?? 'pdf' });
   await repo.saveAnnotations(manifest.annotations, []);
@@ -235,7 +236,7 @@ export async function restoreBackup(
   for (const [i, entry] of manifest.blobs.entries()) {
     const slice = file.slice(cursor, cursor + entry.size, entry.type);
     cursor += entry.size;
-    onProgress?.(`Файлове ${i + 1}/${manifest.blobs.length}`);
+    onProgress?.(tr(L(`Файлове ${i + 1}/${manifest.blobs.length}`, `Files ${i + 1}/${manifest.blobs.length}`)));
     if (entry.key.startsWith('file:')) {
       await repo.putFile(entry.key.slice(5), await slice.arrayBuffer(), entry.type);
     } else {

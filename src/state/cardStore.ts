@@ -10,7 +10,7 @@ interface DeckList {
 }
 
 const DECKS_KEY = 'decks';
-export const DEFAULT_DECK = 'Общи';
+export const DEFAULT_DECK = 'Общи';  // kept as a stable key: renaming it would orphan every existing card
 
 interface CardStore {
   cards: FlashCard[];

@@ -8,6 +8,7 @@ import type {
   FlashCard,
   FocusSession,
   Folder,
+  Goal,
   Grade,
   PlannerItem,
   StoredFile,
@@ -28,8 +29,10 @@ export const DB_NAME = 'studypdf';
  * task list, grades and a timetable.
  * v4 makes the library syncable: deletions leave a tombstone so another
  * device learns about them, and blobs remember whether they are uploaded.
+ * v5 adds goals — the only new store the 2.0 screens needed, because levels,
+ * achievements and statistics are all derived from records that already exist.
  */
-export const DB_VERSION = 4;
+export const DB_VERSION = 5;
 
 export interface StudyDB extends DBSchema {
   folders: { key: string; value: Folder; indexes: { 'by-updated': number } };
@@ -59,6 +62,7 @@ export interface StudyDB extends DBSchema {
   planner: { key: string; value: PlannerItem; indexes: { 'by-due': number; 'by-subject': string } };
   grades: { key: string; value: Grade; indexes: { 'by-subject': string } };
   schedule: { key: string; value: ClassSlot; indexes: { 'by-day': number } };
+  goals: { key: string; value: Goal; indexes: { 'by-subject': string } };
   /** key/value bucket for the profile and app-level state */
   meta: { key: string; value: { key: string; value: unknown } };
   /**
@@ -142,6 +146,11 @@ export function getDB(): Promise<IDBPDatabase<StudyDB>> {
         }
         if (!db.objectStoreNames.contains('schedule')) {
           db.createObjectStore('schedule', { keyPath: 'id' }).createIndex('by-day', 'day');
+        }
+
+        /* ------------------------------------------------------- v5 */
+        if (!db.objectStoreNames.contains('goals')) {
+          db.createObjectStore('goals', { keyPath: 'id' }).createIndex('by-subject', 'subjectId');
         }
 
         /* ------------------------------------------------------- v4 */

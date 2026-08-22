@@ -4,6 +4,7 @@ import { TEMPLATE_LABELS } from '@/services/boardService';
 import { Icon } from '../Icon';
 import { MenuSep, Popover, Tip } from '../ui';
 import { PaperPreview } from './PaperPreview';
+import { useT, L } from '@/i18n';
 
 const TEMPLATES: PaperTemplate[] = [
   'blank',
@@ -25,6 +26,7 @@ const TINTS: (string | null)[] = [null, '#fdfaf3', '#f6f4ee', '#eef4f2', '#f2f0f
  * top bar: which paper, what tint, and (for notebooks) the page operations.
  */
 export function BoardControls() {
+  const t = useT();
   const meta = useViewer((s) => s.meta);
   const currentPage = useViewer((s) => s.currentPage);
   const pageCount = useViewer((s) => s.pageCount);
@@ -41,10 +43,10 @@ export function BoardControls() {
       width={286}
       align="end"
       trigger={({ toggle, ref }) => (
-        <Tip label="Хартия и страници">
+        <Tip label={t(L("Хартия и страници", "Paper and pages"))}>
           <button ref={ref} className="btn gap-1.5" onClick={toggle}>
             <Icon name="rows" size={15} />
-            <span className="hidden lg:inline text-[12px]">{TEMPLATE_LABELS[active]}</span>
+            <span className="hidden lg:inline text-[12px]">{t(TEMPLATE_LABELS[active])}</span>
             <Icon name="chevronDown" size={12} />
           </button>
         </Tip>
@@ -52,17 +54,17 @@ export function BoardControls() {
     >
       {(close) => (
         <div className="p-1">
-          <div className="px-1 pb-1.5 label">Хартия</div>
+          <div className="px-1 pb-1.5 label">{t(L("Хартия", "Paper"))}</div>
           <div className="grid grid-cols-5 gap-1.5 px-1">
-            {TEMPLATES.map((t) => (
+            {TEMPLATES.map((paper) => (
               <button
-                key={t}
-                title={TEMPLATE_LABELS[t]}
-                onClick={() => void store().setBoardTemplate(t)}
+                key={paper}
+                title={t(TEMPLATE_LABELS[paper])}
+                onClick={() => void store().setBoardTemplate(paper)}
                 className="cursor-pointer rounded p-0.5 transition-colors"
-                style={{ outline: active === t ? '2px solid var(--c-accent)' : '1px solid var(--c-line)' }}
+                style={{ outline: active === paper ? '2px solid var(--c-accent)' : '1px solid var(--c-line)' }}
               >
-                <PaperPreview template={t} w={size.width} h={size.width * 1.3} width={40} />
+                <PaperPreview template={paper} w={size.width} h={size.width * 1.3} width={40} />
               </button>
             ))}
           </div>
@@ -73,12 +75,12 @@ export function BoardControls() {
               onClick={() => void store().setBoardTemplate(active, currentPage)}
             >
               <Icon name="file" size={14} />
-              Смени хартията само на страница {currentPage}
+              {t(L(`Смени хартията само на страница ${currentPage}`, `Change the paper on page ${currentPage} only`))}
             </button>
           )}
 
           <div className="mt-2 flex items-center gap-2 px-1">
-            <span className="text-[11px] text-muted">Цвят</span>
+            <span className="text-[11px] text-muted">{t(L("Цвят", "Colour"))}</span>
             {TINTS.map((c, i) => (
               <button
                 key={i}
@@ -90,7 +92,7 @@ export function BoardControls() {
                     (board.paper ?? null) === c ? '2px solid var(--c-accent)' : '1px solid var(--c-line-strong)',
                   outlineOffset: 1,
                 }}
-                aria-label={c ?? 'бяло'}
+                aria-label={c ?? t(L("бяло", "white"))}
               />
             ))}
           </div>
@@ -106,7 +108,7 @@ export function BoardControls() {
               }}
             >
               <Icon name="arrowDown" size={15} />
-              Удължи листа
+              {t(L("Удължи листа", "Extend the sheet"))}
             </button>
           ) : (
             <div className="grid grid-cols-2 gap-1">
@@ -118,7 +120,7 @@ export function BoardControls() {
                 }}
               >
                 <Icon name="pageAdd" size={15} />
-                Нова
+                {t(L("Нова", "New"))}
               </button>
               <button
                 className="btn justify-start"
@@ -128,7 +130,7 @@ export function BoardControls() {
                 }}
               >
                 <Icon name="pageCopy" size={15} />
-                Дублирай
+                {t(L("Дублирай", "Duplicate"))}
               </button>
               <button
                 className="btn justify-start"
@@ -136,7 +138,7 @@ export function BoardControls() {
                 onClick={() => void store().moveBoardPage(currentPage, -1)}
               >
                 <Icon name="arrowUp" size={15} />
-                Нагоре
+                {t(L("Нагоре", "Up"))}
               </button>
               <button
                 className="btn justify-start"
@@ -144,7 +146,7 @@ export function BoardControls() {
                 onClick={() => void store().moveBoardPage(currentPage, 1)}
               >
                 <Icon name="arrowDown" size={15} />
-                Надолу
+                {t(L("Надолу", "Down"))}
               </button>
             </div>
           )}

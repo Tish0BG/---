@@ -3,6 +3,8 @@ import type { Subject } from '@/types';
 import { SUBJECT_COLORS, SUBJECT_ICONS, useWorkspace } from '@/state/workspaceStore';
 import { Modal } from '../ui';
 import { Icon } from '../Icon';
+import { useT, L } from '@/i18n';
+import { S } from '@/i18n/strings';
 
 export function SubjectDialog({
   open,
@@ -13,6 +15,7 @@ export function SubjectDialog({
   subject: Subject | null;
   onClose: () => void;
 }) {
+  const t = useT();
   const [name, setName] = useState('');
   const [teacher, setTeacher] = useState('');
   const [color, setColor] = useState(SUBJECT_COLORS[0]);
@@ -27,7 +30,7 @@ export function SubjectDialog({
   }, [open, subject]);
 
   const save = async () => {
-    const patch = { name: name.trim() || 'Предмет', teacher: teacher.trim(), color, icon };
+    const patch = { name: name.trim() || t(L('Предмет', 'Subject')), teacher: teacher.trim(), color, icon };
     if (subject) await useWorkspace.getState().updateSubject(subject.id, patch);
     else await useWorkspace.getState().createSubject(patch);
     onClose();
@@ -37,15 +40,15 @@ export function SubjectDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title={subject ? 'Редакция на предмет' : 'Нов предмет'}
+      title={subject ? t(L('Редакция на предмет', 'Edit subject')) : t(L('Нов предмет', 'New subject'))}
       width={430}
       footer={
         <>
           <button className="btn" onClick={onClose}>
-            Отказ
+            {t(S.cancel)}
           </button>
           <button className="btn btn-primary" onClick={() => void save()}>
-            Запази
+            {t(S.save)}
           </button>
         </>
       }
@@ -59,13 +62,13 @@ export function SubjectDialog({
             <Icon name={icon} size={22} />
           </span>
           <label className="min-w-0 flex-1">
-            <span className="mb-1 block label">Име</span>
+            <span className="t-label mb-1 block">{t(L('Име', 'Name'))}</span>
             <input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && void save()}
-              placeholder="напр. Математика"
+              placeholder={t(L('напр. Математика', 'e.g. Mathematics'))}
               className="field"
             />
           </label>
@@ -73,13 +76,13 @@ export function SubjectDialog({
 
         <label className="block">
           <span className="mb-1 block label">
-            Преподавател (по избор)
+            {t(L('Преподавател (по избор)', 'Teacher (optional)'))}
           </span>
           <input value={teacher} onChange={(e) => setTeacher(e.target.value)} className="field" />
         </label>
 
         <div>
-          <span className="mb-1.5 block label">Цвят</span>
+          <span className="t-label mb-1.5 block">{t(L('Цвят', 'Colour'))}</span>
           <div className="flex flex-wrap gap-2">
             {SUBJECT_COLORS.map((c) => (
               <button
@@ -98,7 +101,7 @@ export function SubjectDialog({
         </div>
 
         <div>
-          <span className="mb-1.5 block label">Знак</span>
+          <span className="t-label mb-1.5 block">{t(L('Знак', 'Icon'))}</span>
           <div className="flex flex-wrap gap-1.5">
             {SUBJECT_ICONS.map((i) => (
               <button

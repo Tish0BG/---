@@ -2,8 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TimerMode } from '@/types';
 import { useSettings } from '@/state/settingsStore';
-import { MODE_LABEL, formatClock, useTimer, type TimerTab } from '@/state/timerStore';
+import { MODE_LABEL, dayKey, formatClock, statsForDay, useTimer, type TimerTab } from '@/state/timerStore';
 import { usePlanner } from '@/state/plannerStore';
+import { useWorkspace } from '@/state/workspaceStore';
+import { currentStreak } from '@/services/gameService';
+import { useT, useLang, L, clockTime, formatDuration } from '@/i18n';
+import { Button, IconButton, ProgressRing } from '../kit';
 import { clamp } from '@/lib/util';
 import { Icon } from '../Icon';
 import { Ring } from './Ring';
@@ -50,9 +54,19 @@ function Floating({ children }: { children: React.ReactNode }) {
   const [drag, setDrag] = useState<{ left: number; top: number } | null>(null);
   const size = view === 'mini' ? MINI : PANEL;
 
+  /**
+   * On a phone the bottom bar owns the last 58 px and the widget must not sit
+   * on top of it — nor on top of the row a thumb is reaching for.
+   */
+  const phone = window.innerWidth < 768;
+  const floor = phone ? 74 : 8;
   const place = (fraction: { x: number; y: number }) => ({
     left: clamp(fraction.x * (window.innerWidth - size.w), 8, Math.max(8, window.innerWidth - size.w - 8)),
-    top: clamp(fraction.y * (window.innerHeight - size.h), 8, Math.max(8, window.innerHeight - size.h - 8)),
+    top: clamp(
+      fraction.y * (window.innerHeight - size.h),
+      8,
+      Math.max(8, window.innerHeight - size.h - floor),
+    ),
   });
 
   const at = drag ?? place(pos);
@@ -71,7 +85,7 @@ function Floating({ children }: { children: React.ReactNode }) {
       moved = true;
       setDrag({
         left: clamp(start.left + dx, 8, Math.max(8, window.innerWidth - size.w - 8)),
-        top: clamp(start.top + dy, 8, Math.max(8, window.innerHeight - size.h - 8)),
+        top: clamp(start.top + dy, 8, Math.max(8, window.innerHeight - size.h - floor)),
       });
     };
     const up = () => {
@@ -197,12 +211,31 @@ function Panel() {
 
 const ALL_MODES: TimerMode[] = ['work', 'break', 'long'];
 
-/** Distraction-free view: wall clock, the three rings, nothing else. */
+/** The switch at the bottom has room for one word each. */
+const SHORT_MODE: Record<TimerMode, { bg: string; en: string }> = {
+  work: L('Учене', 'Focus'),
+  break: L('Почивка', 'Break'),
+  long: L('Дълга', 'Long'),
+};
+
+/**
+ * Focus mode.
+ *
+ * The whole screen becomes the session: the task being worked on, the time
+ * left, and two buttons. Everything else in the product is gone on purpose —
+ * the point of a focus timer is not to be another screen with navigation on
+ * it. When the block ends the same surface turns into the summary, so the
+ * minutes are visibly banked before anything else is offered.
+ */
 function FullScreen() {
+  const t = useT();
+  const lang = useLang();
   const { mode, running, left, cycle } = useTimer();
   const timer = useSettings((s) => s.timer);
   const activeTaskId = useTimer((s) => s.activeTaskId);
-  const task = usePlanner((s) => s.items.find((t) => t.id === activeTaskId));
+  const lastSession = useTimer((s) => s.lastSession);
+  const task = usePlanner((s) => s.items.find((x) => x.id === activeTaskId));
+  const subject = useWorkspace((s) => s.subjects.find((x) => x.id === task?.subjectId));
   const [now, setNow] = useState(() => new Date());
   const store = useTimer.getState;
 
@@ -216,91 +249,232 @@ function FullScreen() {
   }, []);
 
   const total = timer[mode] * 60;
-  const date = now.toLocaleDateString('bg-BG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const progress = total ? 1 - left / total : 0;
+  const accent = MODE_COLOR[mode];
+  const ring = Math.min(340, Math.max(210, Math.round(window.innerWidth * 0.26)));
+
+  if (lastSession) return <SessionComplete minutes={lastSession.minutes} accent={MODE_COLOR.work} />;
 
   return (
     <div
-      className="fixed inset-0 z-[70] flex flex-col items-center justify-between px-6 py-[clamp(20px,4vh,44px)]"
+      className="fixed inset-0 z-[70] flex flex-col items-center justify-between overflow-hidden px-6 py-[clamp(18px,4vh,40px)]"
       style={{ background: 'var(--c-bg)' }}
     >
-      <button
-        className="icon-btn absolute right-5 top-5 h-9 w-9"
-        onClick={() => store().setView('mini')}
-        title="Изход (Esc)"
-      >
-        <Icon name="shrink" size={18} />
-      </button>
+      {/* the room the session happens in: one soft light in the mode's colour */}
+      <span
+        aria-hidden
+        className="animate-breathe pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          width: ring * 2.6,
+          height: ring * 2.6,
+          background: `radial-gradient(circle, color-mix(in srgb, ${accent} ${running ? 26 : 14}%, transparent) 0%, transparent 68%)`,
+        }}
+      />
 
-      <div className="text-center">
-        <div className="text-[clamp(48px,8vw,92px)] font-extralight leading-none tabular-nums tracking-tighter">
-          {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}
-        </div>
-        <div className="mt-2 text-[clamp(13px,1.5vw,17px)] text-muted">
-          {date.charAt(0).toUpperCase() + date.slice(1)}
-        </div>
-      </div>
+      <header className="relative flex w-full items-center justify-between">
+        <IconButton
+          icon="shrink"
+          label={t(L('Изход (Esc)', 'Exit (Esc)'))}
+          size="lg"
+          onClick={() => store().setView('mini')}
+        />
+        <span className="t-num text-[13px] text-muted">{clockTime(now.getTime(), lang)}</span>
+      </header>
 
-      <div className="flex flex-wrap items-center justify-center gap-[clamp(14px,3.6vw,48px)]">
-        {ALL_MODES.map((m) => {
-          const on = m === mode;
-          return (
-            <button
-              key={m}
-              onClick={() => store().setMode(m)}
-              className="flex cursor-pointer flex-col items-center gap-3 transition-all duration-500"
-              style={{ opacity: on ? 1 : 0.38, transform: on ? 'none' : 'scale(0.88)' }}
-            >
-              <Ring
-                progress={on ? (total ? left / total : 0) : 1}
-                size={Math.min(300, Math.max(120, window.innerWidth * 0.24))}
-                stroke={4.5}
-                color={MODE_COLOR[m]}
-              >
-                <span className="text-[clamp(26px,4.2vw,50px)] font-extralight tabular-nums tracking-tight">
-                  {on ? formatClock(left) : formatClock(timer[m] * 60)}
-                </span>
-              </Ring>
-              <span className={`text-[clamp(12px,1.5vw,17px)] ${on ? 'text-ink' : 'text-muted'}`}>
-                {MODE_LABEL[m]}
+      <div className="relative flex flex-col items-center">
+        <div className="mb-7 flex min-h-[42px] flex-col items-center text-center">
+          {task && (
+            <>
+              <span className="flex items-center gap-2 text-[12.5px] text-muted">
+                {subject && <span className="badge-dot" style={{ background: subject.color }} />}
+                {subject?.name ?? t(L('Фокус сесия', 'Focus session'))}
               </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="flex flex-col items-center gap-4">
-        {task && (
-          <div className="flex items-center gap-1.5 text-[14px] text-muted">
-            <Icon name="target" size={14} />
-            <span className="font-medium text-ink">{task.title}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-6">
-          <button className="icon-btn h-12 w-12" onClick={() => store().reset()} title="Нулирай (R)">
-            <Icon name="refresh" size={20} />
-          </button>
-          <button
-            onClick={() => store().toggleRun()}
-            className="flex h-[84px] w-[84px] cursor-pointer items-center justify-center rounded-full transition-transform active:scale-95"
-            style={{
-              background: `color-mix(in srgb, ${MODE_COLOR[mode]} 16%, transparent)`,
-              color: MODE_COLOR[mode],
-            }}
-          >
-            <Icon name={running ? 'pause' : 'play'} size={30} />
-          </button>
-          <button className="icon-btn h-12 w-12" onClick={() => store().skip()} title="Следващ (S)">
-            <Icon name="skip" size={20} />
-          </button>
+              <span className="mt-1 max-w-[36ch] truncate text-[19px] font-semibold tracking-[-0.02em]">
+                {task.title}
+              </span>
+            </>
+          )}
         </div>
-        <div className="flex gap-1.5">
+
+        <ProgressRing value={progress} size={ring} stroke={5} color={accent} colorTo="var(--c-brand-lift)">
+          <div className="text-center">
+            <div
+              className="t-num font-light leading-none tracking-[-0.04em]"
+              style={{ fontSize: Math.round(ring * 0.27) }}
+            >
+              {formatClock(left)}
+            </div>
+            <div className="mt-3 text-[12.5px] text-muted">{t(MODE_LABEL[mode])}</div>
+          </div>
+        </ProgressRing>
+
+        <div className="mt-7 flex gap-2">
           {Array.from({ length: timer.cycles }, (_, i) => (
             <span
               key={i}
-              className="h-[7px] w-[7px] rounded-full transition-colors"
-              style={{ background: i < cycle ? MODE_COLOR[mode] : 'var(--c-line-strong)' }}
+              className="h-[7px] rounded-full transition-all duration-300"
+              style={{
+                width: i === cycle ? 20 : 7,
+                background: i < cycle ? accent : i === cycle ? accent : 'var(--c-line-strong)',
+                opacity: i <= cycle ? 1 : 0.55,
+              }}
             />
           ))}
+        </div>
+      </div>
+
+      <div className="relative flex flex-col items-center gap-5">
+        <div className="flex items-center gap-4">
+          <IconButton
+            icon="refresh"
+            label={t(L('Нулирай (R)', 'Reset (R)'))}
+            size="lg"
+            onClick={() => store().reset()}
+          />
+          <button
+            onClick={() => store().toggleRun()}
+            className="grid h-[86px] w-[86px] cursor-pointer place-items-center rounded-full text-white transition-transform active:scale-95"
+            style={{ background: accent, boxShadow: `0 12px 40px -12px ${accent}` }}
+            aria-label={t(running ? L('Пауза', 'Pause') : L('Старт', 'Start'))}
+          >
+            <Icon name={running ? 'pause' : 'play'} size={32} fill={!running} />
+          </button>
+          <IconButton
+            icon="skip"
+            label={t(L('Следващ (S)', 'Next (S)'))}
+            size="lg"
+            onClick={() => store().skip()}
+          />
+        </div>
+
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            icon="check"
+            onClick={() => void store().stop()}
+            disabled={mode === 'work' && total - left < 60}
+          >
+            {t(L('Приключи сесията', 'Finish session'))}
+          </Button>
+        </div>
+
+        <div className="segmented w-[300px]">
+          {ALL_MODES.map((m) => (
+            <button key={m} aria-pressed={m === mode} onClick={() => store().setMode(m)}>
+              {t(SHORT_MODE[m])}
+            </button>
+          ))}
+        </div>
+
+        <p className="flex items-center gap-3 text-[11px] text-faint">
+          <span className="flex items-center gap-1">
+            <kbd className="kbd">space</kbd> {t(L('пауза', 'pause'))}
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="kbd">R</kbd> {t(L('нулирай', 'reset'))}
+          </span>
+          <span className="flex items-center gap-1">
+            <kbd className="kbd">esc</kbd> {t(L('изход', 'exit'))}
+          </span>
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * What a finished block looks like. It states the minutes, the XP they are
+ * worth and the streak they keep alive — then offers the break, because the
+ * break is the part people skip.
+ */
+function SessionComplete({ minutes, accent }: { minutes: number; accent: string }) {
+  const t = useT();
+  const lang = useLang();
+  const sessions = useTimer((s) => s.sessions);
+  const goal = useSettings((s) => s.timer.goal);
+  const breakMinutes = useSettings((s) => s.timer.break);
+  const store = useTimer.getState;
+
+  const today = statsForDay(sessions, dayKey());
+  const streak = currentStreak(sessions);
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] grid place-items-center overflow-hidden px-6"
+      style={{ background: 'var(--c-bg)' }}
+    >
+      <span
+        aria-hidden
+        className="animate-breathe pointer-events-none absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+        style={{
+          background: `radial-gradient(circle, color-mix(in srgb, ${accent} 24%, transparent) 0%, transparent 66%)`,
+        }}
+      />
+
+      <div className="animate-rise relative w-full max-w-[420px] text-center">
+        <span
+          className="animate-pop mx-auto grid h-[88px] w-[88px] place-items-center rounded-full text-white"
+          style={{ background: accent, boxShadow: `0 16px 50px -16px ${accent}` }}
+        >
+          <Icon name="check" size={40} strokeWidth={2.6} />
+        </span>
+
+        <h1 className="t-h1 mt-6">{t(L('Сесията приключи', 'Session complete'))}</h1>
+        <p className="mt-2 text-[15px] text-muted">
+          {t(
+            L(
+              `${formatDuration(minutes, lang)} фокус. Записано в статистиката.`,
+              `${formatDuration(minutes, lang)} of focus, logged.`,
+            ),
+          )}
+        </p>
+
+        <div className="mt-7 grid grid-cols-3 gap-2">
+          {[
+            { icon: 'bolt', value: `+${minutes}`, label: 'XP', tone: 'var(--c-brand)' },
+            {
+              icon: 'timer',
+              value: formatDuration(today.minutes, lang),
+              label: t(L(`от ${goal} мин`, `of ${goal} min`)),
+              tone: 'var(--c-aurora)',
+            },
+            {
+              icon: 'flame',
+              value: String(streak),
+              label: t(streak === 1 ? L('ден поред', 'day streak') : L('дни поред', 'day streak')),
+              tone: 'var(--c-ember)',
+            },
+          ].map((cell) => (
+            <div key={cell.label} className="card-quiet p-3">
+              <Icon name={cell.icon} size={15} style={{ color: cell.tone }} className="mx-auto" />
+              <div className="t-num mt-2 text-[17px] font-semibold leading-none">{cell.value}</div>
+              <div className="mt-1.5 text-[11px] text-muted">{cell.label}</div>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-7 flex flex-wrap items-center justify-center gap-2">
+          <Button
+            variant="primary"
+            size="lg"
+            icon="coffee"
+            onClick={() => {
+              store().clearLast();
+              store().setMode('break', true);
+            }}
+          >
+            {t(L(`Почивка ${breakMinutes} мин`, `Break ${breakMinutes} min`))}
+          </Button>
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => {
+              store().clearLast();
+              store().setView('hidden');
+            }}
+          >
+            {t(L('Готово', 'Done'))}
+          </Button>
         </div>
       </div>
     </div>

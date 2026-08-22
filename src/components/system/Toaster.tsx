@@ -1,4 +1,5 @@
 import { useToasts, type ToastTone } from '@/state/toastStore';
+import { useT, L } from '@/i18n';
 import { Icon } from '../Icon';
 
 const TONE: Record<ToastTone, { icon: string; color: string }> = {
@@ -12,6 +13,7 @@ const TONE: Record<ToastTone, { icon: string; color: string }> = {
  * palette, which is where the thumb lives while writing.
  */
 export function Toaster() {
+  const t = useT();
   const toasts = useToasts((s) => s.toasts);
   if (!toasts.length) return null;
 
@@ -21,35 +23,46 @@ export function Toaster() {
       role="status"
       aria-live="polite"
     >
-      {toasts.map((t) => {
-        const tone = TONE[t.tone];
+      {toasts.map((toast) => {
+        const tone = TONE[toast.tone];
         return (
           <div
-            key={t.id}
-            className="panel animate-rise pointer-events-auto flex w-full max-w-[380px] items-start gap-2.5 p-3"
-            style={{ boxShadow: 'var(--shadow-float)' }}
+            key={toast.id}
+            className="animate-rise pointer-events-auto flex w-full max-w-[380px] items-start gap-3 rounded-[14px] p-3"
+            style={{
+              background: 'var(--c-surface)',
+              border: '1px solid var(--c-line)',
+              boxShadow: 'var(--shadow-float)',
+            }}
           >
-            <Icon name={tone.icon} size={16} className="mt-px shrink-0" style={{ color: tone.color }} />
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px]"
+              style={{ background: `color-mix(in srgb, ${tone.color} 14%, transparent)`, color: tone.color }}
+            >
+              <Icon name={tone.icon} size={15} strokeWidth={2} />
+            </span>
             <div className="min-w-0 flex-1">
-              <div className="text-[13px] font-medium leading-snug">{t.title}</div>
-              {t.detail && <div className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{t.detail}</div>}
+              <div className="text-[13px] font-medium leading-snug">{toast.title}</div>
+              {toast.detail && (
+                <div className="mt-0.5 text-[11.5px] leading-relaxed text-muted">{toast.detail}</div>
+              )}
             </div>
-            {t.action && (
+            {toast.action && (
               <button
-                className="btn h-7 shrink-0 px-2 text-[12px]"
+                className="btn btn-sm shrink-0"
                 style={{ color: 'var(--c-accent)' }}
                 onClick={() => {
-                  t.action?.run();
-                  useToasts.getState().dismiss(t.id);
+                  toast.action?.run();
+                  useToasts.getState().dismiss(toast.id);
                 }}
               >
-                {t.action.label}
+                {toast.action.label}
               </button>
             )}
             <button
               className="icon-btn h-6 w-6 shrink-0"
-              onClick={() => useToasts.getState().dismiss(t.id)}
-              aria-label="Затвори"
+              onClick={() => useToasts.getState().dismiss(toast.id)}
+              aria-label={t(L('Затвори', 'Close'))}
             >
               <Icon name="x" size={13} />
             </button>

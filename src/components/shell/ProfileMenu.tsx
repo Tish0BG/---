@@ -6,9 +6,11 @@ import { useSettings } from '@/state/settingsStore';
 import { useTimer, dayKey, statsForDay, streak } from '@/state/timerStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover } from '../ui';
+import { useT, L } from '@/i18n';
 
 /** Avatar plus the two numbers a student checks most: today and the streak. */
 export function ProfileMenu() {
+  const t = useT();
   const profile = useWorkspace((s) => s.profile);
   const sessions = useTimer((s) => s.sessions);
   const theme = useSettings((s) => s.theme);
@@ -41,7 +43,7 @@ export function ProfileMenu() {
               <span
                 className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full"
                 style={{ background: 'var(--c-surface)' }}
-                title={syncing ? 'Синхронизира се' : sync.error ? 'Проблем със синхронизацията' : 'Синхронизирано'}
+                title={syncing ? t(L("Синхронизира се", "Syncing")) : sync.error ? t(L("Проблем със синхронизацията", "Sync problem")) : t(L("Синхронизирано", "Synced"))}
               >
                 <span
                   className={`h-2 w-2 rounded-full ${syncing ? 'animate-pulse' : ''}`}
@@ -50,7 +52,7 @@ export function ProfileMenu() {
               </span>
             )}
           </span>
-          <span className="hidden text-[13px] font-medium sm:block">{profile.name || 'Профил'}</span>
+          <span className="hidden text-[13px] font-medium sm:block">{profile.name || t(L("Профил", "Profile"))}</span>
           <Icon name="chevronDown" size={13} className="text-faint" />
         </button>
       )}
@@ -65,22 +67,39 @@ export function ProfileMenu() {
               {profile.avatar}
             </span>
             <div className="min-w-0">
-              <div className="truncate text-[13px] font-medium">{profile.name || 'Без име'}</div>
+              <div className="truncate text-[13px] font-medium">{profile.name || t(L("Без име", "Unnamed"))}</div>
               <div className="truncate text-[11px] text-muted">
-                {user?.email ?? ([profile.grade, profile.school].filter(Boolean).join(' · ') || 'Настрой профила си')}
+                {user?.email ?? ([profile.grade, profile.school].filter(Boolean).join(' · ') || t(L("Настрой профила си", "Set up your profile")))}
               </div>
             </div>
           </div>
 
           <div className="mb-1 grid grid-cols-2 gap-1.5 px-2">
-            <Stat value={`${today.minutes}`} label="мин днес" />
-            <Stat value={`${days}`} label="дни поред" />
+            <Stat value={`${today.minutes}`} label={t(L("мин днес", "min today"))} />
+            <Stat value={`${days}`} label={t(L("дни поред", "day streak"))} />
           </div>
 
           <MenuSep />
           <MenuItem
+            icon="user"
+            label={t(L('Моят профил', 'My profile'))}
+            onClick={() => {
+              useApp.getState().go('profile');
+              close();
+            }}
+          />
+          <MenuItem
+            icon="trophy"
+            label={t(L('Постижения', 'Achievements'))}
+            onClick={() => {
+              useApp.getState().go('achievements');
+              close();
+            }}
+          />
+          <MenuSep />
+          <MenuItem
             icon="cloud"
-            label={user ? (sync.error ? 'Проблем със синхронизацията' : 'Синхронизация') : 'Влез в профил'}
+            label={user ? (sync.error ? t(L("Проблем със синхронизацията", "Sync problem")) : t(L("Синхронизация", "Sync"))) : t(L("Влез в профил", "Sign in"))}
             shortcut={user ? (syncing ? '…' : sync.error ? '!' : '✓') : undefined}
             onClick={() => {
               useApp.getState().setAuth(true);
@@ -89,7 +108,7 @@ export function ProfileMenu() {
           />
           <MenuItem
             icon="user"
-            label="Профил и настройки"
+            label={t(L("Профил и настройки", "Profile and settings"))}
             onClick={() => {
               useApp.getState().setSettings(true);
               close();
@@ -97,12 +116,12 @@ export function ProfileMenu() {
           />
           <MenuItem
             icon={theme === 'dark' ? 'sun' : 'moon'}
-            label={theme === 'dark' ? 'Светла тема' : 'Тъмна тема'}
+            label={theme === 'dark' ? t(L("Светла тема", "Light theme")) : t(L("Тъмна тема", "Dark theme"))}
             onClick={() => setSetting('theme', theme === 'dark' ? 'light' : 'dark')}
           />
           <MenuItem
             icon="timer"
-            label="Фокус таймер"
+            label={t(L("Фокус таймер", "Focus timer"))}
             shortcut="⌥T"
             onClick={() => {
               useTimer.getState().toggleWidget();

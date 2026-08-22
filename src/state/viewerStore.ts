@@ -10,7 +10,7 @@ import type {
   SaveStatus,
   ToolId,
 } from '@/types';
-import { PdfSession, type PageSize } from '@/services/pdfService';
+import type { PageSize } from '@/services/pdfService';
 import type { PageSource } from '@/services/pageSource';
 import {
   BoardSession,
@@ -317,6 +317,7 @@ export const useViewer = create<ViewerStore>((set, get) => {
             bytes = (await fetchDocumentFile(docId)) ?? undefined;
           }
           if (!bytes) throw new Error('Файлът на документа липсва в хранилището.');
+          const { PdfSession } = await import('@/services/pdfService');
           session = await PdfSession.open(bytes);
         }
 

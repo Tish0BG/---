@@ -4,6 +4,7 @@ import { BRAND } from '@/brand';
 import { PlauviaMark, PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
+import { useT, useLang, L } from '@/i18n';
 
 type Tab = 'signin' | 'signup';
 
@@ -17,6 +18,7 @@ type Tab = 'signin' | 'signup';
  * in settings.
  */
 export function AuthScreen({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const configured = useAuth((s) => s.configured);
   const awaiting = useAuth((s) => s.awaitingConfirm);
 
@@ -28,8 +30,8 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
         <button
           className="icon-btn absolute right-4 top-4"
           onClick={onClose}
-          aria-label="Затвори"
-          title="Продължи без профил"
+          aria-label={t(L('Затвори', 'Close'))}
+          title={t(L('Продължи без профил', 'Continue without an account'))}
         >
           <Icon name="x" size={18} />
         </button>
@@ -46,11 +48,13 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
 
 /** The half of the screen that explains why an account is worth having. */
 function Aside() {
+  const t = useT();
+  const lang = useLang();
   const points = [
-    { icon: 'drive', text: 'Учебниците и дъските ти — и на телефона' },
-    { icon: 'pencil', text: 'Бележките се сливат сами, по-новото печели' },
-    { icon: 'cards', text: 'Картите и планерът вървят с теб' },
-    { icon: 'cloud', text: 'Твоя собствена база — никой друг няма достъп' },
+    { icon: 'drive', text: L('Учебниците и дъските ти — и на телефона', 'Your textbooks and boards, on your phone too') },
+    { icon: 'pencil', text: L('Бележките се сливат сами, по-новото печели', 'Notes merge on their own — the newer write wins') },
+    { icon: 'cards', text: L('Картите и задачите вървят с теб', 'Cards and tasks travel with you') },
+    { icon: 'cloud', text: L('Твоя собствена база — никой друг няма достъп', 'Your own database — nobody else has a key') },
   ];
   return (
     <aside
@@ -72,21 +76,25 @@ function Aside() {
           className="font-semibold leading-[1.12]"
           style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
         >
-          {BRAND.tagline.bg}
+          {BRAND.tagline[lang]}
         </h2>
         <ul className="mt-6 space-y-3">
           {points.map((p) => (
-            <li key={p.text} className="flex items-start gap-2.5 text-[13.5px]" style={{ opacity: 0.92 }}>
+            <li key={p.text.en} className="flex items-start gap-2.5 text-[13.5px]" style={{ opacity: 0.92 }}>
               <Icon name={p.icon} size={16} className="mt-px shrink-0" />
-              {p.text}
+              {t(p.text)}
             </li>
           ))}
         </ul>
       </div>
 
       <p className="text-[11.5px] leading-relaxed" style={{ opacity: 0.75 }}>
-        Профилът е по избор. Без него приложението работи точно толкова добре — данните просто
-        остават на това устройство.
+        {t(
+          L(
+            'Профилът е по избор. Без него приложението работи точно толкова добре — данните просто остават на това устройство.',
+            'An account is optional. Without one the app works just as well — the data simply stays on this device.',
+          ),
+        )}
       </p>
     </aside>
   );
@@ -95,6 +103,7 @@ function Aside() {
 /* ------------------------------------------------------------------ forms */
 
 function Forms({ onClose }: { onClose: () => void }) {
+  const t = useT();
   const [tab, setTab] = useState<Tab>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -139,22 +148,22 @@ function Forms({ onClose }: { onClose: () => void }) {
         className="font-semibold leading-[1.12]"
         style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
       >
-        {forgot ? 'Нова парола' : tab === 'signin' ? 'Влез в профила си' : 'Създай профил'}
+        {t(forgot ? L('Нова парола', 'New password') : tab === 'signin' ? L('Влез в профила си', 'Sign in') : L('Създай профил', 'Create an account'))}
       </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
         {forgot
-          ? 'Ще ти пратим писмо с връзка за смяна на паролата.'
+          ? t(L('Ще ти пратим писмо с връзка за смяна на паролата.', 'We will send you a link to set a new password.'))
           : tab === 'signin'
-            ? 'За да намериш библиотеката си и тук.'
-            : 'Отнема минута и не иска нищо освен имейл.'}
+            ? t(L('За да намериш библиотеката си и тук.', 'So your library is here too.'))
+            : t(L('Отнема минута и не иска нищо освен имейл.', 'It takes a minute and asks for nothing but an e-mail.'))}
       </p>
 
       {!forgot && (
         <div className="segmented mt-5">
           {(
             [
-              ['signin', 'Вход'],
-              ['signup', 'Регистрация'],
+              ['signin', t(L('Вход', 'Sign in'))],
+              ['signup', t(L('Регистрация', 'Sign up'))],
             ] as const
           ).map(([id, label]) => (
             <button
@@ -179,18 +188,18 @@ function Forms({ onClose }: { onClose: () => void }) {
         }}
       >
         {tab === 'signup' && !forgot && (
-          <Field label="Име">
+          <Field label={t(L('Име', 'Name'))}>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               className="field h-10"
-              placeholder="Как да ти казвам"
+              placeholder={t(L('Как да ти казвам', 'What should we call you'))}
               autoComplete="name"
             />
           </Field>
         )}
 
-        <Field label="Имейл">
+        <Field label={t(L('Имейл', 'E-mail'))}>
           <input
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -203,21 +212,21 @@ function Forms({ onClose }: { onClose: () => void }) {
         </Field>
 
         {!forgot && (
-          <Field label="Парола">
+          <Field label={t(L('Парола', 'Password'))}>
             <span className="relative block">
               <input
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="field h-10 pr-10"
                 type={show ? 'text' : 'password'}
-                placeholder="Поне 8 знака"
+                placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
                 autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
               />
               <button
                 type="button"
                 className="icon-btn absolute right-1 top-1 h-8 w-8"
                 onClick={() => setShow((v) => !v)}
-                aria-label={show ? 'Скрий паролата' : 'Покажи паролата'}
+                aria-label={t(show ? L('Скрий паролата', 'Hide the password') : L('Покажи паролата', 'Show the password'))}
               >
                 <Icon name={show ? 'eyeOff' : 'eye'} size={15} />
               </button>
@@ -230,7 +239,7 @@ function Forms({ onClose }: { onClose: () => void }) {
 
         <button className="btn btn-primary h-10 w-full" disabled={!ready} type="submit">
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {forgot ? 'Изпрати писмо' : tab === 'signin' ? 'Влез' : 'Създай профил'}
+          {t(forgot ? L('Изпрати писмо', 'Send the e-mail') : tab === 'signin' ? L('Влез', 'Sign in') : L('Създай профил', 'Create the account'))}
         </button>
       </form>
 
@@ -242,10 +251,10 @@ function Forms({ onClose }: { onClose: () => void }) {
             setError(null);
           }}
         >
-          {forgot ? '← Назад към входа' : 'Забравена парола?'}
+          {t(forgot ? L('← Назад към входа', '← Back to sign in') : L('Забравена парола?', 'Forgotten your password?'))}
         </button>
         <button className="cursor-pointer text-muted underline-offset-2 hover:underline" onClick={onClose}>
-          Продължи без профил
+          {t(L('Продължи без профил', 'Continue without an account'))}
         </button>
       </div>
 
@@ -257,6 +266,7 @@ function Forms({ onClose }: { onClose: () => void }) {
 
 /** Shown when the project requires a confirmation e-mail. */
 function ConfirmStep({ email }: { email: string }) {
+  const t = useT();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const notice = useAuth((s) => s.notice);
@@ -273,12 +283,15 @@ function ConfirmStep({ email }: { email: string }) {
         className="mt-4 font-semibold leading-[1.12]"
         style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
       >
-        Провери пощата си
+        {t(L('Провери пощата си', 'Check your inbox'))}
       </h1>
       <p className="mt-2 text-[13px] leading-relaxed text-muted">
-        Профилът за <b className="text-ink">{email}</b> е създаден, но този проект иска потвърждение.
-        Докато не отвориш връзката от писмото, влизането няма да мине — затова приложението още
-        казва, че не си влязъл.
+        {t(
+          L(
+            `Профилът за ${email} е създаден, но този проект иска потвърждение. Докато не отвориш връзката от писмото, влизането няма да мине.`,
+            `The account for ${email} exists, but this project asks for confirmation. Until you open the link in the e-mail, signing in will not go through.`,
+          ),
+        )}
       </p>
 
       <div className="mt-5 space-y-2">
@@ -297,10 +310,10 @@ function ConfirmStep({ email }: { email: string }) {
           }}
         >
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          Изпрати писмото отново
+          {t(L('Изпрати писмото отново', 'Send the e-mail again'))}
         </button>
         <button className="btn h-10 w-full" onClick={() => useAuth.getState().clearNotice()}>
-          Потвърдих — към входа
+          {t(L('Потвърдих — към входа', 'Confirmed — go to sign in'))}
         </button>
       </div>
 
@@ -311,10 +324,13 @@ function ConfirmStep({ email }: { email: string }) {
       )}
 
       <p className="mt-5 rounded-xl p-3 text-left text-[11.5px] leading-relaxed text-muted" style={{ background: 'var(--c-surface-2)' }}>
-        <b className="text-ink">Съвет за личен профил:</b> изключи изискването и регистрацията ще влиза
-        веднага. Supabase → <b>Authentication</b> → <b>Sign In / Providers</b> → <b>Email</b> → изключи
-        <b> „Confirm email“</b>. Вградената поща на Supabase праща и по няколко писма на час, така че
-        често е и по-надеждно.
+        <b className="text-ink">{t(L('Съвет за личен профил:', 'Tip for a personal project:'))}</b>{' '}
+        {t(
+          L(
+            'изключи изискването и регистрацията влиза веднага. Supabase → Authentication → Sign In / Providers → Email → изключи „Confirm email“.',
+            'turn the requirement off and sign-up goes straight through. Supabase → Authentication → Sign In / Providers → Email → switch off "Confirm email".',
+          ),
+        )}
       </p>
     </div>
   );
@@ -323,6 +339,7 @@ function ConfirmStep({ email }: { email: string }) {
 /* ------------------------------------------------------------------ setup */
 
 function Setup() {
+  const t = useT();
   const fixed = useAuth((s) => s.fixed);
   const [url, setUrl] = useState('');
   const [key, setKey] = useState('');
@@ -330,7 +347,12 @@ function Setup() {
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  if (fixed) return <p className="text-[13px] text-muted">Облакът е зададен при публикуването.</p>;
+  if (fixed)
+    return (
+      <p className="text-[13px] text-muted">
+        {t(L('Облакът е зададен при публикуването.', 'The cloud was configured at deploy time.'))}
+      </p>
+    );
 
   return (
     <>
@@ -338,16 +360,20 @@ function Setup() {
         className="font-semibold leading-[1.12]"
         style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
       >
-        Свържи база
+        {t(L('Свържи база', 'Connect a database'))}
       </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-        За да пренасяш библиотеката между устройства, приложението има нужда от собствена база.
-        Supabase дава безплатен план. Прави се веднъж, за около пет минути.
+        {t(
+          L(
+            'За да пренасяш библиотеката между устройства, приложението има нужда от собствена база. Supabase дава безплатен план. Прави се веднъж, за около пет минути.',
+            'To carry your library between devices the app needs a database of its own. Supabase has a free plan. It is a one-off, about five minutes.',
+          ),
+        )}
       </p>
 
       <ol className="mt-5 space-y-2.5 text-[12.5px]">
         <Step n={1}>
-          Създай проект в{' '}
+          {t(L('Създай проект в', 'Create a project on'))}{' '}
           <a
             href="https://supabase.com/dashboard"
             target="_blank"
@@ -360,7 +386,8 @@ function Setup() {
           .
         </Step>
         <Step n={2}>
-          <b>SQL Editor → New query</b>, постави скрипта и натисни <b>Run</b>.
+          <b>SQL Editor → New query</b>, {t(L('постави скрипта и натисни', 'paste the script and press'))}{' '}
+          <b>Run</b>.
           <button
             className="btn btn-outline mt-1.5 w-full"
             onClick={() =>
@@ -371,14 +398,15 @@ function Setup() {
             }
           >
             <Icon name={copied ? 'check' : 'copy'} size={14} />
-            {copied ? 'Копирано' : 'Копирай SQL скрипта'}
+            {t(copied ? L('Копирано', 'Copied') : L('Копирай SQL скрипта', 'Copy the SQL script'))}
           </button>
         </Step>
         <Step n={3}>
-          <b>Storage → New bucket</b> → име <code>library</code>, остави го private.
+          <b>Storage → New bucket</b> → {t(L('име', 'name'))} <code>library</code>,{' '}
+          {t(L('остави го private.', 'leave it private.'))}
         </Step>
         <Step n={4}>
-          <b>Project Settings → API</b> → копирай адреса и <b>publishable</b> ключа тук.
+          <b>Project Settings → API</b> → {t(L('копирай адреса и publishable ключа тук.', 'copy the URL and the publishable key here.'))}
         </Step>
       </ol>
 
@@ -397,7 +425,7 @@ function Setup() {
             value={key}
             onChange={(e) => setKey(e.target.value)}
             className="field h-10 font-mono text-[12px]"
-            placeholder="sb_publishable_… или eyJhbGciOi…"
+            placeholder={t(L('sb_publishable_… или eyJhbGciOi…', 'sb_publishable_… or eyJhbGciOi…'))}
             spellCheck={false}
           />
         </Field>
@@ -417,13 +445,21 @@ function Setup() {
           }}
         >
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          Свържи
+          {t(L('Свържи', 'Connect'))}
         </button>
       </div>
 
       <p className="mt-3 text-[11px] leading-relaxed text-muted">
-        Адресът и publishable ключът са публични по замисъл — защитата е в правилата на базата.
-        <b className="text-ink"> Тайният (secret) ключ никога не влиза тук.</b>
+        {t(
+          L(
+            'Адресът и publishable ключът са публични по замисъл — защитата е в правилата на базата.',
+            'The URL and the publishable key are public by design — the protection lives in the database rules.',
+          ),
+        )}
+        <b className="text-ink">
+          {' '}
+          {t(L('Тайният (secret) ключ никога не влиза тук.', 'The secret key never goes in here.'))}
+        </b>
       </p>
 
     </>

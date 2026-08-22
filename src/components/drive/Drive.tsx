@@ -4,20 +4,23 @@ import { folderPath, progressOf, useLibrary } from '@/state/libraryStore';
 import { useViewer } from '@/state/viewerStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
-import { formatBytes, formatDate } from '@/lib/util';
+import { formatBytes } from '@/lib/util';
 import { notify } from '@/state/toastStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
 import { SubjectDot } from '../subjects/SubjectDot';
+import { useT, useLang, L, type Msg, shortDate } from '@/i18n';
+import { S } from '@/i18n/strings';
+import { Button, Card, EmptyState as KitEmpty } from '../kit';
 
 type Scope = 'all' | 'pdf' | 'board' | 'starred' | 'trash';
 
-const SCOPES: { id: Scope; label: string; icon: string }[] = [
-  { id: 'all', label: 'Всички', icon: 'drive' },
-  { id: 'pdf', label: 'Материали', icon: 'file' },
-  { id: 'board', label: 'Дъски', icon: 'board' },
-  { id: 'starred', label: 'Със звезда', icon: 'star' },
-  { id: 'trash', label: 'Кошче', icon: 'trash' },
+const SCOPES: { id: Scope; label: Msg; icon: string }[] = [
+  { id: 'all', label: L('Всички', 'All'), icon: 'drive' },
+  { id: 'pdf', label: L('Материали', 'Materials'), icon: 'file' },
+  { id: 'board', label: L('Дъски', 'Boards'), icon: 'board' },
+  { id: 'starred', label: L('Със звезда', 'Starred'), icon: 'star' },
+  { id: 'trash', label: L('Кошче', 'Bin'), icon: 'trash' },
 ];
 
 /**
@@ -26,6 +29,7 @@ const SCOPES: { id: Scope; label: string; icon: string }[] = [
  * actions, stars and a bin you can get things back out of.
  */
 export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
+  const t = useT();
   const {
     folders,
     documents,
@@ -120,13 +124,13 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
         }}
       />
 
-      <div className="mx-auto max-w-6xl px-5 py-6 sm:px-8">
+      <div className="mx-auto max-w-[1220px] px-4 py-5 sm:px-7 sm:py-7">
         {/* ------------------------------------------------------- header */}
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
           <div className="min-w-0">
             <div className="flex items-center gap-1 text-[12px] text-muted">
               <button className="cursor-pointer hover:text-ink" onClick={() => setActiveFolder(null)}>
-                Библиотека
+                {t(S.library)}
               </button>
               {path.map((f) => (
                 <span key={f.id} className="flex items-center gap-1">
@@ -137,33 +141,37 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                 </span>
               ))}
             </div>
-            <h1
-              className="mt-0.5 font-semibold leading-[1.12]"
-              style={{ fontSize: 'var(--text-section)', letterSpacing: 'var(--track-section)' }}
-            >
-              {path.at(-1)?.name ?? 'Библиотека'}
-            </h1>
+            <h1 className="t-h1 mt-1">{path.at(-1)?.name ?? t(S.library)}</h1>
+            <p className="mt-1.5 text-[13px] text-muted">
+              {t(
+                L(
+                  `${documents.filter((d) => !d.deletedAt).length} материала · ${formatBytes(totalBytes)}`,
+                  `${documents.filter((d) => !d.deletedAt).length} items · ${formatBytes(totalBytes)}`,
+                ),
+              )}
+            </p>
           </div>
 
           <div className="flex items-center gap-2">
-            <button className="btn h-9" onClick={() => void createFolder('Нова папка', activeFolderId)}>
-              <Icon name="folderPlus" size={16} />
-              <span className="hidden lg:inline">Папка</span>
-            </button>
-            <button className="btn h-9" onClick={onNewBoard}>
-              <Icon name="board" size={16} />
-              <span className="hidden sm:inline">Нова дъска</span>
-            </button>
-            <button className="btn btn-primary h-9" onClick={() => inputRef.current?.click()}>
-              <Icon name="upload" size={16} />
-              <span className="hidden sm:inline">Качи PDF</span>
-            </button>
+            <Button
+              variant="outline"
+              icon="folderPlus"
+              onClick={() => void createFolder(t(L('Нова папка', 'New folder')), activeFolderId)}
+            >
+              <span className="hidden lg:inline">{t(L('Папка', 'Folder'))}</span>
+            </Button>
+            <Button variant="outline" icon="board" onClick={onNewBoard}>
+              <span className="hidden sm:inline">{t(L('Нова дъска', 'New board'))}</span>
+            </Button>
+            <Button variant="primary" icon="upload" onClick={() => inputRef.current?.click()}>
+              <span className="hidden sm:inline">{t(L('Качи PDF', 'Upload PDF'))}</span>
+            </Button>
           </div>
         </div>
 
         {/* -------------------------------------------------------- toolbar */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: 'var(--c-surface-3)' }}>
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <div className="segmented">
             {SCOPES.map((s) => (
               <button
                 key={s.id}
@@ -172,15 +180,10 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   setSelected(new Set());
                 }}
                 aria-pressed={scope === s.id}
-                className={`flex cursor-pointer items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[12px] transition-colors ${
-                  scope === s.id
-                    ? 'bg-surface font-medium shadow-[var(--shadow-sm)]'
-                    : 'text-muted hover:text-ink'
-                }`}
-                style={scope === s.id ? { color: 'var(--c-text)' } : undefined}
+                className="flex items-center justify-center gap-1.5"
               >
                 <Icon name={s.icon} size={13} />
-                <span className="hidden sm:inline">{s.label}</span>
+                <span className="hidden sm:inline">{t(s.label)}</span>
                 {s.id === 'trash' && trashCount > 0 && (
                   <span className="tabular-nums text-faint">{trashCount}</span>
                 )}
@@ -197,8 +200,8 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Търси в библиотеката…"
-              className="field h-9 pl-8"
+              placeholder={t(L('Търси в библиотеката…', 'Search the library…'))}
+              className="field pl-8"
             />
           </div>
 
@@ -206,9 +209,9 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
             width={190}
             align="end"
             trigger={({ toggle, ref }) => (
-              <button ref={ref} className="btn h-9" onClick={toggle}>
+              <button ref={ref} className="btn btn-outline" onClick={toggle}>
                 <Icon name="filter" size={14} />
-                <span className="hidden lg:inline">{SORT_LABELS[sort]}</span>
+                <span className="hidden lg:inline">{t(SORT_LABELS[sort])}</span>
               </button>
             )}
           >
@@ -216,7 +219,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
               (Object.keys(SORT_LABELS) as (keyof typeof SORT_LABELS)[]).map((id) => (
                 <MenuItem
                   key={id}
-                  label={SORT_LABELS[id]}
+                  label={t(SORT_LABELS[id])}
                   active={sort === id}
                   onClick={() => {
                     setSetting('driveSort', id);
@@ -227,15 +230,14 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
             }
           </Popover>
 
-          <div className="flex gap-0.5 rounded-lg p-0.5" style={{ background: 'var(--c-surface-3)' }}>
+          <div className="segmented">
             {(['grid', 'list'] as const).map((v) => (
               <button
                 key={v}
                 onClick={() => setSetting('driveView', v)}
-                className={`cursor-pointer rounded-md px-2 py-1.5 transition-colors ${
-                  view === v ? 'bg-surface shadow-[var(--shadow-panel)]' : 'text-muted'
-                }`}
-                aria-label={v === 'grid' ? 'Решетка' : 'Списък'}
+                aria-pressed={view === v}
+                className="!flex-none px-2.5"
+                aria-label={v === 'grid' ? t(L('Решетка', 'Grid')) : t(L('Списък', 'List'))}
               >
                 <Icon name={v === 'grid' ? 'grid' : 'table'} size={14} />
               </button>
@@ -246,7 +248,9 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
         {/* ------------------------------------------------- selection bar */}
         {selectedDocs.length > 0 && (
           <div className="panel mb-3 flex flex-wrap items-center gap-2 px-3 py-2">
-            <span className="text-[12px] text-muted">{selectedDocs.length} избрани</span>
+            <span className="text-[12.5px] text-muted">
+              {t(L(`${selectedDocs.length} избрани`, `${selectedDocs.length} selected`))}
+            </span>
             <div className="mx-1 h-5 w-px bg-line" />
             {scope === 'trash' ? (
               <>
@@ -258,20 +262,20 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   }}
                 >
                   <Icon name="restore" size={14} />
-                  Възстанови
+                  {t(L('Възстанови', 'Restore'))}
                 </button>
                 <button
                   className="btn"
                   style={{ color: 'var(--c-danger)' }}
                   onClick={() =>
-                    confirm(`Да изтрия ли окончателно ${selectedDocs.length} елемента?`, () => {
+                    confirm(t(L(`Да изтрия ли окончателно ${selectedDocs.length} елемента?`, `Permanently delete ${selectedDocs.length} items?`)), () => {
                       void useLibrary.getState().purgeDocuments(selectedDocs.map((d) => d.id));
                       setSelected(new Set());
                     })
                   }
                 >
                   <Icon name="trash" size={14} />
-                  Изтрий завинаги
+                  {t(L('Изтрий завинаги', 'Delete for good'))}
                 </button>
               </>
             ) : (
@@ -281,14 +285,14 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   trigger={({ toggle, ref }) => (
                     <button ref={ref} className="btn" onClick={toggle}>
                       <Icon name="layers" size={14} />
-                      Предмет
+                      {t(S.subject)}
                     </button>
                   )}
                 >
                   {(close) => (
                     <>
                       <MenuItem
-                        label="Без предмет"
+                        label={t(S.noSubject)}
                         onClick={() => {
                           void useLibrary.getState().setSubject([...selected], null);
                           close();
@@ -313,7 +317,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   trigger={({ toggle, ref }) => (
                     <button ref={ref} className="btn" onClick={toggle}>
                       <Icon name="folder" size={14} />
-                      Премести
+                      {t(L('Премести', 'Move'))}
                     </button>
                   )}
                 >
@@ -321,7 +325,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                     <>
                       <MenuItem
                         icon="home"
-                        label="Библиотека"
+                        label={t(S.library)}
                         onClick={() => {
                           selectedDocs.forEach((d) => void useLibrary.getState().moveDocument(d.id, null));
                           close();
@@ -348,20 +352,20 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                     const gone = selectedDocs.map((d) => d.id);
                     gone.forEach((id) => void useLibrary.getState().deleteDocument(id));
                     notify.undo(
-                      gone.length === 1 ? 'Преместено в кошчето' : `${gone.length} в кошчето`,
-                      'Върни',
+                      t(gone.length === 1 ? L('Преместено в кошчето', 'Moved to the bin') : L(`${gone.length} в кошчето`, `${gone.length} moved to the bin`)),
+                      t(L('Върни', 'Undo')),
                       () => gone.forEach((id) => void useLibrary.getState().restoreDocument(id)),
                     );
                     setSelected(new Set());
                   }}
                 >
                   <Icon name="trash" size={14} />
-                  В кошчето
+                  {t(L('В кошчето', 'To the bin'))}
                 </button>
               </>
             )}
             <button className="btn ml-auto" onClick={() => setSelected(new Set())}>
-              Отказ
+              {t(S.cancel)}
             </button>
           </div>
         )}
@@ -369,19 +373,26 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
         {importing && (
           <div className="panel mb-4 flex items-center gap-3 px-4 py-3 text-[13px]">
             <Icon name="refresh" size={15} className="animate-spin text-accent" />
-            Импортиране на {importing.current} ({importing.done + 1}/{importing.total})
+            {t(L('Внасям', 'Importing'))} {importing.current} ({importing.done + 1}/{importing.total})
           </div>
         )}
 
         {scope === 'trash' && trashCount > 0 && (
           <div className="mb-3 flex items-center justify-between rounded-lg px-3 py-2 text-[12px]" style={{ background: 'var(--c-surface-2)' }}>
-            <span className="text-muted">Елементите в кошчето не заемат по-малко място, докато не ги изтриеш.</span>
+            <span className="text-muted">
+              {t(L('Елементите в кошчето заемат място, докато не ги изтриеш.', 'Items in the bin still take up space until they are deleted.'))}
+            </span>
             <button
               className="cursor-pointer font-medium"
               style={{ color: 'var(--c-danger)' }}
-              onClick={() => confirm('Да изпразня ли кошчето? Това е необратимо.', () => void useLibrary.getState().emptyTrash())}
+              onClick={() =>
+                confirm(
+                  t(L('Да изпразня ли кошчето? Това е необратимо.', 'Empty the bin? This cannot be undone.')),
+                  () => void useLibrary.getState().emptyTrash(),
+                )
+              }
             >
-              Изпразни
+              {t(L('Изпразни', 'Empty'))}
             </button>
           </div>
         )}
@@ -389,7 +400,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
         {/* -------------------------------------------------------- folders */}
         {childFolders.length > 0 && (
           <section className="mb-6">
-            <h2 className="mb-2 label">Папки</h2>
+            <h2 className="t-label mb-2">{t(L('Папки', 'Folders'))}</h2>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
               {childFolders.map((f) => (
                 <FolderCard key={f.id} id={f.id} name={f.name} confirm={confirm} />
@@ -401,16 +412,16 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
         {/* ---------------------------------------------------------- items */}
         <section>
           <div className="mb-2 flex items-center justify-between">
-            <h2 className="label">
-              {query ? `Резултати (${visible.length})` : SCOPES.find((s) => s.id === scope)?.label}
+            <h2 className="t-label">
+              {query
+                ? t(L(`Резултати (${visible.length})`, `Results (${visible.length})`))
+                : t(SCOPES.find((s) => s.id === scope)!.label)}
             </h2>
-            {scope !== 'trash' && (
-              <span className="text-[11px] text-faint">{formatBytes(totalBytes)} материали</span>
-            )}
+            <span className="t-num text-[11px] text-faint">{visible.length}</span>
           </div>
 
           {visible.length === 0 ? (
-            <EmptyState
+            <DriveEmpty
               scope={scope}
               searching={!!query.trim()}
               onPick={() => inputRef.current?.click()}
@@ -430,7 +441,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
               ))}
             </div>
           ) : (
-            <div className="panel overflow-hidden">
+            <Card flush>
               {visible.map((d, i) => (
                 <DocRow
                   key={d.id}
@@ -442,7 +453,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
                   confirm={confirm}
                 />
               ))}
-            </div>
+            </Card>
           )}
         </section>
       </div>
@@ -452,7 +463,9 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
           className="pointer-events-none fixed inset-0 z-40 grid place-items-center"
           style={{ background: 'color-mix(in srgb, var(--c-accent) 12%, transparent)' }}
         >
-          <div className="panel px-6 py-4 text-[14px] font-medium">Пусни PDF файловете тук</div>
+          <div className="card px-6 py-4 text-[14px] font-medium">
+            {t(L('Пусни PDF файловете тук', 'Drop your PDFs here'))}
+          </div>
         </div>
       )}
     </div>
@@ -460,10 +473,10 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
 }
 
 const SORT_LABELS = {
-  recent: 'Последно отваряни',
-  name: 'По име',
-  progress: 'По прогрес',
-  size: 'По размер',
+  recent: L('Последно отваряни', 'Recently opened'),
+  name: L('По име', 'By name'),
+  progress: L('По прогрес', 'By progress'),
+  size: L('По размер', 'By size'),
 } as const;
 
 /* ------------------------------------------------------------------ pieces */
@@ -477,12 +490,13 @@ function FolderCard({
   name: string;
   confirm: (m: string, cb: () => void) => void;
 }) {
+  const t = useT();
   const { setActiveFolder, renameFolder, deleteFolder, moveDocument } = useLibrary();
   const [over, setOver] = useState(false);
   return (
     <div
-      className={`panel group flex items-center gap-2 p-2.5 transition-colors ${
-        over ? 'ring-2 ring-[var(--c-accent)]' : 'hover:bg-surface-2'
+      className={`card group flex items-center gap-2.5 p-3 transition-all duration-150 ${
+        over ? 'ring-2 ring-[var(--c-accent)]' : 'hover:-translate-y-0.5 hover:shadow-[var(--shadow-float)]'
       }`}
       onDragOver={(e) => {
         e.preventDefault();
@@ -497,8 +511,13 @@ function FolderCard({
       }}
     >
       <button className="flex min-w-0 flex-1 cursor-pointer items-center gap-2" onClick={() => setActiveFolder(id)}>
-        <Icon name="folder" size={17} className="shrink-0 text-accent" />
-        <span className="truncate text-[13px]">{name}</span>
+        <span
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]"
+          style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
+        >
+          <Icon name="folder" size={16} />
+        </span>
+        <span className="truncate text-[13px] font-medium">{name}</span>
       </button>
       <Popover
         width={180}
@@ -513,9 +532,9 @@ function FolderCard({
           <>
             <MenuItem
               icon="pencil"
-              label="Преименувай"
+              label={t(S.edit)}
               onClick={() => {
-                const n = prompt('Име на папката', name);
+                const n = prompt(t(L('Име на папката', 'Folder name')), name);
                 if (n) void renameFolder(id, n);
                 close();
               }}
@@ -523,11 +542,14 @@ function FolderCard({
             <MenuSep />
             <MenuItem
               icon="trash"
-              label="Изтрий"
+              label={t(S.delete)}
               danger
               onClick={() => {
                 close();
-                confirm(`Да изтрия ли «${name}»? Материалите вътре се преместват нагоре.`, () => deleteFolder(id));
+                confirm(
+                  t(L(`Да изтрия ли «${name}»? Материалите вътре се преместват нагоре.`, `Delete "${name}"? Anything inside moves up a level.`)),
+                  () => deleteFolder(id),
+                );
               }}
             />
           </>
@@ -546,6 +568,8 @@ interface ItemProps {
 }
 
 function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
+  const t = useT();
+  const lang = useLang();
   const subject = useWorkspace((s) => s.subject(doc.subjectId));
   const pct = Math.round(progressOf(doc) * 100);
 
@@ -553,7 +577,7 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
     <div
       draggable={!trashed}
       onDragStart={(e) => e.dataTransfer.setData('text/document', doc.id)}
-      className="panel panel-hover group relative overflow-hidden"
+      className="card card-hover group relative overflow-hidden"
       style={selected ? { outline: '2px solid var(--c-accent)', outlineOffset: -1 } : undefined}
     >
       <button
@@ -592,7 +616,11 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
             {subject ? (
               <SubjectDot subject={subject} />
             ) : (
-              <span>{doc.board?.flow === 'scroll' ? 'свитък' : `${doc.pageCount} стр.`}</span>
+              <span>
+              {doc.board?.flow === 'scroll'
+                ? t(L('свитък', 'scroll'))
+                : t(L(`${doc.pageCount} стр.`, `${doc.pageCount} pages`))}
+            </span>
             )}
           </span>
           <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-surface-3">
@@ -601,9 +629,17 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
               style={{ width: `${pct}%`, background: subject?.color ?? statusColor(doc) }}
             />
           </span>
-          <span className="mt-1 flex justify-between text-[10px] text-faint">
+          <span className="t-num mt-1 flex justify-between text-[10px] text-faint">
             <span>{pct}%</span>
-            <span>{trashed ? formatDate(doc.deletedAt) : formatDate(doc.openedAt)}</span>
+            <span>
+              {trashed
+                ? doc.deletedAt
+                  ? shortDate(doc.deletedAt, lang)
+                  : ''
+                : doc.openedAt
+                  ? shortDate(doc.openedAt, lang)
+                  : ''}
+            </span>
           </span>
         </span>
       </button>
@@ -616,6 +652,8 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
 }
 
 function DocRow({ doc, first, trashed, selected, onSelect, confirm }: ItemProps & { first: boolean }) {
+  const t = useT();
+  const lang = useLang();
   const subject = useWorkspace((s) => s.subject(doc.subjectId));
   const pct = Math.round(progressOf(doc) * 100);
 
@@ -634,7 +672,7 @@ function DocRow({ doc, first, trashed, selected, onSelect, confirm }: ItemProps 
           background: selected ? 'var(--c-accent)' : 'transparent',
           color: 'var(--c-accent-text)',
         }}
-        aria-label="Избери"
+        aria-label={t(L('Избери', 'Select'))}
       >
         {selected && <Icon name="check" size={11} strokeWidth={3} />}
       </button>
@@ -666,10 +704,16 @@ function DocRow({ doc, first, trashed, selected, onSelect, confirm }: ItemProps 
         <span className="w-7 shrink-0 text-right text-[10px] tabular-nums text-faint">{pct}%</span>
       </span>
       <span className="hidden w-20 shrink-0 text-right text-[11px] text-faint lg:block">
-        {doc.size ? formatBytes(doc.size) : `${doc.pageCount} стр.`}
+        {doc.size ? formatBytes(doc.size) : t(L(`${doc.pageCount} стр.`, `${doc.pageCount} pages`))}
       </span>
-      <span className="hidden w-28 shrink-0 text-right text-[11px] text-faint xl:block">
-        {trashed ? formatDate(doc.deletedAt) : formatDate(doc.openedAt)}
+      <span className="t-num hidden w-28 shrink-0 text-right text-[11px] text-faint xl:block">
+        {trashed
+          ? doc.deletedAt
+            ? shortDate(doc.deletedAt, lang)
+            : ''
+          : doc.openedAt
+            ? shortDate(doc.openedAt, lang)
+            : ''}
       </span>
       <DocMenu doc={doc} trashed={trashed} confirm={confirm} onSelect={onSelect} />
     </div>
@@ -687,6 +731,7 @@ function DocMenu({
   confirm: (m: string, cb: () => void) => void;
   onSelect: (additive: boolean) => void;
 }) {
+  const t = useT();
   const subjects = useWorkspace((s) => s.subjects);
   const { renameDocument, deleteDocument, restoreDocument, purgeDocuments, toggleStar, setSubject, folders, moveDocument } =
     useLibrary();
@@ -701,7 +746,7 @@ function DocMenu({
           className="icon-btn h-7 w-7 shrink-0 backdrop-blur"
           style={{ background: 'color-mix(in srgb, var(--c-surface) 80%, transparent)' }}
           onClick={toggle}
-          aria-label="Още"
+          aria-label={t(L('Още', 'More'))}
         >
           <Icon name="dots" size={15} />
         </button>
@@ -712,7 +757,7 @@ function DocMenu({
           <>
             <MenuItem
               icon="restore"
-              label="Възстанови"
+              label={t(L('Възстанови', 'Restore'))}
               onClick={() => {
                 void restoreDocument(doc.id);
                 close();
@@ -721,11 +766,14 @@ function DocMenu({
             <MenuSep />
             <MenuItem
               icon="trash"
-              label="Изтрий завинаги"
+              label={t(L('Изтрий завинаги', 'Delete for good'))}
               danger
               onClick={() => {
                 close();
-                confirm(`Да изтрия ли «${doc.name}» окончателно?`, () => purgeDocuments([doc.id]));
+                confirm(
+                  t(L(`Да изтрия ли «${doc.name}» окончателно?`, `Permanently delete "${doc.name}"?`)),
+                  () => purgeDocuments([doc.id]),
+                );
               }}
             />
           </>
@@ -733,7 +781,7 @@ function DocMenu({
           <>
             <MenuItem
               icon={doc.starred ? 'starFill' : 'star'}
-              label={doc.starred ? 'Махни звездата' : 'Добави звезда'}
+              label={t(doc.starred ? L('Махни звездата', 'Remove star') : L('Добави звезда', 'Add a star'))}
               onClick={() => {
                 void toggleStar(doc.id);
                 close();
@@ -741,7 +789,7 @@ function DocMenu({
             />
             <MenuItem
               icon="check"
-              label="Избери"
+              label={t(L('Избери', 'Select'))}
               onClick={() => {
                 onSelect(true);
                 close();
@@ -749,18 +797,18 @@ function DocMenu({
             />
             <MenuItem
               icon="pencil"
-              label="Преименувай"
+              label={t(L('Преименувай', 'Rename'))}
               onClick={() => {
-                const n = prompt('Име', doc.name);
+                const n = prompt(t(L('Име', 'Name')), doc.name);
                 if (n) void renameDocument(doc.id, n);
                 close();
               }}
             />
             <MenuSep />
-            <div className="px-2 py-1 text-[11px] text-faint">Предмет</div>
+            <div className="px-2 py-1 text-[11px] text-faint">{t(S.subject)}</div>
             <div className="max-h-32 overflow-auto scroll-thin">
               <MenuItem
-                label="Без предмет"
+                label={t(S.noSubject)}
                 active={!doc.subjectId}
                 onClick={() => {
                   void setSubject([doc.id], null);
@@ -781,11 +829,11 @@ function DocMenu({
               ))}
             </div>
             <MenuSep />
-            <div className="px-2 py-1 text-[11px] text-faint">Премести в</div>
+            <div className="px-2 py-1 text-[11px] text-faint">{t(L('Премести в', 'Move to'))}</div>
             <div className="max-h-32 overflow-auto scroll-thin">
               <MenuItem
                 icon="home"
-                label="Библиотека"
+                label={t(S.library)}
                 active={!doc.folderId}
                 onClick={() => {
                   void moveDocument(doc.id, null);
@@ -808,11 +856,13 @@ function DocMenu({
             <MenuSep />
             <MenuItem
               icon="trash"
-              label="В кошчето"
+              label={t(L('В кошчето', 'To the bin'))}
               danger
               onClick={() => {
                 void deleteDocument(doc.id);
-                notify.undo('Преместено в кошчето', 'Върни', () => void restoreDocument(doc.id));
+                notify.undo(t(L('Преместено в кошчето', 'Moved to the bin')), t(L('Върни', 'Undo')), () =>
+                  void restoreDocument(doc.id),
+                );
                 close();
               }}
             />
@@ -826,7 +876,7 @@ function DocMenu({
 const statusColor = (d: DocumentMeta) =>
   d.status === 'completed' ? 'var(--c-success)' : d.status === 'review' ? 'var(--c-warn)' : 'var(--c-accent)';
 
-function EmptyState({
+function DriveEmpty({
   scope,
   searching,
   onPick,
@@ -837,38 +887,49 @@ function EmptyState({
   onPick: () => void;
   onBoard: () => void;
 }) {
-  if (searching) return <p className="py-12 text-center text-[13px] text-faint">Няма намерени материали.</p>;
+  const t = useT();
+
+  if (searching)
+    return (
+      <KitEmpty
+        icon="search"
+        title={t(L('Нищо не съвпада', 'Nothing matches'))}
+        body={t(L('Опитай с част от името на учебника или дъската.', 'Try part of the name of a book or a board.'))}
+      />
+    );
+
   if (scope === 'trash')
     return (
-      <div className="flex flex-col items-center gap-2 py-14 text-center">
-        <Icon name="trash" size={24} className="text-faint" />
-        <p className="text-[13px] text-muted">Кошчето е празно.</p>
-      </div>
+      <KitEmpty
+        icon="trash"
+        tone="var(--c-faint)"
+        title={t(L('Кошчето е празно', 'The bin is empty'))}
+        body={t(L('Изтритото стои тук, докато не решиш окончателно.', 'Deleted things wait here until you decide for good.'))}
+      />
     );
+
   if (scope === 'starred')
     return (
-      <div className="flex flex-col items-center gap-2 py-14 text-center">
-        <Icon name="star" size={24} className="text-faint" />
-        <p className="text-[13px] text-muted">Отбележи със звезда това, което отваряш всеки ден.</p>
-      </div>
+      <KitEmpty
+        icon="star"
+        tone="var(--c-ember)"
+        title={t(L('Няма нищо със звезда', 'Nothing starred yet'))}
+        body={t(L('Отбележи със звезда това, което отваряш всеки ден — стои най-отгоре.', 'Star what you open every day and it stays at the top.'))}
+      />
     );
+
   return (
-    <div className="flex w-full flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-line-strong py-14">
-      <Icon name="upload" size={26} className="text-faint" />
-      <span className="text-[14px] font-medium">Качи PDF учебник или започни на празна дъска</span>
-      <span className="max-w-md text-center text-[12px] text-muted">
-        Пусни файловете направо тук — или ги избери от бутона горе.
-      </span>
-      <div className="mt-1 flex gap-2">
-        <button className="btn btn-primary" onClick={onPick}>
-          <Icon name="upload" size={15} />
-          Качи PDF
-        </button>
-        <button className="btn" onClick={onBoard}>
-          <Icon name="board" size={15} />
-          Нова дъска
-        </button>
-      </div>
+    <div
+      className="rounded-[16px] border border-dashed"
+      style={{ borderColor: 'var(--c-line-strong)' }}
+    >
+      <KitEmpty
+        icon="upload"
+        title={t(L('Качи учебник или започни на празна дъска', 'Upload a textbook or start on blank paper'))}
+        body={t(L('Пусни PDF файловете направо тук. Всичко се записва на твоето устройство.', 'Drop your PDFs right here. Everything is written to your own device.'))}
+        action={{ label: t(L('Качи PDF', 'Upload PDF')), icon: 'upload', onClick: onPick }}
+        secondary={{ label: t(L('Нова дъска', 'New board')), icon: 'board', onClick: onBoard }}
+      />
     </div>
   );
 }
