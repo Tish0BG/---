@@ -20,6 +20,7 @@ import {
   syncPointer,
   wipeCloud,
 } from '@/services/cloud/syncService';
+import { blockedMessage, clearAttempts, recordAttempt } from '@/services/cloud/throttle';
 import { useLibrary } from './libraryStore';
 import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
@@ -85,11 +86,15 @@ interface AuthStore {
   endRecovery(): void;
 
   signIn(email: string, password: string): Promise<string | null>;
+  /** hands the browser to Google and comes back with a session */
+  signInWithGoogle(): Promise<string | null>;
   signUp(email: string, password: string, name: string): Promise<string | null>;
   resendConfirmation(email: string): Promise<string | null>;
   resetPassword(email: string): Promise<string | null>;
   changePassword(next: string): Promise<string | null>;
   signOut(): Promise<void>;
+  /** ends every other session but this one — after a password change, or on request */
+  signOutOthers(): Promise<string | null>;
 
   syncNow(): Promise<void>;
   setAutoSync(on: boolean): void;
@@ -211,8 +216,12 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async signIn(email, password) {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('signin');
+    if (blocked) return blocked;
+    recordAttempt('signin');
     const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return humanError(error);
+    clearAttempts('signin');
     localStorage.removeItem(SKIP_KEY);
     set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null, skipped: false });
     void get().syncNow();
@@ -222,6 +231,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async signUp(email, password, name) {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('signup');
+    if (blocked) return blocked;
+    recordAttempt('signup');
     const { data, error } = await client.auth.signUp({
       email: email.trim(),
       password,
@@ -248,6 +260,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async resendConfirmation(email) {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('resend');
+    if (blocked) return blocked;
+    recordAttempt('resend');
     const { error } = await client.auth.resend({
       type: 'signup',
       email: email.trim(),
@@ -261,12 +276,21 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async resetPassword(email) {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('reset');
+    if (blocked) return blocked;
+    recordAttempt('reset');
     const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: window.location.origin,
+      redirectTo: `${window.location.origin}/login`,
     });
-    if (error) return humanError(error);
-    notify.ok(tr(L('Провери пощата си', 'Check your inbox')), tr(L('Изпратихме ти връзка за нова парола.', 'We sent you a link to set a new password.')));
-    set({ notice: tr(L('Изпратихме ти писмо за нова парола.', 'We sent you an e-mail about a new password.')) });
+    // Everything except being rate-limited is answered the same way. "No such
+    // account" would turn this box into a way of finding out who has one.
+    if (error && /rate limit|too many|for security purposes/i.test(error.message)) return humanError(error);
+    const sent = L(
+      'Ако има профил с този имейл, писмото вече пътува.',
+      'If an account exists for that address, the e-mail is on its way.',
+    );
+    notify.ok(tr(L('Провери пощата си', 'Check your inbox')), tr(sent));
+    set({ notice: tr(sent) });
     return null;
   },
 
@@ -275,8 +299,49 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { error } = await client.auth.updateUser({ password: next });
     if (error) return humanError(error);
-    notify.ok(tr(L('Паролата е сменена', 'Password changed')));
+    // A password is changed either because it is being rotated or because
+    // somebody else knows it. In both cases the other sessions should end,
+    // and only the second case is the one that matters.
+    await client.auth.signOut({ scope: 'others' }).catch(() => undefined);
+    notify.ok(
+      tr(L('Паролата е сменена', 'Password changed')),
+      tr(L('Другите устройства са излезли от профила.', 'Other devices have been signed out.')),
+    );
     set({ notice: tr(L('Паролата е сменена.', 'The password has been changed.')) });
+    return null;
+  },
+
+  /**
+   * Google is a redirect, not a popup: a popup is the thing browsers block,
+   * password managers lose track of and phones handle worst. The tab leaves
+   * and comes back with a session, which `onAuthStateChange` picks up.
+   */
+  async signInWithGoogle() {
+    const client = await getClient();
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+        // Asks Google which account, rather than silently reusing the one the
+        // browser happens to be signed into.
+        queryParams: { prompt: 'select_account' },
+      },
+    });
+    if (error) return humanError(error);
+    localStorage.removeItem(SKIP_KEY);
+    return null;
+  },
+
+  async signOutOthers() {
+    const client = await getClient();
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const { error } = await client.auth.signOut({ scope: 'others' });
+    if (error) return humanError(error);
+    notify.ok(
+      tr(L('Другите устройства излязоха', 'Other devices signed out')),
+      tr(L('Този браузър остава в профила.', 'This browser stays signed in.')),
+    );
     return null;
   },
 

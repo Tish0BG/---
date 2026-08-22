@@ -4,6 +4,7 @@ import { cloudConfig } from '@/services/cloud/config';
 import { formatBytes, formatDate } from '@/lib/util';
 import { Modal, Toggle, useConfirm } from '../ui';
 import { Icon } from '../Icon';
+import { PasswordField } from './PasswordField';
 import { notify } from '@/state/toastStore';
 import { AuthScreen } from './AuthScreen';
 import { ConnectionCheck } from './ConnectionCheck';
@@ -115,31 +116,37 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
 
       <section>
         <h3 className="t-label mb-2">{t(L('Смяна на парола', 'Change password'))}</h3>
-        <div className="flex gap-2">
-          <input
-            value={pw}
-            onChange={(e) => setPw(e.target.value)}
-            type="password"
-            placeholder={t(L('Нова парола', 'New password'))}
-            className="field"
-            autoComplete="new-password"
-          />
-          <button
-            className="btn btn-outline shrink-0"
-            disabled={pw.length < 8}
-            onClick={() =>
-              void useAuth
-                .getState()
-                .changePassword(pw)
-                .then((err) => {
-                  setPwMsg(err);
-                  if (!err) setPw('');
-                })
-            }
-          >
-            {t(L('Смени', 'Change'))}
-          </button>
-        </div>
+        <PasswordField
+          id="plauvia-new-password"
+          value={pw}
+          onChange={setPw}
+          autoComplete="new-password"
+          placeholder={t(L('Нова парола', 'New password'))}
+          showMeter
+        />
+        <button
+          className="btn btn-outline mt-2.5"
+          disabled={pw.length < 8}
+          onClick={() =>
+            void useAuth
+              .getState()
+              .changePassword(pw)
+              .then((err) => {
+                setPwMsg(err);
+                if (!err) setPw('');
+              })
+          }
+        >
+          {t(L('Смени паролата', 'Change the password'))}
+        </button>
+        <p className="mt-1.5 text-[11px] leading-relaxed text-faint">
+          {t(
+            L(
+              'Смяната изважда всички други устройства от профила. Това е и начинът да изгониш някого, който не би трябвало да е вътре.',
+              'Changing it signs every other device out. That is also how you remove somebody who should not be in there.',
+            ),
+          )}
+        </p>
         {(pwMsg || notice) && (
           <p className="mt-1.5 text-[11px]" style={{ color: pwMsg ? 'var(--c-danger)' : 'var(--c-muted)' }}>
             {pwMsg ?? notice}
@@ -161,6 +168,23 @@ function AccountPanel({ onClose }: { onClose: () => void }) {
         >
           <Icon name="logOut" size={14} />
           {t(L('Излез', 'Sign out'))}
+        </button>
+        <button
+          className="btn btn-outline"
+          onClick={() =>
+            confirm(
+              t(
+                L(
+                  'Всички други устройства ще излязат от профила. Този браузър остава вътре. Сигурен ли си?',
+                  'Every other device will be signed out. This browser stays in. Are you sure?',
+                ),
+              ),
+              () => void useAuth.getState().signOutOthers(),
+            )
+          }
+        >
+          <Icon name="shield" size={14} />
+          {t(L('Излез от другите устройства', 'Sign out other devices'))}
         </button>
         <button
           className="btn"

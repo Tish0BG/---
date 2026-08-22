@@ -5,6 +5,9 @@ import { PlauviaMark, PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
 import { useT, useLang, L } from '@/i18n';
+import { GoogleButton, PasswordField } from './PasswordField';
+import { RouteLink } from '../public/PublicChrome';
+import { PUBLIC_ROUTES } from '@/seo/routes';
 
 type Tab = 'signin' | 'signup';
 
@@ -107,9 +110,10 @@ function Forms({ onClose }: { onClose: () => void }) {
   const [tab, setTab] = useState<Tab>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [name, setName] = useState('');
-  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [google, setGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forgot, setForgot] = useState(false);
   const notice = useAuth((s) => s.notice);
@@ -133,7 +137,24 @@ function Forms({ onClose }: { onClose: () => void }) {
     if (problem) setError(problem);
   };
 
-  const ready = email.includes('@') && (forgot || password.length >= 8) && !busy;
+  const mismatch = tab === 'signup' && !forgot && confirm.length > 0 && confirm !== password;
+  const ready =
+    email.includes('@') &&
+    (forgot || password.length >= 8) &&
+    (tab !== 'signup' || forgot || confirm === password) &&
+    !busy;
+
+  const withGoogle = async () => {
+    setGoogle(true);
+    setError(null);
+    const problem = await useAuth.getState().signInWithGoogle();
+    // On success the tab is already on its way to Google, so there is nothing
+    // to switch back; only a refusal comes back here.
+    if (problem) {
+      setGoogle(false);
+      setError(problem);
+    }
+  };
 
   return (
     <>
@@ -212,26 +233,33 @@ function Forms({ onClose }: { onClose: () => void }) {
         </Field>
 
         {!forgot && (
-          <Field label={t(L('Парола', 'Password'))}>
-            <span className="relative block">
-              <input
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="field h-10 pr-10"
-                type={show ? 'text' : 'password'}
-                placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
-                autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-              />
-              <button
-                type="button"
-                className="icon-btn absolute right-1 top-1 h-8 w-8"
-                onClick={() => setShow((v) => !v)}
-                aria-label={t(show ? L('Скрий паролата', 'Hide the password') : L('Покажи паролата', 'Show the password'))}
-              >
-                <Icon name={show ? 'eyeOff' : 'eye'} size={15} />
-              </button>
-            </span>
-          </Field>
+          <PasswordField
+            id="plauvia-password"
+            label={t(L('Парола', 'Password'))}
+            value={password}
+            onChange={setPassword}
+            autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
+            placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
+            showMeter={tab === 'signup'}
+          />
+        )}
+
+        {tab === 'signup' && !forgot && (
+          <div>
+            <PasswordField
+              id="plauvia-confirm"
+              label={t(L('Повтори паролата', 'Repeat the password'))}
+              value={confirm}
+              onChange={setConfirm}
+              autoComplete="new-password"
+            />
+            {mismatch && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
+                <Icon name="alert" size={12} />
+                {t(L('Двете полета не съвпадат.', 'The two do not match.'))}
+              </p>
+            )}
+          </div>
         )}
 
         {error && <Banner tone="danger" text={error} />}
@@ -242,6 +270,19 @@ function Forms({ onClose }: { onClose: () => void }) {
           {t(forgot ? L('Изпрати писмо', 'Send the e-mail') : tab === 'signin' ? L('Влез', 'Sign in') : L('Създай профил', 'Create the account'))}
         </button>
       </form>
+
+      {!forgot && (
+        <>
+          <div className="my-4 flex items-center gap-3">
+            <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
+            <span className="text-[11.5px] text-faint">{t(L('или', 'or'))}</span>
+            <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
+          </div>
+          <GoogleButton onClick={() => void withGoogle()} busy={google} label={t(L('Продължи с Google', 'Continue with Google'))} />
+        </>
+      )}
+
+      {tab === 'signup' && !forgot && <TermsNote />}
 
       <div className="mt-3 flex items-center justify-between text-[12px]">
         <button
@@ -500,6 +541,33 @@ function Banner({ tone, text }: { tone: 'danger' | 'ok'; text: string }) {
     >
       <Icon name={tone === 'danger' ? 'alert' : 'checkCircle'} size={13} className="mt-px shrink-0" />
       {text}
+    </p>
+  );
+}
+
+/**
+ * The line that has to be on a sign-up form and nowhere else.
+ *
+ * Not a checkbox: a tick box that everybody ticks without reading is a dark
+ * pattern dressed as consent. A sentence with two links, shown at the moment
+ * the account is created, is the honest version of the same thing.
+ */
+function TermsNote() {
+  const t = useT();
+  const lang = useLang();
+  const terms = PUBLIC_ROUTES.find((r) => r.id === 'terms')!;
+  const privacy = PUBLIC_ROUTES.find((r) => r.id === 'privacy')!;
+  return (
+    <p className="mt-4 text-[11.5px] leading-relaxed text-faint">
+      {t(L('Като създадеш профил, приемаш', 'By creating an account you accept the'))}{' '}
+      <RouteLink to={terms.path} className="underline underline-offset-2 hover:text-muted">
+        {terms.label[lang]}
+      </RouteLink>{' '}
+      {t(L('и', 'and the'))}{' '}
+      <RouteLink to={privacy.path} className="underline underline-offset-2 hover:text-muted">
+        {privacy.label[lang]}
+      </RouteLink>
+      .
     </p>
   );
 }
