@@ -28,6 +28,7 @@ import {
   OTHER_COLOR,
 } from '../kit';
 import { Hero } from './Hero';
+import { NextStep } from './NextStep';
 import { TodayPlan } from './TodayPlan';
 
 /**
@@ -118,6 +119,7 @@ export function Dashboard({ onUpload }: { onNewBoard: () => void; onUpload: () =
   return (
     <div className="mx-auto max-w-[1220px] px-4 py-5 sm:px-7 sm:py-7">
       <Hero />
+      <NextStep />
 
       {/* ------------------------------------------------------- the four */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

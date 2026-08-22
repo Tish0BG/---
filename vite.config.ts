@@ -26,12 +26,16 @@ const pkg = createRequire(import.meta.url)('./package.json') as { version: strin
  * rather than restating it means the two cannot drift, and a violation shows
  * up in the console on the machine where the code was just written.
  */
-function securityHeaders(): Plugin {
+function productionHeaders(): { key: string; value: string }[] {
   const file = resolve(process.cwd(), 'vercel.json');
   const config = JSON.parse(readFileSync(file, 'utf8')) as {
     headers?: { source: string; headers: { key: string; value: string }[] }[];
   };
-  const global = config.headers?.find((h) => h.source === '/(.*)')?.headers ?? [];
+  return config.headers?.find((h) => h.source === '/(.*)')?.headers ?? [];
+}
+
+function securityHeaders(): Plugin {
+  const global = productionHeaders();
   // HSTS on http://localhost would pin the dev machine to a protocol the dev
   // server does not speak.
   const sendable = global
@@ -106,6 +110,22 @@ export default defineConfig(({ mode }) => {
       __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     },
     server: { port: 5180, host: true },
+    /**
+     * `vite preview` serves the real build under the real policy — no
+     * `unsafe-inline`, no exceptions. It is the only way to find out before a
+     * deploy that the Content-Security-Policy has quietly stopped the PDF
+     * worker, and the answer to "does the CSP break the app" should never be
+     * a live site.
+     */
+    preview: {
+      port: 5181,
+      host: true,
+      headers: Object.fromEntries(
+        productionHeaders()
+          .filter((h) => h.key !== 'Strict-Transport-Security')
+          .map((h) => [h.key, h.value]),
+      ),
+    },
     // pdf.js ships a large worker; keep it out of the main chunk.
     build: {
       target: 'es2022',

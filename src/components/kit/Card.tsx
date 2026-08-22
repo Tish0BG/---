@@ -61,11 +61,18 @@ export function Card({
 }
 
 /** The small "see all →" link that sits in a card's title row. */
+/**
+ * The quiet "see all" beside a section heading.
+ *
+ * The vertical padding is not decoration: at twelve pixels of text the hit
+ * area came to eighteen pixels tall, under the twenty-four a touch target is
+ * supposed to clear. The padding buys the height without moving the text.
+ */
 export function CardLink({ label, onClick }: { label: string; onClick: () => void }) {
   return (
     <button
       onClick={onClick}
-      className="group inline-flex cursor-pointer items-center gap-1 rounded-md px-1 text-[12px] font-medium text-muted transition-colors hover:text-accent"
+      className="group -my-1 inline-flex min-h-[24px] cursor-pointer items-center gap-1 rounded-md px-1 py-1 text-[12px] font-medium text-muted transition-colors hover:text-accent"
     >
       {label}
       <Icon

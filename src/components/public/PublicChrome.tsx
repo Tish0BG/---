@@ -74,7 +74,7 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
               // From a legal page the anchors have to travel home first, or
               // they scroll to nothing.
               href={home ? link.href : `/${link.href}`}
-              className="text-[13.5px] text-muted transition-colors hover:text-ink"
+              className="inline-flex min-h-[24px] items-center text-[13.5px] text-muted transition-colors hover:text-ink"
             >
               {link.label[lang]}
             </a>
@@ -83,7 +83,7 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
             <RouteLink
               key={route.id}
               to={route.path}
-              className="text-[13.5px] text-muted transition-colors hover:text-ink"
+              className="inline-flex min-h-[24px] items-center text-[13.5px] text-muted transition-colors hover:text-ink"
             >
               {route.label[lang]}
             </RouteLink>
@@ -119,13 +119,13 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     {
       title: lang === 'bg' ? 'Продукт' : 'Product',
       items: [
-        <a key="how" href={home ? '#how' : '/#how'} className="text-muted transition-colors hover:text-ink">
+        <a key="how" href={home ? '#how' : '/#how'} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {lang === 'bg' ? 'Как работи' : 'How it works'}
         </a>,
-        <a key="inside" href={home ? '#inside' : '/#inside'} className="text-muted transition-colors hover:text-ink">
+        <a key="inside" href={home ? '#inside' : '/#inside'} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {lang === 'bg' ? 'Отвътре' : 'Inside'}
         </a>,
-        <RouteLink key="faq" to={byId('faq').path} className="text-muted transition-colors hover:text-ink">
+        <RouteLink key="faq" to={byId('faq').path} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {byId('faq').label[lang]}
         </RouteLink>,
       ],
@@ -133,10 +133,10 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     {
       title: lang === 'bg' ? 'Компания' : 'Company',
       items: [
-        <RouteLink key="about" to={byId('about').path} className="text-muted transition-colors hover:text-ink">
+        <RouteLink key="about" to={byId('about').path} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {byId('about').label[lang]}
         </RouteLink>,
-        <RouteLink key="contact" to={byId('contact').path} className="text-muted transition-colors hover:text-ink">
+        <RouteLink key="contact" to={byId('contact').path} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {byId('contact').label[lang]}
         </RouteLink>,
       ],
@@ -144,7 +144,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     {
       title: lang === 'bg' ? 'Правни' : 'Legal',
       items: (['privacy', 'terms', 'cookies'] as const).map((id) => (
-        <RouteLink key={id} to={byId(id).path} className="text-muted transition-colors hover:text-ink">
+        <RouteLink key={id} to={byId(id).path} className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink">
           {byId(id).label[lang]}
         </RouteLink>
       )),
@@ -154,7 +154,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
       items: [
         <button
           key="signin"
-          className="cursor-pointer text-left text-muted transition-colors hover:text-ink"
+          className="inline-flex min-h-[24px] cursor-pointer items-center text-left text-muted transition-colors hover:text-ink"
           onClick={onSignIn}
         >
           {lang === 'bg' ? 'Влез' : 'Sign in'}
@@ -176,8 +176,8 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
 
         <div className="grid flex-1 grid-cols-2 gap-8 text-[13px] sm:grid-cols-4">
           {columns.map((col) => (
-            <div key={col.title} className="flex flex-col gap-2.5">
-              <span className="t-label">{col.title}</span>
+            <div key={col.title} className="flex flex-col gap-1">
+              <span className="t-label mb-1.5">{col.title}</span>
               {col.items}
             </div>
           ))}
@@ -221,7 +221,7 @@ export function PublicPage({
 
       <main className="mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8 sm:py-16">
         <nav aria-label={lang === 'bg' ? 'Пътека' : 'Breadcrumb'} className="mb-6 text-[12.5px] text-faint">
-          <RouteLink to="/" className="transition-colors hover:text-ink">
+          <RouteLink to="/" className="inline-flex min-h-[24px] items-center transition-colors hover:text-ink">
             {lang === 'bg' ? 'Начало' : 'Home'}
           </RouteLink>
           <Icon name="chevronRight" size={12} className="mx-1.5 inline align-[-1px]" />

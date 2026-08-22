@@ -1,6 +1,14 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { BRAND } from '@/brand';
+import { currentLang } from '@/i18n';
 import { Icon } from '../Icon';
+
+/**
+ * The boundary cannot use the `useT` hook — it is a class, and it has to work
+ * even when the tree that provides everything else has just fallen over. So it
+ * reads the language directly and picks from a pair.
+ */
+const say = (bg: string, en: string): string => (currentLang() === 'bg' ? bg : en);
 
 interface Props {
   children: ReactNode;
@@ -29,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error('Неочаквана грешка', error, info);
+    console.error('Plauvia · unexpected error', error, info);
     this.setState({ stack: `${error.stack ?? error.message}\n\n${info.componentStack ?? ''}`.trim() });
   }
 
@@ -37,7 +45,7 @@ export class ErrorBoundary extends Component<Props, State> {
     return [
       `${BRAND.name} · ${new Date().toISOString()}`,
       navigator.userAgent,
-      `екран: ${window.innerWidth}×${window.innerHeight}`,
+      `screen: ${window.innerWidth}×${window.innerHeight}`,
       '',
       this.state.stack || String(this.state.error),
     ].join('\n');
@@ -61,17 +69,23 @@ export class ErrorBoundary extends Component<Props, State> {
             className="mt-4 font-semibold leading-[1.12]"
             style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
           >
-            Нещо се обърка
+            {say('Нещо се обърка', 'Something went wrong')}
           </h1>
           <p className="mt-2 text-[13px] leading-relaxed text-muted">
-            Приложението спря неочаквано. <b className="text-ink">Записките ти са непокътнати</b> — те се
-            пазят в браузъра много преди екранът да се начертае, а не в него.
+            {say('Приложението спря неочаквано. ', 'The app stopped unexpectedly. ')}
+            <b className="text-ink">
+              {say('Записките ти са непокътнати', 'Your notes are untouched')}
+            </b>
+            {say(
+              ' — те се пазят в браузъра много преди екранът да се начертае, а не в него.',
+              ' — they are kept in the browser long before the screen is drawn, not in it.',
+            )}
           </p>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <button className="btn btn-primary h-10" onClick={() => window.location.reload()}>
               <Icon name="refresh" size={15} />
-              Презареди
+              {say('Презареди', 'Reload')}
             </button>
             <button
               className="btn btn-outline h-10"
@@ -80,23 +94,34 @@ export class ErrorBoundary extends Component<Props, State> {
               }
             >
               <Icon name={this.state.copied ? 'check' : 'copy'} size={15} />
-              {this.state.copied ? 'Копирано' : 'Копирай подробностите'}
+              {this.state.copied
+                ? say('Копирано', 'Copied')
+                : say('Копирай подробностите', 'Copy the details')}
             </button>
           </div>
 
-          <details className="mt-4">
-            <summary className="cursor-pointer text-[12px] text-muted">Технически подробности</summary>
-            <pre
-              className="scroll-thin mt-2 max-h-52 overflow-auto rounded-xl p-3 font-mono text-[11px] leading-relaxed"
-              style={{ background: 'var(--c-surface-2)', color: 'var(--c-muted)' }}
-            >
-              {this.state.stack || String(error)}
-            </pre>
-          </details>
+          {/* Only in development. In production the report is still one click
+              away on the clipboard, but internal paths and component stacks do
+              not get printed onto a stranger's screen. */}
+          {import.meta.env.DEV && (
+            <details className="mt-4">
+              <summary className="cursor-pointer text-[12px] text-muted">
+                {say('Технически подробности', 'Technical details')}
+              </summary>
+              <pre
+                className="scroll-thin mt-2 max-h-52 overflow-auto rounded-xl p-3 font-mono text-[11px] leading-relaxed"
+                style={{ background: 'var(--c-surface-2)', color: 'var(--c-muted)' }}
+              >
+                {this.state.stack || String(error)}
+              </pre>
+            </details>
+          )}
 
           <p className="mt-4 text-[11.5px] leading-relaxed text-faint">
-            Ако се повтаря: направи резервно копие от Настройки → Резервно копие, преди да чистиш
-            данните на браузъра.
+            {say(
+              'Ако се повтаря: направи резервно копие от Настройки → Резервно копие, преди да чистиш данните на браузъра.',
+              'If it keeps happening: take a backup from Settings → Backup before clearing your browser data.',
+            )}
           </p>
         </div>
       </div>
