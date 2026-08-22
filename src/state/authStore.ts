@@ -85,6 +85,12 @@ interface AuthStore {
   mfaPending: boolean;
   /** The address a code was just sent to, so the next screen knows whose it is. */
   codeSentTo: string | null;
+  /**
+   * Set when sign-up was refused because the address already has an account.
+   * The form uses it to offer the two things that actually help — signing in,
+   * or resetting the password — instead of only saying no.
+   */
+  emailTaken: boolean;
 
   init(): Promise<void>;
   configure(url: string, anonKey: string): Promise<string | null>;
@@ -155,6 +161,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   awaitingConfirm: null,
   mfaPending: false,
   codeSentTo: null,
+  emailTaken: false,
 
   async init() {
     // The site may carry its own cloud.json; it has to be read before we can
@@ -257,12 +264,39 @@ export const useAuth = create<AuthStore>((set, get) => ({
     const blocked = blockedMessage('signup');
     if (blocked) return blocked;
     recordAttempt('signup');
+    set({ emailTaken: false });
     const { data, error } = await client.auth.signUp({
       email: email.trim(),
       password,
       options: { data: { name }, emailRedirectTo: window.location.origin },
     });
     if (error) return humanError(error);
+
+    /**
+     * Supabase will not say that an address is taken.
+     *
+     * With confirmations on it answers a repeat sign-up exactly as it answers
+     * a new one — a user object, no session, no error — so that the form
+     * cannot be used to find out who has an account here. The one tell it
+     * leaves is an empty `identities` array, and that is what this reads.
+     *
+     * Saying it plainly is a deliberate trade, made knowingly: it costs the
+     * anti-enumeration property at this one door, and buys somebody who simply
+     * forgot they had signed up an answer instead of a letter that never
+     * comes. Consumer products almost all make the same trade. The password
+     * reset stays vague, because there the same information is free to hide.
+     */
+    const identities = (data.user as { identities?: unknown[] } | null)?.identities;
+    if (Array.isArray(identities) && identities.length === 0) {
+      set({ emailTaken: true });
+      return tr(
+        L(
+          'Вече има профил с този имейл. Влез, или поискай нова парола, ако си я забравил.',
+          'There is already an account with this e-mail. Sign in, or ask for a new password if you have forgotten it.',
+        ),
+      );
+    }
+
     // With "Confirm email" on, Supabase hands back a user but no session — the
     // account exists and yet nothing is signed in. Saying so is the whole
     // difference between "it doesn't work" and "check your inbox".

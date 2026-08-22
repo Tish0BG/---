@@ -83,12 +83,11 @@ const MESSAGES: [(m: string) => boolean, Msg][] = [
     ),
   ],
   [
-    // Deliberately not "this e-mail is taken": that turns the sign-up form
-    // into a way of checking who has an account here.
+    // Said plainly, by choice. The trade-off is written out in `signUp`.
     (m) => m.includes('user already registered') || m.includes('already been registered'),
     L(
-      'Не успяхме да създадем профил с този имейл. Ако вече имаш профил, влез или поискай нова парола.',
-      'We could not create an account with that e-mail. If you already have one, sign in or ask for a new password.',
+      'Вече има профил с този имейл. Влез, или поискай нова парола, ако си я забравил.',
+      'There is already an account with this e-mail. Sign in, or ask for a new password if you have forgotten it.',
     ),
   ],
   [

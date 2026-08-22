@@ -140,6 +140,7 @@ function Forms({ onClose }: { onClose: () => void }) {
   const notice = useAuth((s) => s.notice);
   const user = useAuth((s) => s.user);
   const mfaPending = useAuth((s) => s.mfaPending);
+  const emailTaken = useAuth((s) => s.emailTaken);
 
   // Signing in is the whole point of this screen; once it happens, leave —
   // unless a second factor is still owed, in which case its own screen takes
@@ -369,6 +370,34 @@ function Forms({ onClose }: { onClose: () => void }) {
         )}
 
         {error && <Banner tone="danger" text={error} />}
+
+        {/* An answer with nothing to do next is only half an answer. */}
+        {emailTaken && (
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={() => {
+                setTab('signin');
+                setError(null);
+                setPassword('');
+                setConfirm('');
+              }}
+            >
+              {t(L('Влез с този имейл', 'Sign in with this e-mail'))}
+            </button>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => {
+                setForgot(true);
+                setError(null);
+              }}
+            >
+              {t(L('Забравена парола', 'Forgotten password'))}
+            </button>
+          </div>
+        )}
         {notice && <Banner tone="ok" text={notice} />}
 
         <button className="btn btn-primary h-10 w-full" disabled={!ready} type="submit">
