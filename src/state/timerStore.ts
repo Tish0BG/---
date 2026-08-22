@@ -7,7 +7,9 @@ import { useViewer } from './viewerStore';
 import { usePlanner } from './plannerStore';
 import { useLibrary } from './libraryStore';
 import { announceProgress } from '@/services/progressBus';
-import { L, tr, type Msg } from '@/i18n';
+import { currentLang, L, tr, type Msg } from '@/i18n';
+import { pageTitle } from '@/seo/head';
+import { useRoute } from './routeStore';
 
 /** How the widget is showing itself right now. */
 export type TimerView = 'hidden' | 'mini' | 'panel' | 'full';
@@ -449,9 +451,12 @@ function notify(title: string, body: string): void {
  * after the tab comes back to the foreground.
  */
 export function installTimerEffects(): () => void {
-  const original = document.title;
+  // Recomputed rather than snapshotted: a title captured at start-up is the
+  // one the shell happened to ship with, and putting it back would undo the
+  // per-page title on every tick the timer is not running.
+  const restore = () => pageTitle(useRoute.getState().path, currentLang());
   const unsub = useTimer.subscribe((s) => {
-    document.title = s.running ? `${formatClock(s.left)} · ${tr(MODE_LABEL[s.mode])}` : original;
+    document.title = s.running ? `${formatClock(s.left)} · ${tr(MODE_LABEL[s.mode])}` : restore();
   });
   const onVisible = () => {
     if (!document.hidden && useTimer.getState().running) void keepAwake(true);
@@ -463,7 +468,7 @@ export function installTimerEffects(): () => void {
   window.addEventListener('beforeunload', onBeforeUnload);
   return () => {
     unsub();
-    document.title = original;
+    document.title = restore();
     document.removeEventListener('visibilitychange', onVisible);
     window.removeEventListener('beforeunload', onBeforeUnload);
   };

@@ -122,7 +122,7 @@ export function Dashboard({ onUpload }: { onNewBoard: () => void; onUpload: () =
       {/* ------------------------------------------------------- the four */}
       <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="flex items-center gap-4 p-4" as="div">
-          <ProgressRing value={goalPct} size={62} stroke={6} color="var(--c-focus)" colorTo="var(--c-brand-lift)">
+          <ProgressRing value={goalPct} size={62} stroke={6} color="var(--c-accent)" colorTo="var(--c-brand-lift)">
             <span className="t-num text-[13px] font-semibold">{Math.round(goalPct * 100)}%</span>
           </ProgressRing>
           <div className="min-w-0">

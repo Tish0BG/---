@@ -55,11 +55,14 @@ sentence and its translation are always the same edit.
 | Name | Plauvia |
 | Tagline | From plan to progress. · От план към резултат. |
 | Domain | plauvia.com |
-| Accent | `#6d5ae6` — Plauvia violet |
+| Accent | `#1857d6` — Plauvia blue |
 
-The mark is a geometric **P** whose stem is cut on a rising diagonal, so it reads as a
-bookmark as much as a letter. Every raster — favicon, Android tiles, Apple touch icon,
-social preview — is generated from that one path:
+The mark is a capital **P wearing a mortarboard** — not a cap parked above a letter,
+but one silhouette: the board's underside is the letter's shoulder and the brim
+overhangs the bowl. It has no tassel, because every version that had one collapsed into
+a downward arrow at sixteen pixels, which is where a favicon actually lives. The
+geometry lives in `src/components/brand/mark.ts` and every raster — favicon, Android
+tiles, Apple touch icon, social preview — is generated from it:
 
 ```bash
 npm run brand

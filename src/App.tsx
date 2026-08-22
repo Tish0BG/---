@@ -14,6 +14,8 @@ import { requestPersistence } from '@/services/db';
 import { installProgressEffects } from '@/services/progressBus';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
+import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
+import { isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { CommandPalette } from '@/components/shell/CommandPalette';
@@ -62,6 +64,12 @@ const DocumentWorkspace = lazy(() =>
   import('@/components/viewer/DocumentWorkspace').then((m) => ({ default: m.DocumentWorkspace })),
 );
 const Landing = lazy(() => import('@/components/landing/Landing').then((m) => ({ default: m.Landing })));
+const PublicPageView = lazy(() =>
+  import('@/components/public/PublicPages').then((m) => ({ default: m.PublicPageView })),
+);
+const NotFoundPage = lazy(() =>
+  import('@/components/public/PublicPages').then((m) => ({ default: m.NotFoundPage })),
+);
 const AuthScreen = lazy(() => import('@/components/auth/AuthScreen').then((m) => ({ default: m.AuthScreen })));
 const AuthDialog = lazy(() => import('@/components/auth/AuthDialog').then((m) => ({ default: m.AuthDialog })));
 const RecoveryScreen = lazy(() =>
@@ -100,6 +108,7 @@ export default function App() {
   const cards = useCards((s) => s.cards);
   const activeFolderId = useLibrary((s) => s.activeFolderId);
   const lang = useLangStore((s) => s.lang);
+  const path = useRoute((s) => s.path);
 
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [tab, setTab] = useState<SidebarTab>('library');
@@ -120,6 +129,7 @@ export default function App() {
     const stopTimer = installTimerEffects();
     const stopSync = installSyncEffects();
     const stopProgress = installProgressEffects();
+    const stopRouting = installRouting();
     void requestPersistence();
     void useAuth.getState().init();
     void useWorkspace.getState().init();
@@ -144,6 +154,7 @@ export default function App() {
       stopTimer();
       stopSync();
       stopProgress();
+      stopRouting();
     };
   }, []);
 
@@ -186,12 +197,10 @@ export default function App() {
    * yanking the person back to the same screen.
    */
   useEffect(() => {
-    // /login, /signup and /app are real links people paste and bookmark.
-    const path = window.location.pathname.replace(/\/+$/, '');
-    if (path === '/login' || path === '/signup' || path === '/app') {
-      useApp.getState().setAuth(true);
-      history.replaceState(null, '', '/');
-    }
+    // /login, /signup and /app are real links people paste and bookmark. The
+    // address is left alone — rewriting it to "/" mid-flight loses the page
+    // someone deliberately shared.
+    if (isAppPath(window.location.pathname)) useApp.getState().setAuth(true);
     const go = new URLSearchParams(window.location.search).get('go');
     if (!go) return;
     const target = resolveView(go);
@@ -244,6 +253,33 @@ export default function App() {
     );
 
   /**
+   * The public web, which is not the same thing as "logged out".
+   *
+   * Someone reading the privacy policy may well be signed in; someone
+   * following a link to the FAQ should get the FAQ, not the dashboard. So the
+   * public pages are answered by address, before the account gate, and only
+   * the home page falls through to the marketing-page-or-app decision below.
+   */
+  const publicRoute = routeByPath(path);
+  const openAuth = () => useApp.getState().setAuth(true);
+
+  if (publicRoute && publicRoute.id !== 'home') {
+    return (
+      <Suspense fallback={<Splash />}>
+        <PublicPageView id={publicRoute.id} onStart={openAuth} onSignIn={openAuth} />
+      </Suspense>
+    );
+  }
+
+  if (isUnknownPath(path)) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <NotFoundPage onStart={openAuth} />
+      </Suspense>
+    );
+  }
+
+  /**
    * The public site, then the door, then the product.
    *
    * A stranger lands on the marketing page: a login form as a home page tells
@@ -254,10 +290,7 @@ export default function App() {
     if (!authOpen) {
       return (
         <Suspense fallback={<Splash />}>
-          <Landing
-            onStart={() => useApp.getState().setAuth(true)}
-            onSignIn={() => useApp.getState().setAuth(true)}
-          />
+          <Landing onStart={openAuth} onSignIn={openAuth} />
         </Suspense>
       );
     }

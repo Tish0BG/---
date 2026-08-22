@@ -48,7 +48,7 @@ const EN: LandingCopy = {
     lead: 'Plauvia keeps your textbooks, tasks, flashcards and study time in one place — so the work you plan is the work that actually gets done.',
     primary: 'Get started',
     secondary: 'See how it works',
-    trust: ['Works offline', 'No ads, no tracking', 'Your own database'],
+    trust: ['Works offline', 'No ads, no tracking', 'An account is optional'],
   },
   metrics: [
     { value: '11', label: 'screens, one product' },
@@ -172,8 +172,8 @@ const EN: LandingCopy = {
     title: 'Yours, and only yours',
     items: [
       {
-        title: 'Your own database',
-        body: 'Sync runs through a database you own. Nobody else has a key to it — not even us.',
+        title: 'Your device holds the original',
+        body: 'Everything is written to your browser first and works with no account at all. Sync is something you switch on, not something you are signed up for.',
         icon: 'shield',
       },
       {
@@ -197,7 +197,7 @@ const EN: LandingCopy = {
       },
       {
         q: 'Where is my data kept?',
-        a: 'In your browser, and — if you sign in — in a database you own. Row-level security means only your account can read your rows.',
+        a: 'In your browser, and — if you sign in — in the database behind plauvia.com, where row-level security stops any other account from reading your rows. The privacy policy says exactly who can reach what.',
       },
       {
         q: 'Do I need a stylus?',
@@ -237,7 +237,7 @@ const BG: LandingCopy = {
     lead: 'Plauvia държи учебниците, задачите, картите и учебното време на едно място — така че планираното наистина да се случва.',
     primary: 'Започни',
     secondary: 'Виж как работи',
-    trust: ['Работи офлайн', 'Без реклами и проследяване', 'Собствена база данни'],
+    trust: ['Работи офлайн', 'Без реклами и проследяване', 'Профилът е по избор'],
   },
   metrics: [
     { value: '11', label: 'екрана, един продукт' },
@@ -361,8 +361,8 @@ const BG: LandingCopy = {
     title: 'Твое, и само твое',
     items: [
       {
-        title: 'Твоя собствена база',
-        body: 'Синхронизацията минава през база, която е твоя. Никой друг няма ключ за нея — включително ние.',
+        title: 'Оригиналът е на твоето устройство',
+        body: 'Всичко се записва първо в браузъра ти и работи напълно без профил. Синхронизацията е нещо, което включваш, а не нещо, в което те записват.',
         icon: 'shield',
       },
       {
@@ -386,7 +386,7 @@ const BG: LandingCopy = {
       },
       {
         q: 'Къде стоят данните ми?',
-        a: 'В браузъра ти, а ако влезеш в профил — и в база, която е твоя. Правилата за достъп на ниво ред значат, че само твоят акаунт чете твоите редове.',
+        a: 'В браузъра ти, а ако влезеш в профил — и в базата зад plauvia.com, където правилата за достъп на ниво ред не позволяват на друг профил да чете твоите редове. Политиката за поверителност казва точно кой до какво има достъп.',
       },
       {
         q: 'Трябва ли ми писалка?',

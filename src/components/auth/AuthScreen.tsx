@@ -54,7 +54,7 @@ function Aside() {
     { icon: 'drive', text: L('Учебниците и дъските ти — и на телефона', 'Your textbooks and boards, on your phone too') },
     { icon: 'pencil', text: L('Бележките се сливат сами, по-новото печели', 'Notes merge on their own — the newer write wins') },
     { icon: 'cards', text: L('Картите и задачите вървят с теб', 'Cards and tasks travel with you') },
-    { icon: 'cloud', text: L('Твоя собствена база — никой друг няма достъп', 'Your own database — nobody else has a key') },
+    { icon: 'cloud', text: L('Данните пътуват само между твоите устройства', 'Your data travels between your devices and nowhere else') },
   ];
   return (
     <aside

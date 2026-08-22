@@ -40,60 +40,85 @@
  *     panel is always distinguishable without another border;
  *   · text has exactly three weights — ink, muted, faint — so a screen never
  *     ends up with five greys saying five slightly different things;
- *   · every neutral is tinted towards the brand violet. Pure grey next to a
+ *   · every neutral is tinted towards the brand blue. Pure grey next to a
  *     saturated accent reads as a default template; a neutral that carries a
  *     few degrees of the brand hue is what makes a product look designed
- *     rather than assembled.
+ *     rather than assembled;
+ *   · nothing here is picked by eye. Every pairing a person actually reads —
+ *     white on the primary button, accent on its soft ground, muted and faint
+ *     on both surfaces — is measured, and the value that fails is the value
+ *     that gets changed.
  */
 :root {
-  --c-bg: #f4f4f8;
+  --c-bg: #f5f7fb;
   --c-surface: #ffffff;
-  --c-surface-2: #f8f8fc;
-  --c-surface-3: #eeeef6;
-  --c-line: #e6e6f0;
-  --c-line-strong: #d3d3e3;
-  --c-text: #0f1117;
-  --c-muted: #63657a;
-  --c-faint: #9295ab;
+  --c-surface-2: #f9fafd;
+  --c-surface-3: #eef1f8;
+  --c-line: #e4e8f2;
+  --c-line-strong: #cfd6e6;
+  --c-text: #0e1116;
+  --c-muted: #5a6274;
+  --c-faint: #646d84;
 
-  /* Plauvia violet: cooler and deeper than the default SaaS indigo, so the
-     product is recognisable by colour alone rather than by its logo. */
-  --c-brand: #6d5ae6;
-  --c-brand-lift: #8b7bf0;
-  --c-brand-deep: #4b3bc4;
+  /**
+   * Plauvia blue. Deeper and cooler than the default SaaS indigo, and chosen
+   * against the contrast table rather than by eye: white sits on it at 6.2:1,
+   * so the primary button can carry ordinary body text instead of being an
+   * accent that every screen has to work around.
+   */
+  --c-brand: #1857d6;
+  --c-brand-lift: #2a66e2;
+  --c-brand-deep: #1245b4;
+
+  /**
+   * The accent is the brand by default and the one thing a person may change
+   * (Settings → Appearance). Every alternative is defined further down and
+   * every one of them clears 4.5:1 both as white-on-accent and as
+   * accent-on-soft — a preference that quietly breaks contrast is not a
+   * preference worth offering.
+   */
   --c-accent: var(--c-brand);
-  --c-accent-soft: #efedfe;
+  --c-accent-hover: var(--c-brand-lift);
+  --c-accent-active: var(--c-brand-deep);
+  --c-accent-soft: #e9eefc;
   --c-accent-text: #ffffff;
-  --c-accent-ring: color-mix(in srgb, var(--c-accent) 22%, transparent);
+  --c-accent-ring: color-mix(in srgb, var(--c-accent) 24%, transparent);
+  --c-focus: var(--c-accent);
 
   /* progress and growth — used by charts, streaks and completion */
-  --c-aurora: #0fb0a0;
-  --c-ember: #f59e0b;
-  --c-danger: #e0342a;
-  --c-danger-soft: #fef2f1;
-  --c-success: #06975a;
-  --c-success-soft: #ecfdf3;
-  --c-warn: #d97706;
-  --c-warn-soft: #fffaeb;
-  --c-canvas: #7c828e;
+  --c-aurora: #0a9b8f;
+  --c-ember: #e08700;
+  --c-danger: #cf2b22;
+  --c-danger-soft: #fdf0ef;
+  --c-success: #03854e;
+  --c-success-soft: #e6f7ee;
+  --c-warn: #9a5b00;
+  --c-warn-soft: #fdf3e2;
+  --c-info: #0d6ad1;
+  --c-info-soft: #e7f1fc;
+  --c-canvas: #79808d;
 
   /* focus timer modes */
-  --c-focus: #6d5ae6;
-  --c-rest: #0fb0a0;
-  --c-deep: #0284c7;
+  --c-timer-focus: #1857d6;
+  --c-rest: #0a9b8f;
+  --c-deep: #0d6ad1;
 
-  /* Signature surfaces. The gradient is the one place the brand is allowed to
-     shout; it appears on the primary action, the level ring and the hero. */
-  --grad-brand: linear-gradient(135deg, #8b7bf0 0%, #6d5ae6 45%, #5442cf 100%);
-  --grad-aurora: linear-gradient(135deg, #6d5ae6 0%, #4f7ae0 50%, #0fb0a0 100%);
-  --grad-ember: linear-gradient(135deg, #fbbf24 0%, #f59e0b 55%, #ea580c 100%);
+  /**
+   * Signature surfaces. The gradient is the one place the brand is allowed to
+   * shout; it appears on the primary action, the level ring and the hero.
+   * Every stop is dark enough for white text, because the text crosses all of
+   * them.
+   */
+  --grad-brand: linear-gradient(135deg, #2a66e2 0%, #1857d6 48%, #1245b4 100%);
+  --grad-aurora: linear-gradient(135deg, #1857d6 0%, #0d6ad1 50%, #0a9b8f 100%);
+  --grad-ember: linear-gradient(135deg, #f0a419 0%, #e08700 55%, #c25a09 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 70%) 0%, rgb(255 255 255 / 0%) 100%);
-  --glow-brand: 0 8px 26px -10px color-mix(in srgb, var(--c-brand) 62%, transparent);
+  --glow-brand: 0 8px 26px -10px color-mix(in srgb, var(--c-accent) 58%, transparent);
 
   /* ───────────────────────────────────────────────────────── elevation ── */
-  --shadow-sm: 0 1px 2px rgb(15 17 23 / 5%);
-  --shadow-panel: 0 1px 2px rgb(15 17 23 / 4%), 0 8px 24px -12px rgb(15 17 23 / 14%);
-  --shadow-float: 0 2px 6px rgb(15 17 23 / 7%), 0 20px 48px -16px rgb(15 17 23 / 26%);
+  --shadow-sm: 0 1px 2px rgb(14 17 22 / 5%);
+  --shadow-panel: 0 1px 2px rgb(14 17 22 / 4%), 0 8px 24px -12px rgb(14 17 22 / 14%);
+  --shadow-float: 0 2px 6px rgb(14 17 22 / 7%), 0 20px 48px -16px rgb(14 17 22 / 26%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 18%), 0 12px 30px -14px rgb(0 0 0 / 32%);
 
   /* ───────────────────────────────────────────────────────────── shape ── */
@@ -107,25 +132,28 @@
   /**
    * ───────────────────────────────────────────────────────────── type ──
    *
-   * One scale, six steps. Optical tracking tightens as the size grows — Inter
-   * set at 44 px with the same letter-spacing as a 12 px label reads loose and
-   * amateur, and that single detail is most of the difference between a
-   * product and a template.
+   * One scale, six steps, scaled by --type-scale so "larger text" in the
+   * accessibility settings moves the whole product at once instead of
+   * whichever screens remembered to use rem. Optical tracking tightens as the
+   * size grows — Inter set at 44 px with the same letter-spacing as a 12 px
+   * label reads loose and amateur, and that single detail is most of the
+   * difference between a product and a template.
    */
-  --text-display: 44px;
+  --type-scale: 1;
+  --text-display: calc(44px * var(--type-scale));
   --track-display: -0.038em;
-  --text-title: 30px;
+  --text-title: calc(30px * var(--type-scale));
   --track-title: -0.028em;
-  --text-h2: 21px;
+  --text-h2: calc(21px * var(--type-scale));
   --track-h2: -0.018em;
-  --text-h3: 16px;
+  --text-h3: calc(16px * var(--type-scale));
   --track-h3: -0.012em;
   /* kept as aliases: several screens still name the old two steps */
   --text-section: var(--text-h2);
   --track-section: var(--track-h2);
-  --text-body: 14px;
-  --text-small: 12.5px;
-  --text-label: 11px;
+  --text-body: calc(14px * var(--type-scale));
+  --text-small: calc(12.5px * var(--type-scale));
+  --text-label: calc(11px * var(--type-scale));
 
   /* ──────────────────────────────────────────────────────────── motion ── */
   --ease: cubic-bezier(0.32, 0.72, 0, 1);
@@ -137,45 +165,156 @@
 }
 
 [data-theme='dark'] {
-  --c-bg: #08090d;
-  --c-surface: #101219;
-  --c-surface-2: #171a23;
-  --c-surface-3: #20242f;
-  --c-line: #232733;
-  --c-line-strong: #333949;
-  --c-text: #eceef5;
-  --c-muted: #9ba0b4;
-  --c-faint: #6b7186;
+  --c-bg: #080a0f;
+  --c-surface: #0f1219;
+  --c-surface-2: #161a23;
+  --c-surface-3: #1f2430;
+  --c-line: #222735;
+  --c-line-strong: #323a4c;
+  --c-text: #e9edf6;
+  --c-muted: #98a2b8;
+  --c-faint: #7d8699;
 
-  --c-brand: #8b7bf0;
-  --c-brand-lift: #a898f8;
-  --c-brand-deep: #6d5ae6;
+  /**
+   * Dark mode splits the brand in two, because one value cannot do both jobs:
+   * `--c-brand` is the ink (7.1:1 against the surface, so icons and links are
+   * readable), while the gradient underneath white button text stays deep
+   * enough to clear 4.5:1. A single light blue would fail one of the two.
+   */
+  --c-brand: #6f9dff;
+  --c-brand-lift: #3b6fe8;
+  --c-brand-deep: #2a5bd7;
   --c-accent: var(--c-brand);
-  --c-accent-soft: #1e1b38;
+  --c-accent-hover: #8ab0ff;
+  --c-accent-active: #5b8cf7;
+  --c-accent-soft: #141c33;
   --c-accent-text: #ffffff;
-  --c-accent-ring: color-mix(in srgb, var(--c-accent) 30%, transparent);
+  --c-accent-ring: color-mix(in srgb, var(--c-accent) 32%, transparent);
 
-  --c-aurora: #2dd4bf;
-  --c-ember: #fbbf24;
-  --c-danger: #f97066;
-  --c-danger-soft: #2a1512;
-  --c-success: #47cd89;
-  --c-success-soft: #10231a;
-  --c-warn: #fdb022;
-  --c-warn-soft: #2a1e0a;
+  --c-aurora: #2ec6b4;
+  --c-ember: #f5b544;
+  --c-danger: #fb7a70;
+  --c-danger-soft: #2a1412;
+  --c-success: #3ecf87;
+  --c-success-soft: #0d2519;
+  --c-warn: #f5b544;
+  --c-warn-soft: #2a1e08;
+  --c-info: #4aa8f0;
+  --c-info-soft: #0d1f2e;
   --c-canvas: #05070a;
-  --c-focus: #8b7bf0;
-  --c-rest: #2dd4bf;
-  --c-deep: #38bdf8;
+  --c-timer-focus: #6f9dff;
+  --c-rest: #2ec6b4;
+  --c-deep: #4aa8f0;
 
-  --grad-brand: linear-gradient(135deg, #9b8cf5 0%, #7a68ec 45%, #5b49d8 100%);
+  --grad-brand: linear-gradient(135deg, #3b6fe8 0%, #2f62df 48%, #2a5bd7 100%);
+  --grad-aurora: linear-gradient(135deg, #3b6fe8 0%, #2b7fc4 50%, #17897e 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, rgb(255 255 255 / 0%) 100%);
-  --glow-brand: 0 8px 30px -10px color-mix(in srgb, var(--c-brand) 55%, transparent);
+  --glow-brand: 0 8px 30px -10px color-mix(in srgb, var(--c-accent) 48%, transparent);
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 45%);
   --shadow-panel: 0 1px 2px rgb(0 0 0 / 45%), 0 10px 26px -14px rgb(0 0 0 / 70%);
   --shadow-float: 0 2px 8px rgb(0 0 0 / 55%), 0 24px 56px -18px rgb(0 0 0 / 78%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 55%), 0 14px 34px -14px rgb(0 0 0 / 70%);
+}
+
+/**
+ * ──────────────────────────────────────────────────────── accent families ──
+ *
+ * A short, closed list. Arbitrary colours would let someone pick an accent
+ * that fails against their own text, so these six are the whole set, each one
+ * measured in both themes: white-on-accent and accent-on-soft both clear
+ * 4.5:1. The default is the brand itself.
+ */
+[data-accent='cyan'] {
+  --c-accent: #00697f;
+  --c-accent-hover: #00596c;
+  --c-accent-active: #004a5a;
+  --c-accent-soft: #e0f4f9;
+  --grad-brand: linear-gradient(135deg, #0a7d95 0%, #00697f 48%, #00566a 100%);
+}
+[data-theme='dark'][data-accent='cyan'] {
+  --c-accent: #3ec6e0;
+  --c-accent-hover: #63d4ea;
+  --c-accent-active: #2bb1cb;
+  --c-accent-soft: #0c2630;
+  --grad-brand: linear-gradient(135deg, #0d8ba6 0%, #0a7d95 48%, #086a80 100%);
+}
+[data-accent='green'] {
+  --c-accent: #04703f;
+  --c-accent-hover: #036036;
+  --c-accent-active: #02502d;
+  --c-accent-soft: #e3f7ec;
+  --grad-brand: linear-gradient(135deg, #06854b 0%, #04703f 48%, #035c34 100%);
+}
+[data-theme='dark'][data-accent='green'] {
+  --c-accent: #3ecf87;
+  --c-accent-hover: #63dc9f;
+  --c-accent-active: #2bb872;
+  --c-accent-soft: #0d2519;
+  --grad-brand: linear-gradient(135deg, #14875a 0%, #0f7550 48%, #0b6243 100%);
+}
+[data-accent='amber'] {
+  --c-accent: #9a5b00;
+  --c-accent-hover: #854e00;
+  --c-accent-active: #6f4100;
+  --c-accent-soft: #fdf1dd;
+  --grad-brand: linear-gradient(135deg, #b06900 0%, #9a5b00 48%, #7f4b00 100%);
+}
+[data-theme='dark'][data-accent='amber'] {
+  --c-accent: #f5b544;
+  --c-accent-hover: #f8c76b;
+  --c-accent-active: #e0a12f;
+  --c-accent-soft: #2a1e08;
+  --grad-brand: linear-gradient(135deg, #a86500 0%, #945800 48%, #7d4a00 100%);
+}
+[data-accent='rose'] {
+  --c-accent: #c22a63;
+  --c-accent-hover: #a92355;
+  --c-accent-active: #8f1d48;
+  --c-accent-soft: #fdeaf1;
+  --grad-brand: linear-gradient(135deg, #d43370 0%, #c22a63 48%, #a12252 100%);
+}
+[data-theme='dark'][data-accent='rose'] {
+  --c-accent: #ff8fb2;
+  --c-accent-hover: #ffaac6;
+  --c-accent-active: #f2739c;
+  --c-accent-soft: #2e131e;
+  --grad-brand: linear-gradient(135deg, #c73168 0%, #b32b5c 48%, #97244d 100%);
+}
+[data-accent='violet'] {
+  --c-accent: #6539d6;
+  --c-accent-hover: #5731bb;
+  --c-accent-active: #4a299f;
+  --c-accent-soft: #f0eafd;
+  --grad-brand: linear-gradient(135deg, #7546e6 0%, #6539d6 48%, #5430b4 100%);
+}
+[data-theme='dark'][data-accent='violet'] {
+  --c-accent: #a68cff;
+  --c-accent-hover: #bba7ff;
+  --c-accent-active: #8f70f5;
+  --c-accent-soft: #1d1636;
+  --grad-brand: linear-gradient(135deg, #6d4ae0 0%, #5f3fd0 48%, #5134b3 100%);
+}
+
+/**
+ * ─────────────────────────────────────────────────────────── accessibility ──
+ *
+ * High contrast strengthens the two things that carry meaning at a glance —
+ * the borders between surfaces and the quietest text — rather than inverting
+ * the palette, which usually just breaks it.
+ */
+[data-contrast='high'] {
+  --c-line: #a9b2c6;
+  --c-line-strong: #7c869c;
+  --c-muted: #3d4658;
+  --c-faint: #4a5468;
+}
+[data-theme='dark'][data-contrast='high'] {
+  --c-line: #48526a;
+  --c-line-strong: #6b7691;
+  --c-text: #ffffff;
+  --c-muted: #c3cbdc;
+  --c-faint: #a4adc2;
 }
 
 @theme inline {
@@ -198,7 +337,9 @@
   --color-brand: var(--c-brand);
   --color-aurora: var(--c-aurora);
   --color-ember: var(--c-ember);
+  --color-info: var(--c-info);
   --color-focus: var(--c-focus);
+  --color-timer-focus: var(--c-timer-focus);
   --color-rest: var(--c-rest);
   --color-deep: var(--c-deep);
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
@@ -800,13 +941,33 @@ h3 {
   animation-delay: 0.2s;
 }
 
+/**
+ * Motion is a preference in two places, and both of them win.
+ *
+ * The OS setting is honoured without being asked for; the in-app switch
+ * (Settings → Accessibility) exists because plenty of people want a calm
+ * interface on a machine they do not administer, or only in this one product.
+ * `data-motion="full"` is the escape hatch for someone whose OS says "reduce"
+ * but who wants the animation here anyway.
+ */
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  :root:not([data-motion='full']) *,
+  :root:not([data-motion='full']) *::before,
+  :root:not([data-motion='full']) *::after {
     animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
   }
+}
+
+[data-motion='reduced'] *,
+[data-motion='reduced'] *::before,
+[data-motion='reduced'] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
 }
 
 /* ----------------------------------------------------------- focus timer */
