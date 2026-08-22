@@ -110,7 +110,14 @@ is a draft, rather than presenting an invented address as real.
 ## Security
 
 `vercel.json` is the single source for the security headers, and `vite.config.ts` reads
-it back so `npm run dev` and `npm run preview` send the same ones. A
+it back so `npm run dev` and `npm run preview` send the same ones.
+
+Hashed assets are **not** served `immutable, max-age=1y`, and that is deliberate. A
+header rule matches by path, not by status, so a 404 during a deploy gets stamped with
+the same year-long lifetime as the file it failed to find — and a CDN will then serve
+that 404 for a year to everyone behind that edge, which is a white screen nobody can
+clear. The service worker already caches hashed assets cache-first, so the long HTTP
+lifetime bought very little and could cost the whole site. A
 Content-Security-Policy exercised only in production is a policy discovered by users;
 `npm run preview` serves the real build under the real policy — no `unsafe-inline`, no
 exceptions — which is how you find out that the PDF worker still starts.
