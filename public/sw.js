@@ -7,7 +7,7 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'plauvia-v5';
+const VERSION = 'plauvia-v6';
 const SHELL = [
   '/',
   '/index.html',
