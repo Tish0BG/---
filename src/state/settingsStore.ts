@@ -33,6 +33,7 @@ const DEFAULTS: AppSettings = {
   textBold: false,
   textItalic: false,
   lastTool: 'pen',
+  /** the document open right now, so a reload lands back on it — cleared on close */
   lastDocId: null,
   boardTemplate: 'lined',
   boardFlow: 'paged',

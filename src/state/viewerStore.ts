@@ -392,6 +392,11 @@ export const useViewer = create<ViewerStore>((set, get) => {
       }
       if (s.session) await s.session.destroy();
       clearImageCache();
+      // Forgetting it here is what makes a refresh behave. The key means "a
+      // document is open right now", not "the last one ever opened" — leaving
+      // it set after a close is why F5 on the dashboard kept dragging people
+      // back into a notebook they had already put down.
+      useSettings.getState().set('lastDocId', null);
       set({
         docId: null,
         meta: null,
