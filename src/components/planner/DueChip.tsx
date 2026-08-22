@@ -1,25 +1,28 @@
 import { daysUntil } from '@/state/plannerStore';
+import { useT, useLang, L, shortDate, type Msg } from '@/i18n';
 
 /**
  * A deadline read the way a person reads it: "днес", "утре", "след 3 дни",
  * "закъсня с 2 дни" — and coloured by how much trouble you are in.
  */
 export function DueChip({ due, bare = false }: { due: number; bare?: boolean }) {
+  const t = useT();
+  const lang = useLang();
   const days = daysUntil(due);
-  const label = describeDue(days, due);
+  const label = describeDue(days, due, lang, t);
   const color =
     days < 0 ? 'var(--c-danger)' : days === 0 ? 'var(--c-warn)' : days <= 2 ? 'var(--c-accent)' : 'var(--c-muted)';
 
   if (bare) {
     return (
-      <span style={{ color }} className="tabular-nums">
+      <span style={{ color }} className="t-num">
         {label}
       </span>
     );
   }
   return (
     <span
-      className="chip shrink-0 tabular-nums"
+      className="chip t-num shrink-0"
       style={{ background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}
     >
       {label}
@@ -27,11 +30,16 @@ export function DueChip({ due, bare = false }: { due: number; bare?: boolean }) 
   );
 }
 
-export function describeDue(days: number, due: number): string {
-  if (days === 0) return 'днес';
-  if (days === 1) return 'утре';
-  if (days === -1) return 'вчера';
-  if (days < 0) return `закъсня с ${-days} дни`;
-  if (days <= 7) return `след ${days} дни`;
-  return new Date(due).toLocaleDateString('bg-BG', { day: 'numeric', month: 'short' });
+export function describeDue(
+  days: number,
+  due: number,
+  lang: 'bg' | 'en',
+  t: (m: Msg) => string,
+): string {
+  if (days === 0) return t(L('днес', 'today'));
+  if (days === 1) return t(L('утре', 'tomorrow'));
+  if (days === -1) return t(L('вчера', 'yesterday'));
+  if (days < 0) return t(L(`закъсня с ${-days} дни`, `${-days} days late`));
+  if (days <= 7) return t(L(`след ${days} дни`, `in ${days} days`));
+  return shortDate(due, lang);
 }

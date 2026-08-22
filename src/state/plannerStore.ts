@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { ClassSlot, Grade, PlannerItem } from '@/types';
 import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
+import { announceProgress } from '@/services/progressBus';
 
 /** Midnight of the given day, the boundary every "due today" test uses. */
 export const startOfDay = (d = new Date()): number => {
@@ -95,6 +96,7 @@ export const usePlanner = create<PlannerStore>((set, get) => ({
     if (!current) return;
     const done = !current.done;
     await get().updateItem(id, { done, completedAt: done ? Date.now() : null });
+    announceProgress();
   },
 
   async removeItem(id) {
@@ -186,7 +188,7 @@ export function sortByDue(items: PlannerItem[]): PlannerItem[] {
 }
 
 export const dueToday = (items: PlannerItem[]): PlannerItem[] =>
-  openItems(items).filter((i) => i.due !== null && i.due <= endOfDay());
+  openItems(items).filter((i) => i.due !== null && i.due >= startOfDay() && i.due <= endOfDay());
 
 export const overdue = (items: PlannerItem[]): PlannerItem[] =>
   openItems(items).filter((i) => i.due !== null && i.due < startOfDay());

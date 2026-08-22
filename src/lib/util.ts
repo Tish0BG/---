@@ -156,3 +156,16 @@ export function formatDate(ts: number | null | undefined): string {
   if (sameDay) return `днес, ${d.toLocaleTimeString('bg-BG', { hour: '2-digit', minute: '2-digit' })}`;
   return d.toLocaleDateString('bg-BG', { day: 'numeric', month: 'short', year: 'numeric' });
 }
+
+/** Hands a blob to the browser as a download. Kept out of the export
+ *  service so a save button does not drag pdf-lib into the first load. */
+export function downloadBlob(blob: Blob, fileName: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}

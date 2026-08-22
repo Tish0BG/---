@@ -1,6 +1,7 @@
 import type { Asset, CardGrade, FlashCard, Rect } from '@/types';
 import { repo } from './storageService';
 import { uid } from '@/lib/util';
+import { tr, L } from '@/i18n';
 
 /** Card images live outside any document, so cards survive its deletion. */
 export const CARD_BUCKET = '__cards__';
@@ -48,7 +49,7 @@ export function previewIntervals(card: FlashCard): Record<CardGrade, string> {
   for (const g of ['again', 'hard', 'good', 'easy'] as CardGrade[]) {
     const next = schedule(card, g, now);
     const days = (next.due - now) / DAY;
-    out[g] = days < 1 ? `${Math.max(1, Math.round((next.due - now) / 60_000))} мин` : formatDays(days);
+    out[g] = days < 1 ? tr(L(`${Math.max(1, Math.round((next.due - now) / 60_000))} мин`, `${Math.max(1, Math.round((next.due - now) / 60_000))} min`)) : formatDays(days);
   }
   return out;
 }
@@ -56,7 +57,7 @@ export function previewIntervals(card: FlashCard): Record<CardGrade, string> {
 function formatDays(days: number): string {
   if (days < 30) {
     const n = Math.round(days);
-    return `${n} ${n === 1 ? 'ден' : 'дни'}`;
+    return tr(L(`${n} ${n === 1 ? 'ден' : 'дни'}`, `${n} ${n === 1 ? 'day' : 'days'}`));
   }
   if (days < 365) return `${Math.round(days / 30)} мес.`;
   return `${(days / 365).toFixed(1)} год.`;

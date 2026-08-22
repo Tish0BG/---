@@ -13,6 +13,7 @@ import { useSettings } from '@/state/settingsStore';
 import { Modal } from '../ui';
 import { Icon } from '../Icon';
 import { PaperPreview } from './PaperPreview';
+import { useT, tr, L } from '@/i18n';
 
 const TEMPLATES: PaperTemplate[] = [
   'blank',
@@ -40,6 +41,7 @@ export function NewBoardDialog({
   onClose: () => void;
   folderId: string | null;
 }) {
+  const t = useT();
   const settings = useSettings();
   const createBoard = useLibrary((s) => s.createBoard);
   const openDocument = useViewer((s) => s.openDocument);
@@ -75,16 +77,16 @@ export function NewBoardDialog({
     <Modal
       open={open}
       onClose={onClose}
-      title="Нова дъска"
+      title={t(L("Нова дъска", "New board"))}
       width={620}
       footer={
         <>
           <button className="btn" onClick={onClose} disabled={busy}>
-            Отказ
+            {t(L("Отказ", "Cancel"))}
           </button>
           <button className="btn btn-primary" onClick={() => void create()} disabled={busy}>
             <Icon name="board" size={14} />
-            Създай и отвори
+            {t(L("Създай и отвори", "Create and open"))}
           </button>
         </>
       }
@@ -93,7 +95,7 @@ export function NewBoardDialog({
         <div className="flex gap-4">
           <div className="min-w-0 flex-1 space-y-4">
             <label className="block">
-              <span className="mb-1 block label">Име</span>
+              <span className="mb-1 block label">{t(L("Име", "Name"))}</span>
               <input
                 autoFocus
                 value={name}
@@ -107,21 +109,21 @@ export function NewBoardDialog({
             </label>
 
             <div>
-              <span className="mb-1.5 block label">Вид</span>
+              <span className="mb-1.5 block label">{t(L("Вид", "Kind"))}</span>
               <div className="grid grid-cols-2 gap-2">
                 <FlowCard
                   active={flow === 'paged'}
                   onClick={() => setFlow('paged')}
                   icon="board"
-                  title="Тетрадка"
-                  hint="Отделни листа, добавяш нови"
+                  title={t(L("Тетрадка", "Notebook"))}
+                  hint={t(L("Отделни листа, добавяш нови", "Separate sheets you add to"))}
                 />
                 <FlowCard
                   active={flow === 'scroll'}
                   onClick={() => setFlow('scroll')}
                   icon="scroll"
-                  title="Свитък"
-                  hint="Един лист, който расте надолу"
+                  title={t(L("Свитък", "Scroll"))}
+                  hint={t(L("Един лист, който расте надолу", "One sheet that grows downwards"))}
                 />
               </div>
             </div>
@@ -130,7 +132,7 @@ export function NewBoardDialog({
               <div className="flex items-end gap-2">
                 <div className="min-w-0 flex-1">
                   <span className="mb-1.5 block label">
-                    Размер
+                    {t(L("Размер", "Size"))}
                   </span>
                   <div className="flex gap-1.5">
                     {(Object.keys(PAPER_SIZES) as PaperSizeId[]).map((id) => (
@@ -147,10 +149,10 @@ export function NewBoardDialog({
                 <button
                   className={`btn ${landscape ? 'btn-ghost-active' : ''}`}
                   onClick={() => setLandscape((v) => !v)}
-                  title="Хоризонтално"
+                  title={t(L("Хоризонтално", "Landscape"))}
                 >
                   <Icon name={landscape ? 'fitWidth' : 'fitPage'} size={15} />
-                  {landscape ? 'Хоризонтално' : 'Вертикално'}
+                  {landscape ? t(L("Хоризонтално", "Landscape")) : t(L("Вертикално", "Portrait"))}
                 </button>
               </div>
             )}
@@ -158,33 +160,33 @@ export function NewBoardDialog({
 
           <div className="hidden shrink-0 flex-col items-center gap-2 sm:flex">
             <PaperPreview template={template} w={w} h={Math.min(h, w * 1.42)} width={124} />
-            <span className="text-[11px] text-muted">{TEMPLATE_LABELS[template]}</span>
+            <span className="text-[11px] text-muted">{t(TEMPLATE_LABELS[template])}</span>
           </div>
         </div>
 
         <div>
-          <span className="mb-1.5 block label">Хартия</span>
+          <span className="mb-1.5 block label">{t(L("Хартия", "Paper"))}</span>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
-            {TEMPLATES.map((t) => (
+            {TEMPLATES.map((paper) => (
               <button
-                key={t}
-                onClick={() => setTemplate(t)}
+                key={paper}
+                onClick={() => setTemplate(paper)}
                 className="flex cursor-pointer flex-col items-center gap-1.5 rounded-lg border p-2 transition-colors"
                 style={{
-                  borderColor: template === t ? 'var(--c-accent)' : 'var(--c-line)',
-                  background: template === t ? 'var(--c-accent-soft)' : 'transparent',
+                  borderColor: template === paper ? 'var(--c-accent)' : 'var(--c-line)',
+                  background: template === paper ? 'var(--c-accent-soft)' : 'transparent',
                 }}
               >
-                <PaperPreview template={t} w={base.w} h={base.h} width={52} />
-                <span className="text-center text-[10px] leading-tight text-muted">{TEMPLATE_LABELS[t]}</span>
+                <PaperPreview template={paper} w={base.w} h={base.h} width={52} />
+                <span className="text-center text-[10px] leading-tight text-muted">{t(TEMPLATE_LABELS[paper])}</span>
               </button>
             ))}
           </div>
         </div>
 
         <p className="text-[11px] leading-relaxed text-muted">
-          Хартията може да се смени по всяко време — за цялата дъска или само за една страница.
-          Всички инструменти за писане, гумата, търсенето и експортът работят точно както при PDF.
+          {t(L('Хартията може да се смени по всяко време — за цялата дъска или само за една страница.', 'The paper can change at any time — for the whole board or for one page.'))}
+          {t(L('Всички инструменти за писане, гумата, търсенето и експортът работят точно както при PDF.', 'Every writing tool, the eraser, search and export work exactly as on a PDF.'))}
         </p>
       </div>
     </Modal>
@@ -223,4 +225,4 @@ function FlowCard({
 }
 
 const defaultName = (flow: BoardFlow, template: PaperTemplate): string =>
-  flow === 'scroll' ? 'Свитък' : template === 'cornell' ? 'Записки' : 'Тетрадка';
+  tr(flow === 'scroll' ? L('Свитък', 'Scroll') : template === 'cornell' ? L('Записки', 'Notes') : L('Тетрадка', 'Notebook'));

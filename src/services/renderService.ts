@@ -1,6 +1,7 @@
 import getStroke from 'perfect-freehand';
 import type { Annotation, StrokeAnnotation, TextAnnotation } from '@/types';
 import { withAlpha } from '@/lib/util';
+import { tr, L, type Msg } from '@/i18n';
 
 /** Colours used for problem-region badges. */
 export const REGION_COLORS: Record<string, string> = {
@@ -251,7 +252,7 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, a: Annotation, opt
       ctx.strokeRect(a.x, a.y, a.w, a.h);
       ctx.setLineDash([]);
       // status chip in the top-left corner
-      const label = a.label || STATUS_LABEL[a.status];
+      const label = a.label || tr(STATUS_LABEL[a.status]);
       ctx.font = '600 9px ' + FONT_STACKS.sans;
       const tw = ctx.measureText(label).width;
       ctx.fillStyle = color;
@@ -266,11 +267,11 @@ export function drawAnnotation(ctx: CanvasRenderingContext2D, a: Annotation, opt
   }
 }
 
-export const STATUS_LABEL: Record<string, string> = {
-  unsolved: 'Нерешена',
-  solved: 'Решена',
-  incorrect: 'Грешна',
-  review: 'За преговор',
+export const STATUS_LABEL: Record<string, Msg> = {
+  unsolved: L('Нерешена', 'Unsolved'),
+  solved: L('Решена', 'Solved'),
+  incorrect: L('Грешна', 'Wrong'),
+  review: L('За преговор', 'To review'),
 };
 
 /**

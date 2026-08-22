@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useWorkspace } from '@/state/workspaceStore';
-import { usePlanner, DAY_NAMES, DAY_SHORT, toMinutes } from '@/state/plannerStore';
-import { Icon } from '../Icon';
+import { usePlanner, toMinutes } from '@/state/plannerStore';
 import { MenuItem, Popover } from '../ui';
+import { useT, useLang, L, weekdayNames } from '@/i18n';
+import { S } from '@/i18n/strings';
+import { Button, Card, EmptyState } from '../kit';
 
 const DAYS = [1, 2, 3, 4, 5];
 const PX_PER_MIN = 0.9;
@@ -12,6 +14,10 @@ const PX_PER_MIN = 0.9;
  * lessons look like gaps — which is where revision actually fits.
  */
 export function Timetable() {
+  const t = useT();
+  const lang = useLang();
+  const dayNames = weekdayNames(lang, 'long');
+  const dayShort = weekdayNames(lang);
   const schedule = usePlanner((s) => s.schedule);
   const subjects = useWorkspace((s) => s.subjects);
   const [adding, setAdding] = useState<number | null>(null);
@@ -40,15 +46,18 @@ export function Timetable() {
 
   if (subjects.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line-strong py-14 text-center">
-        <Icon name="calendar" size={24} className="text-faint" />
-        <p className="text-[13px] text-muted">Първо добави предмети, после им сложи часове.</p>
-      </div>
+      <Card>
+        <EmptyState
+          icon="layers"
+          title={t(L('Първо предметите', 'Subjects first'))}
+          body={t(L('Добави предметите си и после им сложи часове в седмицата.', 'Add your subjects, then give them slots in the week.'))}
+        />
+      </Card>
     );
   }
 
   return (
-    <div className="panel overflow-hidden">
+    <Card flush>
       <div className="flex border-b border-line">
         <div className="w-11 shrink-0" />
         {DAYS.map((d) => (
@@ -57,8 +66,8 @@ export function Timetable() {
             className="flex-1 py-2 text-center text-[12px] font-medium"
             style={d === today ? { color: 'var(--c-accent)' } : { color: 'var(--c-muted)' }}
           >
-            <span className="hidden sm:inline">{DAY_NAMES[d]}</span>
-            <span className="sm:hidden">{DAY_SHORT[d]}</span>
+            <span className="hidden sm:inline">{dayNames[(d + 6) % 7]}</span>
+            <span className="sm:hidden">{dayShort[(d + 6) % 7]}</span>
           </div>
         ))}
       </div>
@@ -109,7 +118,7 @@ export function Timetable() {
                     <button
                       key={slot.id}
                       onClick={() => void usePlanner.getState().removeSlot(slot.id)}
-                      title={`${subject?.name ?? ''} ${slot.start}–${slot.end}\nКлик за изтриване`}
+                      title={`${subject?.name ?? ''} ${slot.start}–${slot.end}\n${t(L('Клик за изтриване', 'Click to remove'))}`}
                       className="absolute inset-x-0.5 cursor-pointer overflow-hidden rounded-md px-1.5 py-1 text-left transition-opacity hover:opacity-80"
                       style={{
                         top,
@@ -122,7 +131,7 @@ export function Timetable() {
                         className="block truncate text-[11px] font-medium leading-tight"
                         style={{ color: subject?.color }}
                       >
-                        {subject?.name ?? 'Час'}
+                        {subject?.name ?? t(L('Час', 'Class'))}
                       </span>
                       {h > 34 && (
                         <span className="block truncate text-[10px] tabular-nums text-muted">
@@ -138,7 +147,7 @@ export function Timetable() {
                 onClick={() => setAdding(adding === d ? null : d)}
                 className="absolute inset-x-0 bottom-0 h-7 cursor-pointer text-[11px] text-faint opacity-0 transition-opacity hover:bg-surface-2 hover:opacity-100"
               >
-                + час
+                + {t(L('час', 'class'))}
               </button>
             </div>
           ))}
@@ -146,11 +155,13 @@ export function Timetable() {
       </div>
 
       {adding !== null && <AddSlot day={adding} onDone={() => setAdding(null)} />}
-    </div>
+    </Card>
   );
 }
 
 function AddSlot({ day, onDone }: { day: number; onDone: () => void }) {
+  const t = useT();
+  const lang = useLang();
   const subjects = useWorkspace((s) => s.subjects);
   const [subjectId, setSubjectId] = useState(subjects[0]?.id ?? '');
   const [start, setStart] = useState('08:00');
@@ -160,7 +171,7 @@ function AddSlot({ day, onDone }: { day: number; onDone: () => void }) {
 
   return (
     <div className="flex flex-wrap items-end gap-2 border-t border-line p-3">
-      <span className="text-[12px] font-medium">{DAY_NAMES[day]}</span>
+      <span className="text-[12px] font-medium">{weekdayNames(lang, 'long')[(day + 6) % 7]}</span>
       <Popover
         width={200}
         trigger={({ toggle, ref }) => (
@@ -171,7 +182,7 @@ function AddSlot({ day, onDone }: { day: number; onDone: () => void }) {
                 {subject.name}
               </>
             ) : (
-              'Избери предмет'
+              t(L('Избери предмет', 'Pick a subject'))
             )}
           </button>
         )}
@@ -195,22 +206,20 @@ function AddSlot({ day, onDone }: { day: number; onDone: () => void }) {
       <input
         value={room}
         onChange={(e) => setRoom(e.target.value)}
-        placeholder="каб."
+        placeholder={t(L('каб.', 'room'))}
         className="field h-8 w-20"
       />
-      <button
-        className="btn btn-primary h-8"
+      <Button
+        variant="primary"
         disabled={!subjectId}
         onClick={() => {
           void usePlanner.getState().addSlot({ subjectId, day, start, end, room: room.trim() });
           onDone();
         }}
       >
-        Добави
-      </button>
-      <button className="btn h-8" onClick={onDone}>
-        Отказ
-      </button>
+        {t(S.add)}
+      </Button>
+      <Button onClick={onDone}>{t(S.cancel)}</Button>
     </div>
   );
 }

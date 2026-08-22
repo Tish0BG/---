@@ -7,34 +7,35 @@ import { TextControls } from './TextControls';
 import { Popover, Slider, Tip } from './ui';
 import { UtilityButton } from './utilities/UtilityLayer';
 import { InstrumentButton } from './instruments/InstrumentButton';
+import { useT, L, type Msg } from '@/i18n';
 
 interface ToolDef {
   id: ToolId;
   icon: string;
-  label: string;
+  label: Msg;
   key: string;
 }
 
 const GROUPS: ToolDef[][] = [
   [
-    { id: 'select', icon: 'cursor', label: 'Избор', key: 'V' },
-    { id: 'pan', icon: 'hand', label: 'Местене', key: 'H' },
+    { id: 'select', icon: 'cursor', label: L('Избор', 'Select'), key: 'V' },
+    { id: 'pan', icon: 'hand', label: L('Местене', 'Pan'), key: 'H' },
   ],
   [
-    { id: 'pen', icon: 'pencil', label: 'Писалка', key: 'P' },
-    { id: 'highlighter', icon: 'highlighter', label: 'Маркер', key: 'M' },
-    { id: 'eraser', icon: 'eraser', label: 'Гума', key: 'E' },
+    { id: 'pen', icon: 'pencil', label: L('Писалка', 'Pen'), key: 'P' },
+    { id: 'highlighter', icon: 'highlighter', label: L('Маркер', 'Highlighter'), key: 'M' },
+    { id: 'eraser', icon: 'eraser', label: L('Гума', 'Eraser'), key: 'E' },
   ],
   [
-    { id: 'line', icon: 'line', label: 'Линия', key: 'L' },
-    { id: 'rect', icon: 'square', label: 'Правоъгълник', key: 'R' },
-    { id: 'ellipse', icon: 'circle', label: 'Кръг', key: 'O' },
-    { id: 'arrow', icon: 'arrow', label: 'Стрелка', key: 'A' },
+    { id: 'line', icon: 'line', label: L('Линия', 'Line'), key: 'L' },
+    { id: 'rect', icon: 'square', label: L('Правоъгълник', 'Rectangle'), key: 'R' },
+    { id: 'ellipse', icon: 'circle', label: L('Кръг', 'Ellipse'), key: 'O' },
+    { id: 'arrow', icon: 'arrow', label: L('Стрелка', 'Arrow'), key: 'A' },
   ],
   [
-    { id: 'text', icon: 'type', label: 'Текст', key: 'T' },
-    { id: 'region', icon: 'region', label: 'Маркиране на задача', key: 'G' },
-    { id: 'snip', icon: 'scissors', label: 'Изрезка към дъска или карта', key: 'C' },
+    { id: 'text', icon: 'type', label: L('Текст', 'Text'), key: 'T' },
+    { id: 'region', icon: 'region', label: L('Маркиране на задача', 'Mark a problem'), key: 'G' },
+    { id: 'snip', icon: 'scissors', label: L('Изрезка към дъска или карта', 'Snip to a board or a card'), key: 'C' },
   ],
 ];
 
@@ -43,6 +44,7 @@ const HIGHLIGHT_COLORS = ['#fde047', '#86efac', '#93c5fd', '#f9a8d4', '#fdba74',
 
 /** Floating tool palette. Sits over the document, thumb-reachable on tablets. */
 export function Toolbar() {
+  const t = useT();
   const tool = useViewer((s) => s.tool);
   const setTool = useViewer((s) => s.setTool);
   const undo = useViewer((s) => s.undo);
@@ -72,7 +74,7 @@ export function Toolbar() {
             </div>
           ))}
           <Divider />
-          <Tip label="Вмъкни изображение">
+          <Tip label={t(L("Вмъкни изображение", "Insert an image"))}>
             <button className="icon-btn h-9 w-9" onClick={pickImage}>
               <Icon name="image" size={18} />
             </button>
@@ -82,12 +84,12 @@ export function Toolbar() {
         </div>
 
         <Divider />
-        <Tip label="Отмени (⌘Z)">
+        <Tip label={t(L("Отмени (⌘Z)", "Undo (⌘Z)"))}>
           <button className="icon-btn h-9 w-9 shrink-0" disabled={!canUndo} onClick={undo}>
             <Icon name="undo" size={18} />
           </button>
         </Tip>
-        <Tip label="Върни (⌘⇧Z)">
+        <Tip label={t(L("Върни (⌘⇧Z)", "Redo (⌘⇧Z)"))}>
           <button className="icon-btn h-9 w-9 shrink-0" disabled={!canRedo} onClick={redo}>
             <Icon name="redo" size={18} />
           </button>
@@ -103,8 +105,9 @@ export function Toolbar() {
 const Divider = () => <span className="mx-1 h-6 w-px shrink-0" style={{ background: 'var(--c-line)' }} />;
 
 function ToolButton({ def, active, onClick }: { def: ToolDef; active: boolean; onClick: () => void }) {
+  const t = useT();
   return (
-    <Tip label={`${def.label} (${def.key})`}>
+    <Tip label={`${t(def.label)} (${def.key})`}>
       <button
         className={`icon-btn h-9 w-9 ${active ? 'btn-ghost-active' : ''}`}
         aria-pressed={active}
@@ -118,6 +121,7 @@ function ToolButton({ def, active, onClick }: { def: ToolDef; active: boolean; o
 
 /** Colour / size / opacity for the active tool, plus eraser and text options. */
 function ToolOptions() {
+  const t = useT();
   const tool = useViewer((s) => s.tool);
   const settings = useSettings();
   const preset = settings.toolPresets[tool];
@@ -148,12 +152,12 @@ function ToolOptions() {
                   aria-pressed={settings.eraserMode === m}
                   onClick={() => settings.set('eraserMode', m)}
                 >
-                  {m === 'partial' ? 'Частична' : 'Цяла черта'}
+                  {t(m === 'partial' ? L('Частична', 'Partial') : L('Цяла черта', 'Whole stroke'))}
                 </button>
               ))}
             </div>
             <Slider
-              label="Размер"
+              label={t(L("Размер", "Size"))}
               min={6}
               max={64}
               value={settings.eraserSize}
@@ -209,7 +213,7 @@ function ToolOptions() {
             ))}
           </div>
           <label className="flex items-center gap-2 text-[11px] text-muted">
-            <span>Друг цвят</span>
+            <span>{t(L("Друг цвят", "Custom colour"))}</span>
             <input
               type="color"
               value={preset.color}
@@ -218,7 +222,7 @@ function ToolOptions() {
             />
           </label>
           <Slider
-            label={isText ? 'Размер на шрифта' : 'Дебелина'}
+            label={t(isText ? L('Размер на шрифта', 'Font size') : L('Дебелина', 'Thickness'))}
             min={isText ? 8 : 0.5}
             max={isText ? 48 : tool === 'highlighter' ? 40 : 12}
             step={isText ? 1 : 0.5}
@@ -226,7 +230,7 @@ function ToolOptions() {
             onChange={(v) => settings.setPreset(tool, { size: v })}
           />
           <Slider
-            label="Плътност"
+            label={t(L("Плътност", "Opacity"))}
             min={0.05}
             max={1}
             step={0.05}

@@ -2,6 +2,7 @@ import type { Annotation, BoardConfig, BoardFlow, BoardPage, PaperTemplate, Text
 import type { PageSource, PageViewportLike, SearchMatch } from './pageSource';
 import type { PageSize } from './pdfService';
 import { LINE_HEIGHT, cssFont, layoutText } from './renderService';
+import { L, type Msg } from '@/i18n';
 
 /** PDF points per millimetre. Paper templates are designed in mm, like real paper. */
 const MM = 72 / 25.4;
@@ -14,16 +15,16 @@ export const PAPER_SIZES = {
 
 export type PaperSizeId = keyof typeof PAPER_SIZES;
 
-export const TEMPLATE_LABELS: Record<PaperTemplate, string> = {
-  blank: 'Празна',
-  lined: 'Редове',
-  'lined-wide': 'Широки редове',
-  grid: 'Квадратчета 5 мм',
-  'grid-large': 'Квадратчета 10 мм',
-  dots: 'Точки',
-  graph: 'Милиметрова',
-  music: 'Нотна',
-  cornell: 'Cornell (записки)',
+export const TEMPLATE_LABELS: Record<PaperTemplate, Msg> = {
+  blank: L('Празна', 'Blank'),
+  lined: L('Редове', 'Ruled'),
+  'lined-wide': L('Широки редове', 'Wide ruled'),
+  grid: L('Квадратчета 5 мм', '5 mm squares'),
+  'grid-large': L('Квадратчета 10 мм', '10 mm squares'),
+  dots: L('Точки', 'Dots'),
+  graph: L('Милиметрова', 'Graph paper'),
+  music: L('Нотна', 'Manuscript'),
+  cornell: L('Cornell (записки)', 'Cornell (notes)'),
 };
 
 /** How tall one screen of a scrolling board is before it starts growing. */

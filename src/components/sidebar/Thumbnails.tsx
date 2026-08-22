@@ -4,6 +4,7 @@ import type { PageSource } from '@/services/pageSource';
 import { drawPage } from '@/services/renderService';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
+import { useT, L } from '@/i18n';
 
 /** dataURL cache so scrolling the strip does not re-render pages */
 const cache = new Map<string, string>();
@@ -20,6 +21,7 @@ export function clearThumbCache() {
 }
 
 export function Thumbnails() {
+  const t = useT();
   const pageCount = useViewer((s) => s.pageCount);
   const currentPage = useViewer((s) => s.currentPage);
   const goToPage = useViewer((s) => s.goToPage);
@@ -61,7 +63,7 @@ export function Thumbnails() {
           onClick={() => void useViewer.getState().addBoardPage(pageCount)}
         >
           <Icon name="pageAdd" size={15} />
-          Нова страница
+          {t(L('Нова страница', 'New page'))}
         </button>
       )}
     </div>
@@ -78,6 +80,7 @@ function PageMenu({
   last: number;
   confirm: (m: string, cb: () => void) => void;
 }) {
+  const t = useT();
   const store = useViewer.getState;
   return (
     <Popover
@@ -89,7 +92,7 @@ function PageMenu({
           onClick={toggle}
           className="icon-btn absolute right-1 top-1 h-6 w-6 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100"
           style={{ background: 'color-mix(in srgb, var(--c-surface) 82%, transparent)' }}
-          aria-label={`Действия за страница ${page}`}
+          aria-label={t(L(`Действия за страница ${page}`, `Actions for page ${page}`))}
         >
           <Icon name="dots" size={14} />
         </button>
@@ -99,7 +102,7 @@ function PageMenu({
         <>
           <MenuItem
             icon="pageAdd"
-            label="Нова страница след тази"
+            label={t(L('Нова страница след тази', 'New page after this'))}
             onClick={() => {
               void store().addBoardPage(page);
               close();
@@ -107,7 +110,7 @@ function PageMenu({
           />
           <MenuItem
             icon="pageCopy"
-            label="Дублирай"
+            label={t(L('Дублирай', 'Duplicate'))}
             onClick={() => {
               void store().duplicateBoardPage(page);
               close();
@@ -116,7 +119,7 @@ function PageMenu({
           <MenuSep />
           <MenuItem
             icon="arrowUp"
-            label="Премести нагоре"
+            label={t(L('Премести нагоре', 'Move up'))}
             onClick={() => {
               if (page > 1) void store().moveBoardPage(page, -1);
               close();
@@ -124,7 +127,7 @@ function PageMenu({
           />
           <MenuItem
             icon="arrowDown"
-            label="Премести надолу"
+            label={t(L('Премести надолу', 'Move down'))}
             onClick={() => {
               if (page < last) void store().moveBoardPage(page, 1);
               close();
@@ -133,7 +136,7 @@ function PageMenu({
           <MenuSep />
           <MenuItem
             icon="trash"
-            label="Изтрий страницата"
+            label={t(L('Изтрий страницата', 'Delete the page'))}
             danger
             onClick={() => {
               close();
@@ -143,7 +146,7 @@ function PageMenu({
                 void store().deleteBoardPage(page);
                 return;
               }
-              confirm(`Страница ${page} има бележки. Да я изтрия ли заедно с тях?`, () =>
+              confirm(t(L(`Страница ${page} има бележки. Да я изтрия ли заедно с тях?`, `Page ${page} has notes on it. Delete the page and the notes?`)), () =>
                 void store().deleteBoardPage(page),
               );
             }}
@@ -155,6 +158,7 @@ function PageMenu({
 }
 
 function Thumb({ page, active }: { page: number; active: boolean }) {
+  const t = useT();
   const session = useViewer((s) => s.session);
   const docId = useViewer((s) => s.docId);
   const annotations = useViewer((s) => s.pages.get(page));
@@ -234,7 +238,7 @@ function Thumb({ page, active }: { page: number; active: boolean }) {
         <span
           className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full"
           style={{ background: 'var(--c-accent)' }}
-          title={`${annotationCount} бележки`}
+          title={t(L(`${annotationCount} бележки`, `${annotationCount} notes`))}
         />
       )}
     </div>

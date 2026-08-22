@@ -81,6 +81,31 @@ export function useShortcuts({ onSearch, onExport }: { onSearch: () => void; onE
       if (mod) return;
       if (isTyping(e.target)) return;
 
+      /**
+       * Outside a document the single letters mean something else: there are
+       * no tools to switch to, and creating a task is what the keyboard is
+       * for on those screens.
+       */
+      if (!store.docId) {
+        const app = useApp.getState();
+        if (app.quick || app.paletteOpen) return;
+        const key = e.key.toLowerCase();
+        if (key === 't') {
+          e.preventDefault();
+          app.setQuick('task');
+        } else if (key === 'e') {
+          e.preventDefault();
+          app.setQuick('exam');
+        } else if (key === 'g') {
+          e.preventDefault();
+          app.setQuick('goal');
+        } else if (key === '/') {
+          e.preventDefault();
+          app.setPalette(true);
+        }
+        return;
+      }
+
       if (e.key === 'Delete' || e.key === 'Backspace') {
         const selected = store.selectedIds
           .map((id) => store.findAnnotation(id))

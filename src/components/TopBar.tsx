@@ -6,6 +6,8 @@ import { useLibrary } from '@/state/libraryStore';
 import { Icon } from './Icon';
 import { MenuItem, MenuSep, Popover, Tip } from './ui';
 import { BoardControls } from './board/BoardControls';
+import { useT, tr, L } from '@/i18n';
+import { S } from '@/i18n/strings';
 
 const ZOOM_STEPS = [0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4];
 
@@ -22,6 +24,7 @@ export function TopBar({
   onCards: () => void;
   dueCount: number;
 }) {
+  const t = useT();
   const meta = useViewer((s) => s.meta);
   const pageCount = useViewer((s) => s.pageCount);
   const currentPage = useViewer((s) => s.currentPage);
@@ -45,21 +48,21 @@ export function TopBar({
 
   return (
     <header className="flex h-12 shrink-0 items-center gap-1 border-b border-line bg-surface px-2">
-      <button className="icon-btn" onClick={onToggleSidebar} aria-label="Панел">
+      <button className="icon-btn" onClick={onToggleSidebar} aria-label={t(L("Панел", "Panel"))}>
         <Icon name="panelLeft" size={17} />
       </button>
-      <Tip label="Към библиотеката">
-        <button className="icon-btn" onClick={() => void closeDocument()} aria-label="Библиотека">
+      <Tip label={t(L("Към библиотеката", "Back to the library"))}>
+        <button className="icon-btn" onClick={() => void closeDocument()} aria-label={t(L("Библиотека", "Library"))}>
           <Icon name="arrowLeft" size={17} />
         </button>
       </Tip>
 
       <button
         className="ml-1 hidden min-w-0 max-w-[24vw] truncate rounded px-1 text-[13px] font-medium hover:bg-surface-3 cursor-text sm:block"
-        title="Кликни, за да преименуваш"
+        title={t(L("Кликни, за да преименуваш", "Click to rename"))}
         onClick={() => {
           if (!meta) return;
-          const name = prompt('Име на документа', meta.name);
+          const name = prompt(t(L('Име на документа', 'Document name')), meta.name);
           if (name) void renameDocument(meta.id, name);
         }}
       >
@@ -86,7 +89,7 @@ export function TopBar({
             onBlur={() => setPageInput(String(currentPage))}
             onKeyDown={(e) => e.stopPropagation()}
             className="field h-7 w-11 px-1 text-center tabular-nums"
-            aria-label="Номер на страница"
+            aria-label={t(L("Номер на страница", "Page number"))}
           />
         </form>
         <span className="px-1 text-[12px] tabular-nums text-muted">/ {pageCount}</span>
@@ -97,7 +100,7 @@ export function TopBar({
 
       {/* zoom */}
       <div className="ml-2 flex items-center gap-0.5">
-        <button className="icon-btn hidden sm:inline-flex" onClick={() => setZoom(zoom / 1.2)} aria-label="Намали">
+        <button className="icon-btn hidden sm:inline-flex" onClick={() => setZoom(zoom / 1.2)} aria-label={t(L('Намали', 'Zoom out'))}>
           <Icon name="zoomOut" size={17} />
         </button>
         <Popover
@@ -113,7 +116,7 @@ export function TopBar({
             <>
               <MenuItem
                 icon="fitWidth"
-                label="По ширина"
+                label={t(L('По ширина', 'Fit width'))}
                 active={fitMode === 'width'}
                 onClick={() => {
                   setFitMode('width');
@@ -122,7 +125,7 @@ export function TopBar({
               />
               <MenuItem
                 icon="fitPage"
-                label="Цяла страница"
+                label={t(L('Цяла страница', 'Whole page'))}
                 active={fitMode === 'page'}
                 onClick={() => {
                   setFitMode('page');
@@ -144,7 +147,7 @@ export function TopBar({
             </>
           )}
         </Popover>
-        <button className="icon-btn hidden sm:inline-flex" onClick={() => setZoom(zoom * 1.2)} aria-label="Увеличи">
+        <button className="icon-btn hidden sm:inline-flex" onClick={() => setZoom(zoom * 1.2)} aria-label={t(L('Увеличи', 'Zoom in'))}>
           <Icon name="zoomIn" size={17} />
         </button>
       </div>
@@ -161,12 +164,12 @@ export function TopBar({
       <div className="mx-1.5 hidden h-6 w-px bg-line md:block" />
 
       <div className="hidden items-center gap-0.5 md:flex">
-        <Tip label="Фокус таймер (⌥T)">
+        <Tip label={t(L('Фокус таймер (⌥T)', 'Focus timer (⌥T)'))}>
           <button className="icon-btn" onClick={() => useTimer.getState().toggleWidget()}>
             <Icon name="timer" size={17} />
           </button>
         </Tip>
-        <Tip label={dueCount ? `${dueCount} карти за преговор` : 'Флашкарти'}>
+        <Tip label={t(dueCount ? L(`${dueCount} карти за преговор`, `${dueCount} cards due`) : S.cards)}>
           <button className="icon-btn relative" onClick={onCards}>
             <Icon name="cards" size={17} />
             {dueCount > 0 && (
@@ -177,22 +180,22 @@ export function TopBar({
             )}
           </button>
         </Tip>
-        <Tip label={isBookmarked ? 'Премахни отметката' : 'Отметка (⌘D)'}>
+        <Tip label={t(isBookmarked ? L('Премахни отметката', 'Remove bookmark') : L('Отметка (⌘D)', 'Bookmark (⌘D)'))}>
           <button className="icon-btn" onClick={() => void toggleBookmark(currentPage)}>
             <Icon name="bookmark" size={17} fill={isBookmarked} className={isBookmarked ? 'text-warn' : ''} />
           </button>
         </Tip>
-        <Tip label="Експорт (⌘E)">
+        <Tip label={t(L("Експорт (⌘E)", "Export (⌘E)"))}>
           <button className="icon-btn" onClick={onExport}>
             <Icon name="download" size={17} />
           </button>
         </Tip>
-        <Tip label={theme === 'dark' ? 'Светла тема' : 'Тъмна тема'}>
+        <Tip label={t(theme === 'dark' ? L('Светла тема', 'Light theme') : L('Тъмна тема', 'Dark theme'))}>
           <button className="icon-btn" onClick={() => setSetting('theme', theme === 'dark' ? 'light' : 'dark')}>
             <Icon name={theme === 'dark' ? 'sun' : 'moon'} size={17} />
           </button>
         </Tip>
-        <Tip label="Настройки">
+        <Tip label={t(L("Настройки", "Settings"))}>
           <button className="icon-btn" onClick={onSettings}>
             <Icon name="sliders" size={17} />
           </button>
@@ -204,7 +207,7 @@ export function TopBar({
         width={210}
         align="end"
         trigger={({ toggle, ref }) => (
-          <button ref={ref} className="icon-btn md:hidden" onClick={toggle} aria-label="Още">
+          <button ref={ref} className="icon-btn md:hidden" onClick={toggle} aria-label={t(L("Още", "More"))}>
             <Icon name="dots" size={17} />
           </button>
         )}
@@ -213,7 +216,7 @@ export function TopBar({
           <>
             <MenuItem
               icon="bookmark"
-              label={isBookmarked ? 'Премахни отметката' : 'Отметка'}
+              label={t(isBookmarked ? L('Премахни отметката', 'Remove bookmark') : L('Отметка', 'Bookmark'))}
               onClick={() => {
                 void toggleBookmark(currentPage);
                 close();
@@ -221,7 +224,7 @@ export function TopBar({
             />
             <MenuItem
               icon="download"
-              label="Експорт"
+              label={t(L("Експорт", "Export"))}
               onClick={() => {
                 onExport();
                 close();
@@ -229,7 +232,7 @@ export function TopBar({
             />
             <MenuItem
               icon="timer"
-              label="Фокус таймер"
+              label={t(L("Фокус таймер", "Focus timer"))}
               onClick={() => {
                 useTimer.getState().toggleWidget();
                 close();
@@ -237,7 +240,7 @@ export function TopBar({
             />
             <MenuItem
               icon="cards"
-              label={dueCount ? `Флашкарти (${dueCount})` : 'Флашкарти'}
+              label={t(dueCount ? L(`Флашкарти (${dueCount})`, `Flashcards (${dueCount})`) : S.cards)}
               onClick={() => {
                 onCards();
                 close();
@@ -245,7 +248,7 @@ export function TopBar({
             />
             <MenuItem
               icon={theme === 'dark' ? 'sun' : 'moon'}
-              label={theme === 'dark' ? 'Светла тема' : 'Тъмна тема'}
+              label={t(theme === 'dark' ? L('Светла тема', 'Light theme') : L('Тъмна тема', 'Dark theme'))}
               onClick={() => {
                 setSetting('theme', theme === 'dark' ? 'light' : 'dark');
                 close();
@@ -254,7 +257,7 @@ export function TopBar({
             <MenuSep />
             <MenuItem
               icon="sliders"
-              label="Настройки"
+              label={t(L("Настройки", "Settings"))}
               onClick={() => {
                 onSettings();
                 close();
@@ -269,10 +272,10 @@ export function TopBar({
 
 function SaveBadge({ status }: { status: string }) {
   const map: Record<string, { text: string; color: string; icon: string }> = {
-    saved: { text: 'Записано', color: 'var(--c-muted)', icon: 'check' },
-    saving: { text: 'Записване…', color: 'var(--c-accent)', icon: 'refresh' },
-    unsaved: { text: 'Незаписано', color: 'var(--c-warn)', icon: 'clock' },
-    error: { text: 'Грешка при запис', color: 'var(--c-danger)', icon: 'alert' },
+    saved: { text: tr(L('Записано', 'Saved')), color: 'var(--c-muted)', icon: 'check' },
+    saving: { text: tr(L('Записване…', 'Saving…')), color: 'var(--c-accent)', icon: 'refresh' },
+    unsaved: { text: tr(L('Незаписано', 'Unsaved')), color: 'var(--c-warn)', icon: 'clock' },
+    error: { text: tr(L('Грешка при запис', 'Save failed')), color: 'var(--c-danger)', icon: 'alert' },
   };
   const s = map[status] ?? map.saved;
   return (

@@ -27,6 +27,7 @@ const KINDS: SyncKind[] = [
   'bookmarks',
   'cards',
   'planner',
+  'goals',
   'grades',
   'schedule',
   'sessions',

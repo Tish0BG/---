@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { useViewer } from '@/state/viewerStore';
 import { Icon } from '../Icon';
+import { useT, L } from '@/i18n';
 
 /** Full-text search across the document, when the PDF has a text layer. */
 export function SearchPanel({ autoFocus }: { autoFocus?: boolean }) {
+  const t = useT();
   const search = useViewer((s) => s.search);
   const runSearch = useViewer((s) => s.runSearch);
   const setActiveHit = useViewer((s) => s.setActiveHit);
@@ -47,7 +49,7 @@ export function SearchPanel({ autoFocus }: { autoFocus?: boolean }) {
                 clearSearch();
               }
             }}
-            placeholder="Търси в документа…"
+            placeholder={t(L('Търси в документа…', 'Search this document…'))}
             className="field pl-7"
             enterKeyHint="search"
           />
@@ -56,7 +58,7 @@ export function SearchPanel({ autoFocus }: { autoFocus?: boolean }) {
           type="submit"
           className="btn btn-primary shrink-0 px-2.5"
           disabled={value.trim().length < 2 || search.busy}
-          aria-label="Търси"
+          aria-label={t(L('Търси', 'Search'))}
         >
           {search.busy ? <Icon name="refresh" size={14} className="animate-spin" /> : <Icon name="search" size={14} />}
         </button>
@@ -65,12 +67,12 @@ export function SearchPanel({ autoFocus }: { autoFocus?: boolean }) {
       <div className="px-3 pb-1.5 flex items-center justify-between text-[11px] text-muted">
         <span>
           {search.busy
-            ? 'Търсене…'
+            ? t(L('Търсене…', 'Searching…'))
             : search.hits.length
-              ? `${search.activeIndex + 1} от ${search.hits.length}`
+              ? t(L(`${search.activeIndex + 1} от ${search.hits.length}`, `${search.activeIndex + 1} of ${search.hits.length}`))
               : search.query
-                ? 'Няма резултати'
-                : 'Enter за търсене'}
+                ? t(L('Няма резултати', 'No results'))
+                : t(L('Enter за търсене', 'Press Enter to search'))}
         </span>
         {search.hits.length > 0 && (
           <span className="flex gap-0.5">

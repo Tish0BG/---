@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { Icon } from '../Icon';
+import { useT, L } from '@/i18n';
 
 /** True while the browser believes it has a network. */
 export function useOnline(): boolean {
@@ -27,6 +28,7 @@ export function useOnline(): boolean {
  * "it synced".
  */
 export function ConnectionBar() {
+  const t = useT();
   const online = useOnline();
   const signedIn = useAuth((s) => !!s.user);
   const [justBack, setJustBack] = useState(false);
@@ -62,10 +64,10 @@ export function ConnectionBar() {
     >
       <Icon name={online ? 'cloud' : 'wifiOff'} size={13} />
       {online
-        ? 'Връзката се върна — синхронизираме'
+        ? t(L("Връзката се върна — синхронизираме", "Back online — syncing"))
         : signedIn
-          ? 'Няма връзка. Работиш нормално; синхронизацията ще изчака.'
-          : 'Няма връзка. Приложението работи офлайн.'}
+          ? t(L("Няма връзка. Работиш нормално; синхронизацията ще изчака.", "No connection. Keep working; the sync will wait."))
+          : t(L("Няма връзка. Приложението работи офлайн.", "No connection. The app runs offline."))}
     </div>
   );
 }

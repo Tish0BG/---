@@ -1,4 +1,5 @@
 import type { FontFamily } from '@/types';
+import { useT, L } from '@/i18n';
 
 export interface TextStyle {
   fontFamily: FontFamily;
@@ -25,6 +26,7 @@ export function TextControls({
   onChange: (patch: Partial<TextStyle>) => void;
   compact?: boolean;
 }) {
+  const t = useT();
   return (
     <div className={compact ? 'flex items-center gap-1' : 'space-y-2'}>
       <div className="flex gap-1">
@@ -44,14 +46,14 @@ export function TextControls({
         <button
           onClick={() => onChange({ bold: !value.bold })}
           className={`btn h-7 w-8 font-bold ${value.bold ? 'btn-ghost-active' : ''}`}
-          title="Получер"
+          title={t(L("Получер", "Bold"))}
         >
           B
         </button>
         <button
           onClick={() => onChange({ italic: !value.italic })}
           className={`btn h-7 w-8 italic ${value.italic ? 'btn-ghost-active' : ''}`}
-          title="Курсив"
+          title={t(L("Курсив", "Italic"))}
         >
           I
         </button>
@@ -61,7 +63,7 @@ export function TextControls({
             key={a}
             onClick={() => onChange({ align: a })}
             className={`icon-btn h-7 w-8 ${value.align === a ? 'btn-ghost-active' : ''}`}
-            title={a === 'left' ? 'Ляво' : a === 'center' ? 'Центрирано' : 'Дясно'}
+            title={t(a === 'left' ? L('Ляво', 'Left') : a === 'center' ? L('Центрирано', 'Centred') : L('Дясно', 'Right'))}
           >
             <span
               className="flex w-full flex-col gap-[2px] px-1.5"

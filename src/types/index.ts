@@ -457,6 +457,80 @@ export interface PlannerItem {
   updatedAt: ISODate;
 }
 
+/* -------------------------------------------------------------------- goals */
+
+/**
+ * What a goal is measured in.
+ *
+ * The first four are read straight off data the app already collects, so a
+ * goal moves on its own while you work. `custom` is the escape hatch — the
+ * chapters of a book, the past papers of a subject — and is counted by hand.
+ */
+export type GoalMetric = 'minutes' | 'tasks' | 'cards' | 'pages' | 'custom';
+
+export interface Milestone {
+  id: string;
+  title: string;
+  done: boolean;
+  doneAt: ISODate | null;
+}
+
+/**
+ * One thing you are trying to get to, with a deadline and a number attached.
+ *
+ * Everything except `custom` derives its progress from real records inside the
+ * goal's window, which is what keeps a goal honest: it cannot say 80 % while
+ * the focus log says otherwise.
+ */
+export interface Goal {
+  id: string;
+  title: string;
+  subjectId: string | null;
+  metric: GoalMetric;
+  /** minutes, tasks, reviews, pages or units — read with `metric` */
+  target: number;
+  /** hand-counted progress; only consulted when metric === 'custom' */
+  manual: number;
+  /**
+   * Where the automatic counter stood when the goal was made.
+   *
+   * Pages read are a running total the app has always kept, so without a
+   * baseline a goal set today would open at "already 340 of 200 pages".
+   */
+  baseline: number;
+  /** automatic metrics are measured from here onwards */
+  startAt: ISODate;
+  deadline: ISODate | null;
+  milestones: Milestone[];
+  /** overrides the subject tint for this goal only */
+  color: string | null;
+  archived: boolean;
+  completedAt: ISODate | null;
+  createdAt: ISODate;
+  updatedAt: ISODate;
+}
+
+/* ------------------------------------------------------------ achievements */
+
+export type AchievementTier = 'bronze' | 'silver' | 'gold';
+
+/**
+ * Progress and level are *derived* from the records — minutes studied, tasks
+ * completed, cards reviewed — and never stored as a running total. A counter
+ * that is written on every event is a counter that eventually disagrees with
+ * the thing it counts; a derived one cannot.
+ *
+ * What is stored is only the moment each achievement was first reached, so
+ * "unlocked just now" can be shown exactly once.
+ */
+export interface GameState {
+  /** achievement id → when it was first earned */
+  unlocked: Record<string, ISODate>;
+  /** highest level already celebrated */
+  seenLevel: number;
+  updatedAt: ISODate;
+}
+
 /* ------------------------------------------------------------------- grades */
 
 export interface Grade {
@@ -495,6 +569,7 @@ export interface ClassSlot {
  */
 export type SyncKind =
   | 'folders'
+  | 'goals'
   | 'documents'
   | 'annotations'
   | 'bookmarks'

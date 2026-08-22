@@ -4,6 +4,7 @@ import type { PageSource } from './pageSource';
 import { pageTemplate, paperGeometry } from './boardService';
 import { LINE_HEIGHT, arrowHead, cssFont, drawAnnotation, layoutText, strokeOutline } from './renderService';
 import { annotationBounds, hexToRgb01 } from '@/lib/util';
+import { tr, L } from '@/i18n';
 
 /** Characters the PDF standard fonts can encode (WinAnsi). */
 const LATIN_ONLY = /^[ -~ -ÿ‘’“”–—•…€]*$/;
@@ -42,7 +43,7 @@ export async function exportPdf(opts: ExportOptions): Promise<Blob> {
 
   if (!bytes) {
     // Whiteboard: there is no source file, the paper is drawn from its recipe.
-    if (!board) throw new Error('Липсва описание на дъската.');
+    if (!board) throw new Error(tr(L('Липсва описание на дъската.', 'The board description is missing.')));
     out = await PDFDocument.create();
     mapping = wanted ?? board.pages.map((_, i) => i + 1);
     for (const n of mapping) {
@@ -362,14 +363,3 @@ async function drawRasterFallback(
   page.drawImage(png, { x: px, y: py, width: b.w, height: b.h });
 }
 
-/** Triggers a browser download for a generated blob. */
-export function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
-}

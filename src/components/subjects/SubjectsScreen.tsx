@@ -6,14 +6,18 @@ import { useLibrary } from '@/state/libraryStore';
 import { usePlanner, averageFor, openItems } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
 import { minutesBySubject, useTimer } from '@/state/timerStore';
-import { ScreenHeader } from '../shell/ScreenHeader';
+import { Screen } from '../shell/Screen';
 import { Icon } from '../Icon';
 import { useConfirm } from '../ui';
+import { useT, L, formatDuration } from '@/i18n';
+import { S } from '@/i18n/strings';
+import { Button, Card, EmptyState } from '../kit';
 import { SubjectDialog } from './SubjectDialog';
 import { SubjectDetail } from './SubjectDetail';
 
 /** Grid of subjects, each showing how much of it is on your plate right now. */
 export function SubjectsScreen() {
+  const t = useT();
   const subjectId = useApp((s) => s.subjectId);
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
@@ -48,49 +52,49 @@ export function SubjectsScreen() {
   return (
     <div className="scroll-thin h-full overflow-y-auto">
       {element}
-      <div className="mx-auto max-w-5xl px-5 py-6 sm:px-8">
-        <ScreenHeader
-          title="Предмети"
-          subtitle="Всеки материал, карта, задача и минута учене се води към предмет."
-          actions={
-          <button
-            className="btn btn-primary h-9"
+      <Screen
+        title={t(S.subjects)}
+        subtitle={t(
+          L(
+            'Всеки материал, карта, задача и минута учене се води към предмет.',
+            'Every material, card, task and minute of study belongs to a subject.',
+          ),
+        )}
+        actions={
+          <Button
+            variant="primary"
+            icon="plus"
             onClick={() => {
               setEditing(null);
               setDialog(true);
             }}
           >
-            <Icon name="plus" size={16} />
-            Нов предмет
-          </button>
-          }
-        />
-
+            {t(L('Нов предмет', 'New subject'))}
+          </Button>
+        }
+      >
         {subjects.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-line-strong py-16 text-center">
-            <Icon name="layers" size={28} className="text-faint" />
-            <p className="text-[14px] font-medium">Още няма предмети</p>
-            <p className="max-w-sm text-[12px] leading-relaxed text-muted">
-              Добави ги веднъж и цялото приложение се подрежда по тях — библиотеката, картите,
-              планерът и статистиката.
-            </p>
-            <div className="mt-1 flex gap-2">
-              <button className="btn btn-primary" onClick={() => void addSuggested()}>
-                <Icon name="sparkles" size={15} />
-                Добави училищните
-              </button>
-              <button
-                className="btn"
-                onClick={() => {
+          <Card>
+            <EmptyState
+              icon="layers"
+              title={t(L('Още няма предмети', 'No subjects yet'))}
+              body={t(
+                L(
+                  'Добави ги веднъж и цялото приложение се подрежда по тях — библиотеката, картите, задачите и статистиката.',
+                  'Add them once and the whole app organises itself around them — the library, the cards, the tasks and the statistics.',
+                ),
+              )}
+              action={{ label: t(L('Добави училищните', 'Add the school ones')), icon: 'sparkles', onClick: () => void addSuggested() }}
+              secondary={{
+                label: t(L('Свой предмет', 'My own subject')),
+                icon: 'plus',
+                onClick: () => {
                   setEditing(null);
                   setDialog(true);
-                }}
-              >
-                <Icon name="plus" size={15} />
-                Свой предмет
-              </button>
-            </div>
-          </div>
+                },
+              }}
+            />
+          </Card>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {subjects.map((s) => {
@@ -101,7 +105,7 @@ export function SubjectsScreen() {
               const minutes = weekMinutes.get(s.id) ?? 0;
 
               return (
-                <div key={s.id} className="panel group relative overflow-hidden p-4">
+                <div key={s.id} className="card card-hover group relative overflow-hidden p-4">
                   <span className="absolute inset-x-0 top-0 h-1" style={{ background: s.color }} />
                   <button
                     className="w-full cursor-pointer text-left"
@@ -117,12 +121,12 @@ export function SubjectsScreen() {
                       <span className="min-w-0 flex-1">
                         <span className="block truncate text-[14px] font-medium">{s.name}</span>
                         <span className="block truncate text-[11px] text-muted">
-                          {s.teacher || `${materials} материала`}
+                          {s.teacher || t(L(`${materials} материала`, `${materials} materials`))}
                         </span>
                       </span>
                       {avg.count > 0 && (
                         <span
-                          className="shrink-0 text-[17px] font-medium tabular-nums"
+                          className="t-num shrink-0 text-[17px] font-semibold"
                           style={{ color: s.color }}
                         >
                           {avg.average.toFixed(2)}
@@ -131,15 +135,19 @@ export function SubjectsScreen() {
                     </span>
 
                     <span className="mt-3 grid grid-cols-3 gap-1.5 text-center">
-                      <Mini value={materials} label="материала" />
-                      <Mini value={open} label="задачи" accent={open > 0} />
-                      <Mini value={due} label="карти" accent={due > 0} />
+                      <Mini value={materials} label={t(L('материала', 'materials'))} />
+                      <Mini value={open} label={t(L('задачи', 'tasks'))} accent={open > 0} />
+                      <Mini value={due} label={t(L('карти', 'cards'))} accent={due > 0} />
                     </span>
 
                     {minutes > 0 && (
-                      <span className="mt-2.5 block text-[11px] text-muted">
-                        {Math.floor(minutes / 60) ? `${Math.floor(minutes / 60)} ч ` : ''}
-                        {minutes % 60} мин тази седмица
+                      <span className="mt-2.5 block text-[11.5px] text-muted">
+                        {t(
+                          L(
+                            `${formatDuration(minutes, 'bg')} тази седмица`,
+                            `${formatDuration(minutes, 'en')} this week`,
+                          ),
+                        )}
                       </span>
                     )}
                   </button>
@@ -151,7 +159,7 @@ export function SubjectsScreen() {
                         setEditing(s);
                         setDialog(true);
                       }}
-                      aria-label="Редактирай"
+                      aria-label={t(S.edit)}
                     >
                       <Icon name="pencil" size={14} />
                     </button>
@@ -159,11 +167,16 @@ export function SubjectsScreen() {
                       className="icon-btn h-7 w-7"
                       onClick={() =>
                         confirm(
-                          `Да изтрия ли «${s.name}»? Материалите и картите остават, само губят етикета.`,
+                          t(
+                            L(
+                              `Да изтрия ли «${s.name}»? Материалите и картите остават, само губят етикета.`,
+                              `Delete "${s.name}"? The materials and cards stay — they only lose the tag.`,
+                            ),
+                          ),
                           () => void useWorkspace.getState().deleteSubject(s.id),
                         )
                       }
-                      aria-label="Изтрий"
+                      aria-label={t(S.delete)}
                     >
                       <Icon name="trash" size={14} />
                     </button>
@@ -173,7 +186,7 @@ export function SubjectsScreen() {
             })}
           </div>
         )}
-      </div>
+      </Screen>
 
       <SubjectDialog open={dialog} subject={editing} onClose={() => setDialog(false)} />
     </div>
@@ -184,7 +197,7 @@ function Mini({ value, label, accent }: { value: number; label: string; accent?:
   return (
     <span className="rounded-lg py-1.5" style={{ background: 'var(--c-surface-2)' }}>
       <span
-        className="block text-[15px] font-medium leading-none tabular-nums"
+        className="t-num block text-[16px] font-semibold leading-none"
         style={accent ? { color: 'var(--c-accent)' } : undefined}
       >
         {value}

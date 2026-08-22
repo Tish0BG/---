@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { cloudConfig } from '@/services/cloud/config';
 import { diagnose, worstOf, type CheckResult } from '@/services/cloud/diagnose';
 import { Icon } from '../Icon';
+import { useT, L } from '@/i18n';
 
 /**
  * A step-by-step check of the account connection, for when syncing misbehaves.
@@ -11,6 +12,7 @@ import { Icon } from '../Icon';
  * troubleshooting tool on the front door makes the front door look broken.
  */
 export function ConnectionCheck() {
+  const t = useT();
   const [checks, setChecks] = useState<CheckResult[] | null>(null);
   const [busy, setBusy] = useState(false);
   const cfg = cloudConfig();
@@ -32,7 +34,7 @@ export function ConnectionCheck() {
       >
         <Icon name={busy ? 'refresh' : 'stethoscope'} size={14} className={busy ? 'animate-spin' : ''} />
         <span className="flex-1 text-left">
-          {busy ? 'Проверявам…' : checks ? 'Скрий проверката' : 'Нещо не работи? Провери връзката'}
+          {busy ? t(L("Проверявам…", "Checking…")) : checks ? t(L("Скрий проверката", "Hide the check")) : t(L("Нещо не работи? Провери връзката", "Something not working? Check the connection"))}
         </span>
         {cfg && <span className="text-[11px] text-faint">{cfg.url.replace(/^https?:\/\//, '').split('.')[0]}</span>}
       </button>
@@ -67,15 +69,15 @@ export function ConnectionCheck() {
           ))}
           <button className="btn btn-outline mt-1 w-full" onClick={run} disabled={busy}>
             <Icon name="refresh" size={14} className={busy ? 'animate-spin' : ''} />
-            Провери отново
+            {t(L("Провери отново", "Check again"))}
           </button>
           <p className="pt-1 text-[11px] text-faint">
-            Общо състояние:{' '}
+            {t(L('Общо състояние:', 'Overall:'))}{' '}
             {worstOf(checks) === 'ok'
-              ? 'всичко е наред'
+              ? t(L("всичко е наред", "everything is fine"))
               : worstOf(checks) === 'warn'
-                ? 'работи, но има какво да се оправи'
-                : 'има нещо счупено'}
+                ? t(L("работи, но има какво да се оправи", "works, but something could be better"))
+                : t(L("има нещо счупено", "something is broken"))}
           </p>
         </div>
       )}

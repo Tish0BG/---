@@ -6,12 +6,14 @@ import { REGION_COLORS, STATUS_LABEL } from '@/services/renderService';
 import { annotationBounds } from '@/lib/util';
 import { Icon } from './Icon';
 import { TextControls } from './TextControls';
+import { useT, L } from '@/i18n';
 
 const STATUSES: ProblemStatus[] = ['unsolved', 'solved', 'incorrect', 'review'];
 const COLORS = ['#111827', '#1d4ed8', '#dc2626', '#059669', '#d97706', '#7c3aed'];
 
 /** Contextual actions for the current selection. */
 export function SelectionBar() {
+  const t = useT();
   const selectedIds = useViewer((s) => s.selectedIds);
   const pages = useViewer((s) => s.pages);
 
@@ -43,7 +45,7 @@ export function SelectionBar() {
       className="panel pointer-events-auto absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl px-1.5 py-1.5"
       style={{ boxShadow: 'var(--shadow-float)' }}
     >
-      <span className="px-1.5 text-[12px] text-muted">{items.length} избрани</span>
+      <span className="px-1.5 text-[12px] text-muted">{t(L(`${items.length} избрани`, `${items.length} selected`))}</span>
       <div className="mx-0.5 h-6 w-px bg-line" />
 
       {recolorable.length > 0 &&
@@ -53,7 +55,7 @@ export function SelectionBar() {
             onClick={() => recolor(c)}
             className="h-5 w-5 rounded-full border border-line-strong transition-transform hover:scale-110 cursor-pointer"
             style={{ background: c }}
-            aria-label={`Цвят ${c}`}
+            aria-label={t(L(`Цвят ${c}`, `Colour ${c}`))}
           />
         ))}
 
@@ -87,7 +89,7 @@ export function SelectionBar() {
               style={{ background: `${REGION_COLORS[s]}22`, color: REGION_COLORS[s] }}
               onClick={() => regions.forEach((r) => setRegionStatus(r.id, s))}
             >
-              {STATUS_LABEL[s]}
+              {t(STATUS_LABEL[s])}
             </button>
           ))}
         </>
@@ -96,7 +98,7 @@ export function SelectionBar() {
       <div className="mx-0.5 h-6 w-px bg-line" />
       <button
         className="icon-btn"
-        title="Изрежи избраното към дъска или карта"
+        title={t(L("Изрежи избраното към дъска или карта", "Snip the selection to a board or a card"))}
         onClick={() => {
           let x1 = Infinity, y1 = Infinity, x2 = -Infinity, y2 = -Infinity;
           for (const a of items) {
@@ -115,7 +117,7 @@ export function SelectionBar() {
             h: y2 - y1 + pad * 2,
           });
         }}
-        aria-label="Изрезка"
+        aria-label={t(L("Изрезка", "Snip"))}
       >
         <Icon name="scissors" size={16} />
       </button>
@@ -123,7 +125,7 @@ export function SelectionBar() {
         className="icon-btn"
         style={{ color: 'var(--c-danger)' }}
         onClick={() => removeAnnotations(items)}
-        aria-label="Изтрий"
+        aria-label={t(L("Изтрий", "Delete"))}
       >
         <Icon name="trash" size={16} />
       </button>

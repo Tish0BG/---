@@ -9,6 +9,7 @@ import type {
   FlashCard,
   FocusSession,
   Folder,
+  Goal,
   Grade,
   PlannerItem,
   Subject,
@@ -26,7 +27,7 @@ export interface SyncRow {
 }
 
 /** Meta keys that belong to the account rather than to this browser. */
-export const SYNCED_META_KEYS = ['profile', 'decks'] as const;
+export const SYNCED_META_KEYS = ['profile', 'decks', 'game'] as const;
 
 /**
  * Everything the app needs from persistence lives behind this interface.
@@ -80,6 +81,11 @@ export interface StudyRepository {
   putPlanner(items: PlannerItem[]): Promise<void>;
   deletePlanner(ids: string[]): Promise<void>;
 
+  /* goals */
+  listGoals(): Promise<Goal[]>;
+  putGoal(g: Goal): Promise<void>;
+  deleteGoal(id: string): Promise<void>;
+
   /* grades */
   listGrades(): Promise<Grade[]>;
   putGrade(g: Grade): Promise<void>;
@@ -129,6 +135,7 @@ const KIND_STORE: Record<Exclude<SyncKind, 'meta'>, keyof StudyDB> = {
   cards: 'cards',
   subjects: 'subjects',
   planner: 'planner',
+  goals: 'goals',
   grades: 'grades',
   schedule: 'schedule',
   sessions: 'sessions',
@@ -273,6 +280,17 @@ class IndexedDBRepository implements StudyRepository {
     const tx = db.transaction('planner', 'readwrite');
     await Promise.all([...ids.map((id) => tx.store.delete(id)), tx.done]);
     await this.tomb('planner', ids);
+  }
+
+  async listGoals() {
+    return (await this.db()).getAll('goals');
+  }
+  async putGoal(g: Goal) {
+    await (await this.db()).put('goals', g);
+  }
+  async deleteGoal(id: string) {
+    await (await this.db()).delete('goals', id);
+    await this.tomb('goals', [id]);
   }
 
   async listGrades() {
@@ -447,6 +465,7 @@ class IndexedDBRepository implements StudyRepository {
       'sessions',
       'subjects',
       'planner',
+      'goals',
       'grades',
       'schedule',
       'meta',
