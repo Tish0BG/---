@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { BRAND, type Lang } from '@/brand';
 import { useLangStore } from '@/i18n';
+import { useAuth } from '@/state/authStore';
 import { useRoute } from '@/state/routeStore';
 import { PUBLIC_ROUTES } from '@/seo/routes';
 import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
@@ -56,6 +57,10 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
   const setLang = useLangStore((s) => s.setLang);
   const path = useRoute((s) => s.path);
   const home = path === '/';
+  // Somebody already signed in is reading the privacy policy, not shopping.
+  // Offering them "Sign in" twice is the sort of detail that makes a site feel
+  // like it was assembled rather than used.
+  const signedIn = useAuth((s) => !!s.user || s.skipped);
   const faq = PUBLIC_ROUTES.find((r) => r.id === 'faq')!;
   const about = PUBLIC_ROUTES.find((r) => r.id === 'about')!;
 
@@ -98,12 +103,20 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
               </button>
             ))}
           </div>
-          <button className="btn" onClick={onSignIn}>
-            {lang === 'bg' ? 'Влез' : 'Sign in'}
-          </button>
-          <button className="btn btn-primary" onClick={onStart}>
-            {lang === 'bg' ? 'Започни' : 'Get started'}
-          </button>
+          {signedIn ? (
+            <RouteLink to="/" className="btn btn-primary">
+              {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
+            </RouteLink>
+          ) : (
+            <>
+              <button className="btn" onClick={onSignIn}>
+                {lang === 'bg' ? 'Влез' : 'Sign in'}
+              </button>
+              <button className="btn btn-primary" onClick={onStart}>
+                {lang === 'bg' ? 'Започни' : 'Get started'}
+              </button>
+            </>
+          )}
         </div>
       </div>
     </header>
@@ -114,6 +127,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
   const byId = (id: string) => PUBLIC_ROUTES.find((r) => r.id === id)!;
   const home = useRoute((s) => s.path) === '/';
+  const signedIn = useAuth((s) => !!s.user || s.skipped);
 
   const columns: { title: string; items: ReactNode[] }[] = [
     {
@@ -152,13 +166,23 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     {
       title: lang === 'bg' ? 'Профил' : 'Account',
       items: [
-        <button
-          key="signin"
-          className="inline-flex min-h-[24px] cursor-pointer items-center text-left text-muted transition-colors hover:text-ink"
-          onClick={onSignIn}
-        >
-          {lang === 'bg' ? 'Влез' : 'Sign in'}
-        </button>,
+        signedIn ? (
+          <RouteLink
+            key="open"
+            to="/"
+            className="inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink"
+          >
+            {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
+          </RouteLink>
+        ) : (
+          <button
+            key="signin"
+            className="inline-flex min-h-[24px] cursor-pointer items-center text-left text-muted transition-colors hover:text-ink"
+            onClick={onSignIn}
+          >
+            {lang === 'bg' ? 'Влез' : 'Sign in'}
+          </button>
+        ),
       ],
     },
   ];

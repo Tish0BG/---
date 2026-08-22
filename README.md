@@ -80,8 +80,49 @@ charts), so five screens keep looking like one product.
 The charts are inline SVG with no charting dependency, and their categorical colours
 are checked for colour-vision separation rather than chosen by eye.
 
+Nothing in the palette is picked by eye either. Every pairing a person actually reads —
+white on the primary button, the accent on its soft ground, muted and faint text on both
+surfaces — is measured, and the value that failed is the value that changed. The six
+selectable accents each clear 4.5:1 in both themes; the brand mark keeps
+`--grad-brand` while the accent moves `--grad-accent`, so choosing green recolours the
+buttons without repainting the logo.
+
+**Settings → Accessibility** carries text size (which scales the whole ramp through one
+`--type-scale`), motion (system / reduced / full, and the OS preference wins unless
+overridden) and high contrast.
+
+## The public web
+
+The app's screens are state, not addresses — moving between them must not touch history
+while a document is mid-save. What does need addresses is the public site, so
+`src/state/routeStore.ts` owns exactly those: `/`, `/about`, `/faq`, `/contact`,
+`/privacy`, `/terms`, `/cookies`, plus `/login`, `/signup` and `/app`.
+
+One table in `src/seo/routes.ts` is read by three things that must never disagree: the
+router, the head-tag writer, and the build step that emits `sitemap.xml` and one
+pre-rendered shell per route — so the first byte a crawler reads already carries the
+right title, description and canonical, without a server.
+
+The operator's own details (registered name, address, the three e-mail addresses) live
+in `src/legal.ts`. Until they are filled in, every legal page shows a banner saying it
+is a draft, rather than presenting an invented address as real.
+
+## Security
+
+`vercel.json` is the single source for the security headers, and `vite.config.ts` reads
+it back so `npm run dev` and `npm run preview` send the same ones. A
+Content-Security-Policy exercised only in production is a policy discovered by users;
+`npm run preview` serves the real build under the real policy — no `unsafe-inline`, no
+exceptions — which is how you find out that the PDF worker still starts.
+
 ## Data
 
-IndexedDB first, always. Sync is optional and runs through a Supabase project you own:
-every record is a flat row with an `updatedAt`, so merging two devices is "the newer
-write wins" and needs no server logic. `supabase/schema.sql` sets it up in one run.
+IndexedDB first, always. Sync is optional and runs through Supabase: every record is a
+flat row with an `updatedAt`, so merging two devices is "the newer write wins" and needs
+no server logic. `supabase/schema.sql` sets it up in one run, and
+`supabase/usernames.sql` adds the unique-handle table — optional, because the app
+validates the shape and stores the name locally either way.
+
+Row-level security stops one account from reading another's rows. It does not apply to
+whoever owns the Supabase project, and the privacy policy says so in those words rather
+than claiming that nobody but you can reach it.
