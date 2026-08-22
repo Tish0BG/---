@@ -99,8 +99,12 @@ interface AuthStore {
   signInWithGoogle(): Promise<string | null>;
   /** sends a one-time code instead of asking for a password */
   sendSignInCode(email: string): Promise<string | null>;
-  /** finishes either a code sign-in or a code-based password reset */
-  verifyCode(email: string, token: string, kind: 'signin' | 'recovery'): Promise<string | null>;
+  /**
+   * Checks a code from the inbox. The three doors differ only by the token
+   * type Supabase issued: signing in without a password, confirming a new
+   * account, and proving an address before setting a new password.
+   */
+  verifyCode(email: string, token: string, kind: 'signin' | 'recovery' | 'signup'): Promise<string | null>;
   /** re-checks whether this session still owes a second factor */
   refreshMfa(): Promise<void>;
   clearMfaPending(): void;
@@ -390,11 +394,6 @@ export const useAuth = create<AuthStore>((set, get) => ({
     return null;
   },
 
-  /**
-   * Checks a six-digit code from the inbox. The same call serves both doors:
-   * signing in without a password, and proving an address before setting a new
-   * one — Supabase distinguishes them only by the token type.
-   */
   async verifyCode(email, token, kind) {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
@@ -405,7 +404,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
     const { data, error } = await client.auth.verifyOtp({
       email: email.trim(),
       token: token.replace(/\D/g, ''),
-      type: kind === 'recovery' ? 'recovery' : 'email',
+      // 'email' is the passwordless sign-in code; a confirmation code from
+      // sign-up and a reset code are different types, and using the wrong one
+      // fails with the same "invalid" the user sees for a mistyped digit.
+      type: kind === 'recovery' ? 'recovery' : kind === 'signup' ? 'signup' : 'email',
     });
     if (error) {
       return /expired|invalid|not found/i.test(error.message)

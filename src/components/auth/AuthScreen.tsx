@@ -436,11 +436,31 @@ function Forms({ onClose }: { onClose: () => void }) {
 /* ------------------------------------------------------------ confirm step */
 
 /** Shown when the project requires a confirmation e-mail. */
+/**
+ * The step after signing up, when the project asks for a confirmed address.
+ *
+ * It used to say "open the link in the e-mail" and offer nothing but a resend
+ * button — which was true while the templates sent links. They send a code
+ * now, so this is where the code goes in. A screen that describes a letter the
+ * person is not holding is worse than no screen at all.
+ */
 function ConfirmStep({ email }: { email: string }) {
   const t = useT();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [code, setCode] = useState('');
   const notice = useAuth((s) => s.notice);
+
+  const submit = async () => {
+    setBusy(true);
+    setMessage(null);
+    const problem = await useAuth.getState().verifyCode(email, code, 'signup');
+    setBusy(false);
+    if (problem) {
+      setMessage(problem);
+      setCode('');
+    }
+  };
 
   return (
     <div className="text-center">
@@ -459,13 +479,45 @@ function ConfirmStep({ email }: { email: string }) {
       <p className="mt-2 text-[13px] leading-relaxed text-muted">
         {t(
           L(
-            `Профилът за ${email} е създаден, но този проект иска потвърждение. Докато не отвориш връзката от писмото, влизането няма да мине.`,
-            `The account for ${email} exists, but this project asks for confirmation. Until you open the link in the e-mail, signing in will not go through.`,
+            `Изпратихме код на ${email}. Въведи го, за да активираш профила си.`,
+            `We sent a code to ${email}. Enter it to activate your account.`,
           ),
         )}
       </p>
 
-      <div className="mt-5 space-y-2">
+      <form
+        className="mt-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (emailCodeLooksComplete(code) && !busy) void submit();
+        }}
+      >
+        <input
+          autoFocus
+          className="field field-lg t-num text-center"
+          style={{
+            fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
+            letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
+          }}
+          value={code}
+          onChange={(e) => setCode(e.target.value)}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={EMAIL_CODE_MAX}
+          placeholder="······"
+          aria-label={t(L('Код от пощата', 'Code from your inbox'))}
+        />
+        <button
+          className="btn btn-primary btn-lg mt-3 w-full"
+          type="submit"
+          disabled={!emailCodeLooksComplete(code) || busy}
+        >
+          {busy && <Icon name="refresh" size={15} className="animate-spin" />}
+          {t(L('Потвърди профила', 'Confirm the account'))}
+        </button>
+      </form>
+
+      <div className="mt-3 space-y-2">
         <button
           className="btn btn-outline h-10 w-full"
           disabled={busy}
@@ -481,10 +533,10 @@ function ConfirmStep({ email }: { email: string }) {
           }}
         >
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {t(L('Изпрати писмото отново', 'Send the e-mail again'))}
+          {t(L('Изпрати нов код', 'Send a new code'))}
         </button>
         <button className="btn h-10 w-full" onClick={() => useAuth.getState().clearNotice()}>
-          {t(L('Потвърдих — към входа', 'Confirmed — go to sign in'))}
+          {t(L('Назад към входа', 'Back to sign in'))}
         </button>
       </div>
 
