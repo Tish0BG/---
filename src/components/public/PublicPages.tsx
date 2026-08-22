@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useLangStore } from '@/i18n';
-import { LEGAL, legalIncomplete } from '@/legal';
+import { LEGAL, legalIncomplete, oneInbox } from '@/legal';
 import { applyFaqSchema } from '@/seo/head';
 import { PUBLIC_ROUTES, type PublicRouteId } from '@/seo/routes';
 import { BRAND } from '@/brand';
@@ -61,17 +61,51 @@ export function PublicPageView({ id, onStart, onSignIn }: Props) {
     return (
       <PublicPage {...shared} title={lang === 'bg' ? 'Контакт' : 'Contact'} lead={CONTACT_LEAD[lang]}>
         {legalIncomplete() && <PlaceholderWarning />}
-        <ul className="grid gap-3">
-          {CONTACT_ROWS.map((row) => (
-            <li key={row.label.en} className="card p-5">
-              <h2 className="text-[15px] font-semibold">{row.label[lang]}</h2>
-              <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{row.note[lang]}</p>
-              <p className="t-num mt-3 text-[14px] font-medium" style={{ color: 'var(--c-accent)' }}>
-                {row.value}
-              </p>
-            </li>
-          ))}
-        </ul>
+
+        {/* One person, one inbox: three cards repeating the same address would
+            be a filing system pretending to be a support department. */}
+        {oneInbox() ? (
+          <div className="card p-5 sm:p-6">
+            <p className="t-label">{lang === 'bg' ? 'Пиши на' : 'Write to'}</p>
+            <p className="mt-2 break-all text-[17px] font-semibold tracking-[-0.015em]">
+              <a href={`mailto:${LEGAL.contactEmail}`} style={{ color: 'var(--c-accent)' }}>
+                {LEGAL.contactEmail}
+              </a>
+            </p>
+            <p className="mt-3 text-[13.5px] leading-relaxed text-muted">
+              {lang === 'bg'
+                ? 'Един адрес за всичко. Кажи в първото изречение за какво става дума:'
+                : 'One address for everything. Say in the first line which it is:'}
+            </p>
+            <ul className="mt-3 space-y-2">
+              {CONTACT_ROWS.map((row) => (
+                <li key={row.label.en} className="flex gap-2.5 text-[13.5px] leading-relaxed">
+                  <span
+                    aria-hidden
+                    className="mt-[9px] h-1.5 w-1.5 shrink-0 rounded-full"
+                    style={{ background: 'var(--c-line-strong)' }}
+                  />
+                  <span>
+                    <strong className="font-semibold">{row.label[lang]}</strong>
+                    <span className="text-muted"> — {row.note[lang]}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : (
+          <ul className="grid gap-3">
+            {CONTACT_ROWS.map((row) => (
+              <li key={row.label.en} className="card p-5">
+                <h2 className="text-[15px] font-semibold">{row.label[lang]}</h2>
+                <p className="mt-1 text-[13.5px] leading-relaxed text-muted">{row.note[lang]}</p>
+                <p className="mt-3 break-all text-[14px] font-medium" style={{ color: 'var(--c-accent)' }}>
+                  {row.value}
+                </p>
+              </li>
+            ))}
+          </ul>
+        )}
         <p className="mt-8 text-[13.5px] leading-relaxed text-muted">
           {lang === 'bg'
             ? 'Преди да пишеш за загубени данни: приложението пази всичко първо на устройството ти, а Настройки → Резервно копие изнася цялата библиотека в един файл.'

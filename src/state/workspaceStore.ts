@@ -99,7 +99,14 @@ interface WorkspaceStore {
    * in the app. A questionnaire between "I just registered" and "I can use
    * the thing" is a setup wizard, not a product.
    */
-  adoptAccount(account: { email?: string | null; name?: string | null }): Promise<void>;
+  adoptAccount(account: {
+    email?: string | null;
+    /** whatever the provider called them; Google sends the full name */
+    name?: string | null;
+    /** Google's `given_name`, when the provider bothered to split it */
+    firstName?: string | null;
+    avatarUrl?: string | null;
+  }): Promise<void>;
   /** Adds several subjects at once, for the first-run picker. */
   createSubjects(names: string[]): Promise<void>;
 
@@ -156,11 +163,22 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
 
   async adoptAccount(account) {
     const profile = get().profile;
-    const fromAccount = (account.name ?? '').trim();
+    // Google hands over "Tihomir Georgiev"; the dashboard says "Good
+    // afternoon, ___". A greeting that uses somebody's full legal name reads
+    // like a letter from a bank, so the given name wins where there is one and
+    // the first word does the job where there is not.
+    const given = (account.firstName ?? '').trim();
+    const full = (account.name ?? '').trim();
+    const fromAccount = given || full.split(/\s+/)[0] || '';
     const fromEmail = (account.email ?? '').split('@')[0].replace(/[._-]+/g, ' ').trim();
     const name = profile.name.trim() || fromAccount || titleCase(fromEmail);
-    if (profile.name.trim() === name && profile.createdAt) return;
-    await get().saveProfile({ name, createdAt: profile.createdAt || Date.now() });
+    // The surname is kept, separately, when the provider gave a full one — it
+    // is optional everywhere in the product, so it is stored and never asked.
+    const rest = full.split(/\s+/).slice(1).join(' ');
+    const lastName = profile.lastName.trim() || (fromAccount === given || full.startsWith(name) ? rest : '');
+
+    if (profile.name.trim() === name && profile.lastName.trim() === lastName && profile.createdAt) return;
+    await get().saveProfile({ name, lastName, createdAt: profile.createdAt || Date.now() });
   },
 
   async createSubjects(names) {

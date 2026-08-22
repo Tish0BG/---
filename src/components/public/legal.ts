@@ -1,4 +1,4 @@
-import { LEGAL, legalValue } from '@/legal';
+import { addressClause, LEGAL, legalValue } from '@/legal';
 import type { Section } from './content';
 
 /**
@@ -16,6 +16,8 @@ import type { Section } from './content';
  */
 
 const OPERATOR = legalValue(LEGAL.operator);
+/** Empty when no postal address is published, so the sentence still reads. */
+const AT = addressClause();
 const PRIVACY_MAIL = legalValue(LEGAL.privacyEmail);
 const CONTACT_MAIL = legalValue(LEGAL.contactEmail);
 const REGION = legalValue(LEGAL.hostingRegion);
@@ -30,8 +32,8 @@ export const PRIVACY: Section[] = [
     h: { bg: 'Кой отговаря за данните', en: 'Who is responsible for the data' },
     p: [
       {
-        bg: `Администратор на личните данни, обработвани през plauvia.com, е ${OPERATOR}, ${legalValue(LEGAL.address)}. За всякакви въпроси по тази политика: ${PRIVACY_MAIL}.`,
-        en: `The controller of personal data processed through plauvia.com is ${OPERATOR}, ${legalValue(LEGAL.address)}. For anything about this policy: ${PRIVACY_MAIL}.`,
+        bg: `Администратор на личните данни, обработвани през plauvia.com, е ${OPERATOR}${AT} — физическо лице, а не дружество. Plauvia се прави и поддържа от един човек. Пиши на ${PRIVACY_MAIL} за всичко по тази политика; това е и адресът, на който се упражняват правата по-долу.`,
+        en: `The controller of personal data processed through plauvia.com is ${OPERATOR}${AT} — an individual, not a company. Plauvia is built and run by one person. Write to ${PRIVACY_MAIL} for anything about this policy; it is also the address where the rights below are exercised.`,
       },
     ],
   },
@@ -164,8 +166,8 @@ export const TERMS: Section[] = [
     h: { bg: 'Услугата', en: 'The service' },
     p: [
       {
-        bg: `Plauvia е уеб приложение за учене, предоставяно от ${OPERATOR}. Използването му означава, че приемаш тези условия. Ако не ги приемаш, не използвай услугата.`,
-        en: `Plauvia is a web application for studying, provided by ${OPERATOR}. Using it means you accept these terms. If you do not accept them, do not use the service.`,
+        bg: `Plauvia е уеб приложение за учене, предоставяно от ${OPERATOR}${AT} — един човек, не компания. Използването му означава, че приемаш тези условия. Ако не ги приемаш, не използвай услугата.`,
+        en: `Plauvia is a web application for studying, provided by ${OPERATOR}${AT} — one person, not a company. Using it means you accept these terms. If you do not accept them, do not use the service.`,
       },
       {
         bg: 'Приложението е безплатно за ползване. Ако някога бъде въведен платен план, той ще важи за нови възможности; вече използваните функции няма да бъдат заключени с обратна сила.',

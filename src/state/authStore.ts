@@ -175,10 +175,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       void get().refreshPending();
       if (get().autoSync) void get().syncNow();
       else {
-        void useWorkspace.getState().adoptAccount({
-          email: data.session.user.email,
-          name: (data.session.user.user_metadata?.name as string | undefined) ?? null,
-        });
+        void useWorkspace.getState().adoptAccount(accountFrom(data.session.user));
       }
     }
     get().setAutoSync(get().autoSync);
@@ -369,10 +366,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       // over one derived from the e-mail address.
       const account = get().user;
       if (account) {
-        await useWorkspace.getState().adoptAccount({
-          email: account.email,
-          name: (account.user_metadata?.name as string | undefined) ?? null,
-        });
+        await useWorkspace.getState().adoptAccount(accountFrom(account));
       }
       set({
         sync: {
@@ -446,6 +440,29 @@ export const useAuth = create<AuthStore>((set, get) => ({
     set({ notice: null, awaitingConfirm: null });
   },
 }));
+
+/**
+ * What an account already knows about its owner.
+ *
+ * Password sign-up puts a single `name` in the metadata; Google puts
+ * `full_name`, `name`, `given_name` and an avatar. Reading all of them here
+ * means the greeting is right whichever door somebody came through.
+ */
+function accountFrom(user: User): {
+  email?: string | null;
+  name?: string | null;
+  firstName?: string | null;
+  avatarUrl?: string | null;
+} {
+  const meta = (user.user_metadata ?? {}) as Record<string, unknown>;
+  const str = (key: string): string | null => (typeof meta[key] === 'string' ? (meta[key] as string) : null);
+  return {
+    email: user.email,
+    name: str('full_name') ?? str('name'),
+    firstName: str('given_name'),
+    avatarUrl: str('avatar_url') ?? str('picture'),
+  };
+}
 
 function summarise(pulled: number, pushed: number): string {
   if (!pulled && !pushed) return tr(L('Всичко е синхронизирано', 'Everything is in sync'));
