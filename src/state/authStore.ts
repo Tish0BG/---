@@ -280,7 +280,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (blocked) return blocked;
     recordAttempt('reset');
     const { error } = await client.auth.resetPasswordForEmail(email.trim(), {
-      redirectTo: `${window.location.origin}/login`,
+      redirectTo: window.location.origin,
     });
     // Everything except being rate-limited is answered the same way. "No such
     // account" would turn this box into a way of finding out who has one.
