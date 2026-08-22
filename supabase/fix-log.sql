@@ -84,8 +84,10 @@ revoke all on function public.log_security_event(text, jsonb) from public, anon;
 grant execute on function public.log_security_event(text, jsonb) to authenticated;
 
 -- ─────────────────────────────────────────────────────── проверка ──
+-- tgenabled е тип "char", не text: без изричното превръщане `||` не знае кой
+-- оператор да избере и целият скрипт се отменя заради един ред проверка.
 select 'тригер включен' as проверка,
-       coalesce((select case tgenabled when 'O' then 'да' else 'не: ' || tgenabled end
+       coalesce((select case tgenabled::text when 'O' then 'да' else 'не: ' || tgenabled::text end
                    from pg_trigger where tgname = 'plauvia_log_signin'), 'ЛИПСВА') as резултат
 union all
 select 'supabase_auth_admin може да я изпълни',
