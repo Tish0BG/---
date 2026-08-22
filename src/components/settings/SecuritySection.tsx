@@ -12,6 +12,8 @@ import {
   type SecurityEvent,
 } from '@/services/cloud/mfa';
 import { downloadBlob } from '@/lib/util';
+import { PasswordField } from '../auth/PasswordField';
+import { useConfirm } from '../ui';
 import { L, useLang, useT, formatDate, type Msg } from '@/i18n';
 import { Icon } from '../Icon';
 import { Button } from '../kit';
@@ -65,6 +67,9 @@ export function SecuritySection() {
   const [freshCodes, setFreshCodes] = useState<string[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pw, setPw] = useState('');
+  const [pwMsg, setPwMsg] = useState<string | null>(null);
+  const { confirm, element: confirmDialog } = useConfirm();
 
   const refresh = useCallback(async () => {
     const factors = await listFactors();
@@ -141,6 +146,82 @@ export function SecuritySection() {
           {error}
         </p>
       )}
+
+      {confirmDialog}
+
+      {/* ------------------------------------------------------ password */}
+      <section>
+        <h3 className="t-label mb-2">{t(L('Парола', 'Password'))}</h3>
+        <PasswordField
+          id="plauvia-new-password"
+          value={pw}
+          onChange={setPw}
+          autoComplete="new-password"
+          placeholder={t(L('Нова парола', 'New password'))}
+          showMeter
+        />
+        <div className="mt-2.5 flex flex-wrap items-center gap-2">
+          <Button
+            variant="primary"
+            busy={busy}
+            disabled={pw.length < 8}
+            onClick={() => {
+              setBusy(true);
+              void useAuth
+                .getState()
+                .changePassword(pw)
+                .then((err) => {
+                  setBusy(false);
+                  setPwMsg(err);
+                  if (!err) {
+                    setPw('');
+                    void refresh();
+                  }
+                });
+            }}
+          >
+            {t(L('Смени паролата', 'Change the password'))}
+          </Button>
+          {pwMsg && (
+            <span className="text-[12px]" style={{ color: 'var(--c-danger)' }}>
+              {pwMsg}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-[11.5px] leading-relaxed text-faint">
+          {t(
+            L(
+              'Смяната изважда всички други устройства от профила. Това е и начинът да изгониш някого, който не би трябвало да е вътре.',
+              'Changing it signs every other device out. That is also how you remove somebody who should not be in there.',
+            ),
+          )}
+        </p>
+      </section>
+
+      {/* ------------------------------------------------------ sessions */}
+      <section>
+        <h3 className="t-label mb-2">{t(L('Устройства', 'Devices'))}</h3>
+        <Button
+          icon="logOut"
+          onClick={() =>
+            confirm(
+              t(
+                L(
+                  'Всички други устройства ще излязат от профила. Този браузър остава вътре. Сигурен ли си?',
+                  'Every other device will be signed out. This browser stays in. Are you sure?',
+                ),
+              ),
+              () =>
+                void useAuth
+                  .getState()
+                  .signOutOthers()
+                  .then(() => void refresh()),
+            )
+          }
+        >
+          {t(L('Излез от другите устройства', 'Sign out other devices'))}
+        </Button>
+      </section>
 
       {/* ------------------------------------------------ second factor */}
       <section>

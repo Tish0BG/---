@@ -204,16 +204,16 @@ export async function diagnose(): Promise<CheckResult[]> {
       out.push({
         id: 'signup',
         label: 'Регистрация',
-        state: 'warn',
-        detail: 'Иска се потвърждение по имейл: след регистрация не влизаш, докато не кликнеш линка в писмото.',
-        fix: 'За личен профил е по-лесно да го изключиш: Supabase → Authentication → Sign In / Providers → Email → „Confirm email“ → изключено.',
+        state: 'ok',
+        detail: 'Иска се потвърждение по имейл — така никой не може да се регистрира с чужд адрес.',
       });
     } else {
       out.push({
         id: 'signup',
         label: 'Регистрация',
-        state: 'ok',
-        detail: 'Регистрацията влиза веднага, без писмо.',
+        state: 'warn',
+        detail: 'Потвърждаването по имейл е изключено: всеки може да се регистрира с чужд адрес и профилът се активира веднага.',
+        fix: 'Supabase → Authentication → Sign In / Providers → Email → включи „Confirm email“. Първо се увери, че SMTP работи.',
       });
     }
   } catch {

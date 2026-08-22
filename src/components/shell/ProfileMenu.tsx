@@ -98,22 +98,33 @@ export function ProfileMenu() {
           />
           <MenuSep />
           <MenuItem
-            icon="cloud"
-            label={user ? (sync.error ? t(L("Проблем със синхронизацията", "Sync problem")) : t(L("Синхронизация", "Sync"))) : t(L("Влез в профил", "Sign in"))}
-            shortcut={user ? (syncing ? '…' : sync.error ? '!' : '✓') : undefined}
-            onClick={() => {
-              useApp.getState().setAuth(true);
-              close();
-            }}
-          />
-          <MenuItem
-            icon="user"
-            label={t(L("Профил и настройки", "Profile and settings"))}
+            icon="sliders"
+            label={t(L('Настройки', 'Settings'))}
             onClick={() => {
               useApp.getState().setSettings(true);
               close();
             }}
           />
+          {user ? (
+            <MenuItem
+              icon={sync.error ? 'alert' : 'cloud'}
+              label={sync.error ? t(L('Проблем със синхронизацията', 'Sync problem')) : t(L('Синхронизация', 'Sync'))}
+              shortcut={syncing ? '…' : sync.error ? '!' : '✓'}
+              onClick={() => {
+                useApp.getState().setSettings(true, 'sync');
+                close();
+              }}
+            />
+          ) : (
+            <MenuItem
+              icon="logIn"
+              label={t(L('Влез в профил', 'Sign in'))}
+              onClick={() => {
+                useApp.getState().setAuth(true);
+                close();
+              }}
+            />
+          )}
           <MenuItem
             icon={theme === 'dark' ? 'sun' : 'moon'}
             label={theme === 'dark' ? t(L("Светла тема", "Light theme")) : t(L("Тъмна тема", "Dark theme"))}
@@ -128,6 +139,19 @@ export function ProfileMenu() {
               close();
             }}
           />
+          {user && (
+            <>
+              <MenuSep />
+              <MenuItem
+                icon="logOut"
+                label={t(L('Излез', 'Sign out'))}
+                onClick={() => {
+                  void useAuth.getState().signOut();
+                  close();
+                }}
+              />
+            </>
+          )}
         </>
       )}
     </Popover>

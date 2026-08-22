@@ -471,11 +471,10 @@ function ConfirmStep({ email }: { email: string }) {
       )}
 
       <p className="mt-5 rounded-xl p-3 text-left text-[11.5px] leading-relaxed text-muted" style={{ background: 'var(--c-surface-2)' }}>
-        <b className="text-ink">{t(L('Съвет за личен профил:', 'Tip for a personal project:'))}</b>{' '}
         {t(
           L(
-            'изключи изискването и регистрацията влиза веднага. Supabase → Authentication → Sign In / Providers → Email → изключи „Confirm email“.',
-            'turn the requirement off and sign-up goes straight through. Supabase → Authentication → Sign In / Providers → Email → switch off "Confirm email".',
+            'Не идва ли? Провери и в спама. Писмото тръгва веднага, но понякога се бави минута-две.',
+            'Not arriving? Check your spam folder too. It is sent immediately, but sometimes takes a minute or two.',
           ),
         )}
       </p>

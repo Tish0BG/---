@@ -52,6 +52,8 @@ interface AppStore {
   focusId: string | null;
   paletteOpen: boolean;
   settingsOpen: boolean;
+  /** which room of the settings to open on; null means "wherever it was" */
+  settingsSection: string | null;
   /** account / cloud-sync dialog */
   authOpen: boolean;
   /** the create sheet, opened from the top bar, ⌘N or the mobile plus */
@@ -62,7 +64,7 @@ interface AppStore {
   go(view: AppView, focusId?: string): void;
   openSubject(id: string | null): void;
   setPalette(open: boolean): void;
-  setSettings(open: boolean): void;
+  setSettings(open: boolean, section?: string): void;
   setAuth(open: boolean): void;
   setQuick(kind: QuickKind): void;
   setFilter(subjectId: string | null): void;
@@ -79,6 +81,7 @@ export const useApp = create<AppStore>((set) => ({
   focusId: null,
   paletteOpen: false,
   settingsOpen: false,
+  settingsSection: null,
   authOpen: false,
   quick: null,
   filterSubjectId: null,
@@ -92,8 +95,8 @@ export const useApp = create<AppStore>((set) => ({
   setPalette(open) {
     set({ paletteOpen: open });
   },
-  setSettings(open) {
-    set({ settingsOpen: open });
+  setSettings(open, section) {
+    set({ settingsOpen: open, settingsSection: open ? (section ?? null) : null });
   },
   setAuth(open) {
     set({ authOpen: open });

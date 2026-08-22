@@ -18,11 +18,14 @@ import { Button, IconButton, Sheet, useIsPhone } from './kit';
 import { BRAND } from '@/brand';
 import { Icon } from './Icon';
 import { SecuritySection } from './settings/SecuritySection';
+import { SyncSection } from './settings/SyncSection';
+import { DangerSection } from './settings/DangerSection';
 
 type SectionId =
   | 'account'
   | 'appearance'
   | 'security'
+  | 'sync'
   | 'access'
   | 'privacy'
   | 'study'
@@ -30,11 +33,13 @@ type SectionId =
   | 'writing'
   | 'data'
   | 'shortcuts'
+  | 'danger'
   | 'about';
 
 const SECTIONS: { id: SectionId; icon: string; label: { bg: string; en: string } }[] = [
   { id: 'account', icon: 'user', label: L('Профил и акаунт', 'Profile & account') },
   { id: 'security', icon: 'shield', label: L('Сигурност', 'Security') },
+  { id: 'sync', icon: 'cloud', label: L('Синхронизация', 'Sync') },
   { id: 'appearance', icon: 'palette', label: L('Изглед и език', 'Appearance & language') },
   { id: 'access', icon: 'eye', label: L('Достъпност', 'Accessibility') },
   { id: 'privacy', icon: 'shield', label: L('Поверителност', 'Privacy') },
@@ -43,6 +48,7 @@ const SECTIONS: { id: SectionId; icon: string; label: { bg: string; en: string }
   { id: 'writing', icon: 'pencil', label: L('Писане', 'Writing') },
   { id: 'data', icon: 'archive', label: L('Данни и офлайн', 'Data & offline') },
   { id: 'shortcuts', icon: 'command', label: L('Клавиши', 'Shortcuts') },
+  { id: 'danger', icon: 'trash', label: L('Изтриване на профила', 'Delete account') },
   { id: 'about', icon: 'info', label: L('За приложението', 'About') },
 ];
 
@@ -57,6 +63,14 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   const t = useT();
   const phone = useIsPhone();
   const [section, setSection] = useState<SectionId>('account');
+  const requested = useApp((s) => s.settingsSection);
+
+  // Somewhere else asked for a particular room — the profile menu pointing at
+  // sync, or "Take your data with you" pointing at the backup.
+  useEffect(() => {
+    if (!open || !requested) return;
+    if (SECTIONS.some((s) => s.id === requested)) setSection(requested as SectionId);
+  }, [open, requested]);
 
   useEffect(() => {
     if (!open) return;
@@ -72,7 +86,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
 
   if (!open) return null;
 
-  const body = <SectionBody id={section} />;
+  const body = <SectionBody id={section} onClose={onClose} />;
 
   if (phone) {
     return (
@@ -153,19 +167,18 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
   );
 }
 
-function SectionBody({ id }: { id: SectionId }) {
+function SectionBody({ id, onClose }: { id: SectionId; onClose: () => void }) {
   switch (id) {
     case 'account':
-      return (
-        <div className="space-y-7">
-          <ProfileSection />
-          <CloudSection />
-        </div>
-      );
+      return <ProfileSection />;
     case 'appearance':
       return <AppearanceSection />;
     case 'security':
       return <SecuritySection />;
+    case 'sync':
+      return <SyncSection />;
+    case 'danger':
+      return <DangerSection onClose={onClose} />;
     case 'access':
       return <AccessibilitySection />;
     case 'privacy':
@@ -904,82 +917,9 @@ function AboutSection() {
   );
 }
 
-/* ---------------------------------------------------------------- account */
-
-function CloudSection() {
-  const t = useT();
-  const user = useAuth((s) => s.user);
-  const configured = useAuth((s) => s.configured);
-  const sync = useAuth((s) => s.sync);
-  const pending = useAuth((s) => s.pendingFiles);
-  const busy = sync.phase !== 'idle' && sync.phase !== 'done' && sync.phase !== 'error';
-
-  return (
-    <Group title={t(L('Синхронизация', 'Sync'))}>
-      <div className="card-quiet p-3 text-[12.5px]">
-        <div className="flex items-center gap-2.5">
-          <Icon
-            name={user ? 'cloud' : 'user'}
-            size={17}
-            style={{ color: user ? 'var(--c-success)' : 'var(--c-muted)' }}
-          />
-          <div className="min-w-0 flex-1">
-            <div className="truncate font-medium">
-              {user
-                ? user.email
-                : configured
-                  ? t(L('Не си влязъл', 'Not signed in'))
-                  : t(L('Само на това устройство', 'This device only'))}
-            </div>
-            <div className="truncate text-[11.5px] text-muted">
-              {user
-                ? sync.lastSyncAt
-                  ? `${t(L('Последно', 'Last'))} ${formatDate(sync.lastSyncAt)}${pending ? ` · ${pending} ${t(L('файла чакат', 'files waiting'))}` : ''}`
-                  : t(L('Още не е синхронизирано', 'Not synced yet'))
-                : t(L('Влез, за да имаш същата библиотека и на телефона.', 'Sign in to have the same library on your phone.'))}
-            </div>
-          </div>
-          {user ? (
-            <Button variant="outline" busy={busy} icon="refresh" onClick={() => void useAuth.getState().syncNow()}>
-              {t(L('Сега', 'Now'))}
-            </Button>
-          ) : (
-            <Button variant="primary" onClick={() => useApp.getState().setAuth(true)}>
-              {configured ? t(L('Влез', 'Sign in')) : t(L('Настрой', 'Set up'))}
-            </Button>
-          )}
-        </div>
-
-        {user && (
-          <Button block icon="sliders" className="mt-2" onClick={() => useApp.getState().setAuth(true)}>
-            {t(L('Управление на профила', 'Manage account'))}
-          </Button>
-        )}
-
-        {(sync.error || sync.warning) && (
-          <p
-            className="mt-2 flex items-start gap-1.5 text-[11.5px]"
-            style={{ color: sync.error ? 'var(--c-danger)' : 'var(--c-warn)' }}
-          >
-            <Icon name="alert" size={12} className="mt-0.5 shrink-0" />
-            {sync.error ?? sync.warning}
-          </p>
-        )}
-      </div>
-    </Group>
-  );
-}
-
+/** The dozen the profile picker offers; the onboarding offers the same set. */
 const AVATARS = ['🦉', '🐨', '🦊', '🐼', '🐢', '🦁', '🐙', '🦄', '🐝', '🌿', '⚡️', '🚀'];
 
-/** Who the app thinks you are. */
-/**
- * How much of the profile is filled in.
- *
- * Six things, each worth the same, and no nagging: it is a line of text with a
- * bar under it, not a badge that follows people around the app. A completion
- * meter that guilt-trips is a dark pattern with a progress bar on it.
- */
 function completion(profile: Profile, learning: LearningProfile): { done: number; total: number } {
   const checks = [
     profile.name.trim().length > 0,
