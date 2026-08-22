@@ -62,6 +62,12 @@ await png(tile(512), 'public/icons/icon-512.png', 512);
 await png(tile(512, { radius: 0.5, pad: 0.26 }), 'public/icons/icon-maskable.png', 512);
 await png(tile(512, { radius: 0.22 }), 'public/icons/apple-touch-icon.png', 180);
 await png(tile(512), 'public/favicon-32.png', 32);
+// Google wants the favicon it shows beside a search result to be a multiple of
+// 48 pixels; below that it quietly falls back to a grey globe, and the brand
+// disappears from the one place a stranger first meets it.
+await png(tile(512), 'public/favicon-48.png', 48);
+await png(tile(512), 'public/favicon-96.png', 96);
+await png(tile(512), 'public/favicon-192.png', 192);
 
 /* ---------------------------------------------------------- social preview */
 

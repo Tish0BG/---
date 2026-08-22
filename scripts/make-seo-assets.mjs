@@ -60,18 +60,26 @@ const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/
 
 let written = 0;
 for (const route of PUBLIC_ROUTES) {
-  // The English titles go into the shell: the crawler reading it has not told
-  // us a language yet, and `en` is the wider audience. The client swaps them
-  // for Bulgarian the moment it knows the visitor prefers it.
+  /**
+   * The shell speaks Bulgarian.
+   *
+   * It used to carry the English titles on the theory that a crawler has not
+   * told us a language yet and English is the wider audience. That was wrong
+   * for this product: the page already declares `lang="bg"`, the readers are
+   * Bulgarian students, and a Bulgarian search result with an English headline
+   * reads as somebody else's site. The client still swaps to English the
+   * moment it knows the visitor prefers it.
+   */
+  const lang = 'bg';
   let html = shell
-    .replace(/<title>[^<]*<\/title>/i, `<title>${escape(route.title.en)}</title>`)
+    .replace(/<title>[^<]*<\/title>/i, `<title>${escape(route.title[lang])}</title>`)
     .replace(/(<link rel="canonical" href=")[^"]*(")/i, `$1${canonical(route.path)}$2`);
-  html = setMeta(html, 'name', 'description', route.description.en);
-  html = setMeta(html, 'property', 'og:title', route.title.en);
-  html = setMeta(html, 'property', 'og:description', route.description.en);
+  html = setMeta(html, 'name', 'description', route.description[lang]);
+  html = setMeta(html, 'property', 'og:title', route.title[lang]);
+  html = setMeta(html, 'property', 'og:description', route.description[lang]);
   html = setMeta(html, 'property', 'og:url', canonical(route.path));
-  html = setMeta(html, 'name', 'twitter:title', route.title.en);
-  html = setMeta(html, 'name', 'twitter:description', route.description.en);
+  html = setMeta(html, 'name', 'twitter:title', route.title[lang]);
+  html = setMeta(html, 'name', 'twitter:description', route.description[lang]);
   html = setMeta(html, 'name', 'robots', route.indexable ? 'index,follow' : 'noindex,follow');
 
   if (route.path === '/') {
