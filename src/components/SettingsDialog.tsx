@@ -17,10 +17,12 @@ import { Slider, Toggle } from './ui';
 import { Button, IconButton, Sheet, useIsPhone } from './kit';
 import { BRAND } from '@/brand';
 import { Icon } from './Icon';
+import { SecuritySection } from './settings/SecuritySection';
 
 type SectionId =
   | 'account'
   | 'appearance'
+  | 'security'
   | 'access'
   | 'privacy'
   | 'study'
@@ -32,6 +34,7 @@ type SectionId =
 
 const SECTIONS: { id: SectionId; icon: string; label: { bg: string; en: string } }[] = [
   { id: 'account', icon: 'user', label: L('Профил и акаунт', 'Profile & account') },
+  { id: 'security', icon: 'shield', label: L('Сигурност', 'Security') },
   { id: 'appearance', icon: 'palette', label: L('Изглед и език', 'Appearance & language') },
   { id: 'access', icon: 'eye', label: L('Достъпност', 'Accessibility') },
   { id: 'privacy', icon: 'shield', label: L('Поверителност', 'Privacy') },
@@ -161,6 +164,8 @@ function SectionBody({ id }: { id: SectionId }) {
       );
     case 'appearance':
       return <AppearanceSection />;
+    case 'security':
+      return <SecuritySection />;
     case 'access':
       return <AccessibilitySection />;
     case 'privacy':

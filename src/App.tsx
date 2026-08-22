@@ -75,6 +75,9 @@ const AuthDialog = lazy(() => import('@/components/auth/AuthDialog').then((m) =>
 const RecoveryScreen = lazy(() =>
   import('@/components/auth/RecoveryScreen').then((m) => ({ default: m.RecoveryScreen })),
 );
+const MfaChallenge = lazy(() =>
+  import('@/components/auth/MfaChallenge').then((m) => ({ default: m.MfaChallenge })),
+);
 const Onboarding = lazy(() => import('@/components/onboarding/Onboarding').then((m) => ({ default: m.Onboarding })));
 const SettingsDialog = lazy(() =>
   import('@/components/SettingsDialog').then((m) => ({ default: m.SettingsDialog })),
@@ -95,6 +98,7 @@ export default function App() {
   const signedIn = useAuth((s) => !!s.user);
   const skippedAuth = useAuth((s) => s.skipped);
   const recovery = useAuth((s) => s.recovery);
+  const mfaPending = useAuth((s) => s.mfaPending);
   const syncPhase = useAuth((s) => s.sync.phase);
   const restoring = syncPhase !== 'idle' && syncPhase !== 'done' && syncPhase !== 'error';
   const everSynced = useAuth((s) => s.sync.lastSyncAt !== null);
@@ -249,6 +253,15 @@ export default function App() {
     return (
       <Suspense fallback={<Splash />}>
         <RecoveryScreen />
+      </Suspense>
+    );
+
+  // A session that has proved a password but not the code from the app is not
+  // a session. Nothing behind this is reachable until it clears.
+  if (mfaPending)
+    return (
+      <Suspense fallback={<Splash />}>
+        <MfaChallenge />
       </Suspense>
     );
 

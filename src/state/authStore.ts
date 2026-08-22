@@ -21,6 +21,7 @@ import {
   wipeCloud,
 } from '@/services/cloud/syncService';
 import { blockedMessage, clearAttempts, recordAttempt } from '@/services/cloud/throttle';
+import { logEvent, needsChallenge } from '@/services/cloud/mfa';
 import { useLibrary } from './libraryStore';
 import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
@@ -76,6 +77,14 @@ interface AuthStore {
    * that nothing is signed in yet and why.
    */
   awaitingConfirm: string | null;
+  /**
+   * True while the session has proved a password but still owes the code from
+   * the authenticator app. Everything behind it stays closed until it clears —
+   * a half-authenticated session is not a session.
+   */
+  mfaPending: boolean;
+  /** The address a code was just sent to, so the next screen knows whose it is. */
+  codeSentTo: string | null;
 
   init(): Promise<void>;
   configure(url: string, anonKey: string): Promise<string | null>;
@@ -88,6 +97,13 @@ interface AuthStore {
   signIn(email: string, password: string): Promise<string | null>;
   /** hands the browser to Google and comes back with a session */
   signInWithGoogle(): Promise<string | null>;
+  /** sends a one-time code instead of asking for a password */
+  sendSignInCode(email: string): Promise<string | null>;
+  /** finishes either a code sign-in or a code-based password reset */
+  verifyCode(email: string, token: string, kind: 'signin' | 'recovery'): Promise<string | null>;
+  /** re-checks whether this session still owes a second factor */
+  refreshMfa(): Promise<void>;
+  clearMfaPending(): void;
   signUp(email: string, password: string, name: string): Promise<string | null>;
   resendConfirmation(email: string): Promise<string | null>;
   resetPassword(email: string): Promise<string | null>;
@@ -133,6 +149,8 @@ export const useAuth = create<AuthStore>((set, get) => ({
   notice: null,
   recovery: false,
   awaitingConfirm: null,
+  mfaPending: false,
+  codeSentTo: null,
 
   async init() {
     // The site may carry its own cloud.json; it has to be read before we can
@@ -172,6 +190,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     }).data.subscription;
 
     if (data.session) {
+      void get().refreshMfa();
       void get().refreshPending();
       if (get().autoSync) void get().syncNow();
       else {
@@ -221,7 +240,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
     clearAttempts('signin');
     localStorage.removeItem(SKIP_KEY);
     set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null, skipped: false });
-    void get().syncNow();
+    // Syncing before the second factor is answered would pull the library down
+    // for a session that has not finished proving who it belongs to.
+    await get().refreshMfa();
+    if (!get().mfaPending) void get().syncNow();
     return null;
   },
 
@@ -300,6 +322,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     // somebody else knows it. In both cases the other sessions should end,
     // and only the second case is the one that matters.
     await client.auth.signOut({ scope: 'others' }).catch(() => undefined);
+    void logEvent('password_changed');
     notify.ok(
       tr(L('Паролата е сменена', 'Password changed')),
       tr(L('Другите устройства са излезли от профила.', 'Other devices have been signed out.')),
@@ -330,11 +353,105 @@ export const useAuth = create<AuthStore>((set, get) => ({
     return null;
   },
 
+
+  /**
+   * A code instead of a password.
+   *
+   * `shouldCreateUser: false` matters: without it, typing an unknown address
+   * into the sign-in box quietly creates an account for it, and the form turns
+   * into a way of registering other people's e-mail addresses.
+   */
+  async sendSignInCode(email) {
+    const client = await getClient();
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('reset');
+    if (blocked) return blocked;
+    recordAttempt('reset');
+
+    const address = email.trim();
+    const { error } = await client.auth.signInWithOtp({
+      email: address,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin },
+    });
+    // Answered the same way whether or not the address is known here — a code
+    // box that says "no such account" is an account-checking service.
+    if (error && /rate limit|too many|for security purposes/i.test(error.message)) {
+      return humanError(error);
+    }
+    set({
+      codeSentTo: address,
+      notice: tr(
+        L(
+          'Ако има профил с този имейл, кодът вече пътува.',
+          'If an account exists for that address, the code is on its way.',
+        ),
+      ),
+    });
+    return null;
+  },
+
+  /**
+   * Checks a six-digit code from the inbox. The same call serves both doors:
+   * signing in without a password, and proving an address before setting a new
+   * one — Supabase distinguishes them only by the token type.
+   */
+  async verifyCode(email, token, kind) {
+    const client = await getClient();
+    if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
+    const blocked = blockedMessage('signin');
+    if (blocked) return blocked;
+    recordAttempt('signin');
+
+    const { data, error } = await client.auth.verifyOtp({
+      email: email.trim(),
+      token: token.replace(/\s+/g, ''),
+      type: kind === 'recovery' ? 'recovery' : 'email',
+    });
+    if (error) {
+      return /expired|invalid|not found/i.test(error.message)
+        ? tr(L('Кодът е грешен или изтекъл. Поискай нов.', 'That code is wrong or expired. Ask for a new one.'))
+        : humanError(error);
+    }
+
+    clearAttempts('signin');
+    localStorage.removeItem(SKIP_KEY);
+    set({
+      session: data.session,
+      user: data.user,
+      notice: null,
+      awaitingConfirm: null,
+      skipped: false,
+      codeSentTo: null,
+      // A recovery code lands on the "choose a new password" screen; a sign-in
+      // code goes straight into the app.
+      recovery: kind === 'recovery',
+    });
+    await get().refreshMfa();
+    if (kind !== 'recovery' && !get().mfaPending) void get().syncNow();
+    return null;
+  },
+
+  async refreshMfa() {
+    if (!get().user) return set({ mfaPending: false });
+    try {
+      set({ mfaPending: await needsChallenge() });
+    } catch {
+      // Never let a failed check lock somebody out of their own account.
+      set({ mfaPending: false });
+    }
+  },
+
+  clearMfaPending() {
+    set({ mfaPending: false });
+    void get().syncNow();
+  },
+
   async signOutOthers() {
     const client = await getClient();
     if (!client) return tr(L('Облакът не е настроен.', 'The cloud is not configured.'));
     const { error } = await client.auth.signOut({ scope: 'others' });
     if (error) return humanError(error);
+    void logEvent('sessions_revoked');
     notify.ok(
       tr(L('Другите устройства излязоха', 'Other devices signed out')),
       tr(L('Този браузър остава в профила.', 'This browser stays signed in.')),
@@ -347,7 +464,16 @@ export const useAuth = create<AuthStore>((set, get) => ({
     // The watermarks belong to the account, not to the browser.
     await resetSyncState();
     localStorage.removeItem(SKIP_KEY);
-    set({ user: null, session: null, sync: EMPTY_SYNC, notice: null, awaitingConfirm: null, skipped: false });
+    set({
+      user: null,
+      session: null,
+      sync: EMPTY_SYNC,
+      notice: null,
+      awaitingConfirm: null,
+      skipped: false,
+      mfaPending: false,
+      codeSentTo: null,
+    });
   },
 
   async syncNow() {

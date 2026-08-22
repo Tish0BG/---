@@ -116,33 +116,70 @@ function Forms({ onClose }: { onClose: () => void }) {
   const [google, setGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [forgot, setForgot] = useState(false);
+  /** true once a code has been sent and the form is waiting for it back */
+  const [codeSent, setCodeSent] = useState(false);
+  const [code, setCode] = useState('');
+  /** sign in with a one-time code instead of a password */
+  const [byCode, setByCode] = useState(false);
   const notice = useAuth((s) => s.notice);
   const user = useAuth((s) => s.user);
+  const mfaPending = useAuth((s) => s.mfaPending);
 
-  // Signing in is the whole point of this screen; once it happens, leave.
+  // Signing in is the whole point of this screen; once it happens, leave —
+  // unless a second factor is still owed, in which case its own screen takes
+  // over and this one must not close over the top of it.
   useEffect(() => {
-    if (user) onClose();
-  }, [user, onClose]);
+    if (user && !mfaPending) onClose();
+  }, [user, mfaPending, onClose]);
 
   const submit = async () => {
     setBusy(true);
     setError(null);
     const store = useAuth.getState();
+
+    // Second leg of either code journey: the code is in the box.
+    if (codeSent) {
+      const problem = await store.verifyCode(email, code, forgot ? 'recovery' : 'signin');
+      setBusy(false);
+      if (problem) {
+        setError(problem);
+        setCode('');
+      }
+      return;
+    }
+
     const problem = forgot
       ? await store.resetPassword(email)
-      : tab === 'signin'
-        ? await store.signIn(email, password)
-        : await store.signUp(email, password, name);
+      : byCode
+        ? await store.sendSignInCode(email)
+        : tab === 'signin'
+          ? await store.signIn(email, password)
+          : await store.signUp(email, password, name);
     setBusy(false);
-    if (problem) setError(problem);
+    if (problem) {
+      setError(problem);
+      return;
+    }
+    // Both the reset and the passwordless door now wait for six digits.
+    if (forgot || byCode) setCodeSent(true);
   };
 
-  const mismatch = tab === 'signup' && !forgot && confirm.length > 0 && confirm !== password;
-  const ready =
-    email.includes('@') &&
-    (forgot || password.length >= 8) &&
-    (tab !== 'signup' || forgot || confirm === password) &&
-    !busy;
+  /** Back to the beginning, whichever branch we wandered down. */
+  const restart = () => {
+    setCodeSent(false);
+    setCode('');
+    setError(null);
+    useAuth.getState().clearNotice();
+  };
+
+  const mismatch = tab === 'signup' && !forgot && !byCode && confirm.length > 0 && confirm !== password;
+  const needsPassword = !forgot && !byCode;
+  const ready = codeSent
+    ? code.replace(/\s/g, '').length === 6 && !busy
+    : email.includes('@') &&
+      (!needsPassword || password.length >= 8) &&
+      (tab !== 'signup' || !needsPassword || confirm === password) &&
+      !busy;
 
   const withGoogle = async () => {
     setGoogle(true);
@@ -169,17 +206,36 @@ function Forms({ onClose }: { onClose: () => void }) {
         className="font-semibold leading-[1.12]"
         style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
       >
-        {t(forgot ? L('Нова парола', 'New password') : tab === 'signin' ? L('Влез в профила си', 'Sign in') : L('Създай профил', 'Create an account'))}
+        {t(
+          codeSent
+            ? L('Провери пощата си', 'Check your inbox')
+            : forgot
+              ? L('Нова парола', 'New password')
+              : byCode
+                ? L('Влез с код', 'Sign in with a code')
+                : tab === 'signin'
+                  ? L('Влез в профила си', 'Sign in')
+                  : L('Създай профил', 'Create an account'),
+        )}
       </h1>
       <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-        {forgot
-          ? t(L('Ще ти пратим писмо с връзка за смяна на паролата.', 'We will send you a link to set a new password.'))
-          : tab === 'signin'
-            ? t(L('За да намериш библиотеката си и тук.', 'So your library is here too.'))
-            : t(L('Отнема минута и не иска нищо освен имейл.', 'It takes a minute and asks for nothing but an e-mail.'))}
+        {codeSent
+          ? t(
+              L(
+                `Изпратихме шестцифрен код на ${email}. Валиден е за около час.`,
+                `We sent a six-digit code to ${email}. It is good for about an hour.`,
+              ),
+            )
+          : forgot
+            ? t(L('Ще ти пратим код, с който да смениш паролата.', 'We will send you a code to set a new password with.'))
+            : byCode
+              ? t(L('Без парола — код от пощата и си вътре.', 'No password — a code from your inbox and you are in.'))
+              : tab === 'signin'
+                ? t(L('За да намериш библиотеката си и тук.', 'So your library is here too.'))
+                : t(L('Отнема минута и не иска нищо освен имейл.', 'It takes a minute and asks for nothing but an e-mail.'))}
       </p>
 
-      {!forgot && (
+      {!forgot && !codeSent && !byCode && (
         <div className="segmented mt-5">
           {(
             [
@@ -208,7 +264,31 @@ function Forms({ onClose }: { onClose: () => void }) {
           if (ready) void submit();
         }}
       >
-        {tab === 'signup' && !forgot && (
+        {codeSent && (
+          <>
+            <input
+              autoFocus
+              className="field field-lg t-num text-center"
+              style={{ fontSize: 24, letterSpacing: '0.34em' }}
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              maxLength={7}
+              placeholder="000000"
+              aria-label={t(L('Код от пощата', 'Code from your inbox'))}
+            />
+            <button
+              type="button"
+              className="text-[12.5px] text-muted underline-offset-2 hover:underline"
+              onClick={restart}
+            >
+              {t(L('← Друг адрес, или нов код', '← A different address, or a new code'))}
+            </button>
+          </>
+        )}
+
+        {!codeSent && tab === 'signup' && needsPassword && (
           <Field label={t(L('Име', 'Name'))}>
             <input
               value={name}
@@ -220,19 +300,21 @@ function Forms({ onClose }: { onClose: () => void }) {
           </Field>
         )}
 
-        <Field label={t(L('Имейл', 'E-mail'))}>
-          <input
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="field h-10"
-            type="email"
-            placeholder="ime@example.com"
-            autoComplete="email"
-            autoFocus
-          />
-        </Field>
+        {!codeSent && (
+          <Field label={t(L('Имейл', 'E-mail'))}>
+            <input
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="field h-10"
+              type="email"
+              placeholder="ime@example.com"
+              autoComplete="email"
+              autoFocus
+            />
+          </Field>
+        )}
 
-        {!forgot && (
+        {!codeSent && needsPassword && (
           <PasswordField
             id="plauvia-password"
             label={t(L('Парола', 'Password'))}
@@ -244,7 +326,7 @@ function Forms({ onClose }: { onClose: () => void }) {
           />
         )}
 
-        {tab === 'signup' && !forgot && (
+        {!codeSent && tab === 'signup' && needsPassword && (
           <div>
             <PasswordField
               id="plauvia-confirm"
@@ -267,11 +349,19 @@ function Forms({ onClose }: { onClose: () => void }) {
 
         <button className="btn btn-primary h-10 w-full" disabled={!ready} type="submit">
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {t(forgot ? L('Изпрати писмо', 'Send the e-mail') : tab === 'signin' ? L('Влез', 'Sign in') : L('Създай профил', 'Create the account'))}
+          {t(
+            codeSent
+              ? L('Потвърди', 'Confirm')
+              : forgot || byCode
+                ? L('Изпрати код', 'Send the code')
+                : tab === 'signin'
+                  ? L('Влез', 'Sign in')
+                  : L('Създай профил', 'Create the account'),
+          )}
         </button>
       </form>
 
-      {!forgot && (
+      {!forgot && !codeSent && (
         <>
           <div className="my-4 flex items-center gap-3">
             <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
@@ -282,22 +372,38 @@ function Forms({ onClose }: { onClose: () => void }) {
         </>
       )}
 
-      {tab === 'signup' && !forgot && <TermsNote />}
+      {tab === 'signup' && needsPassword && !codeSent && <TermsNote />}
 
-      <div className="mt-3 flex items-center justify-between text-[12px]">
-        <button
-          className="cursor-pointer text-muted underline-offset-2 hover:underline"
-          onClick={() => {
-            setForgot(!forgot);
-            setError(null);
-          }}
-        >
-          {t(forgot ? L('← Назад към входа', '← Back to sign in') : L('Забравена парола?', 'Forgotten your password?'))}
-        </button>
-        <button className="cursor-pointer text-muted underline-offset-2 hover:underline" onClick={onClose}>
-          {t(L('Продължи без профил', 'Continue without an account'))}
-        </button>
-      </div>
+      {!codeSent && (
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[12px]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button
+              className="cursor-pointer text-muted underline-offset-2 hover:underline"
+              onClick={() => {
+                setForgot(!forgot);
+                setByCode(false);
+                setError(null);
+              }}
+            >
+              {t(forgot ? L('← Назад към входа', '← Back to sign in') : L('Забравена парола?', 'Forgotten your password?'))}
+            </button>
+            {!forgot && tab === 'signin' && (
+              <button
+                className="cursor-pointer text-muted underline-offset-2 hover:underline"
+                onClick={() => {
+                  setByCode(!byCode);
+                  setError(null);
+                }}
+              >
+                {t(byCode ? L('Влез с парола', 'Use a password instead') : L('Влез с код вместо парола', 'Send me a code instead'))}
+              </button>
+            )}
+          </div>
+          <button className="cursor-pointer text-muted underline-offset-2 hover:underline" onClick={onClose}>
+            {t(L('Продължи без профил', 'Continue without an account'))}
+          </button>
+        </div>
+      )}
 
     </>
   );
