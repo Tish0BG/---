@@ -404,7 +404,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
     const { data, error } = await client.auth.verifyOtp({
       email: email.trim(),
-      token: token.replace(/\s+/g, ''),
+      token: token.replace(/\D/g, ''),
       type: kind === 'recovery' ? 'recovery' : 'email',
     });
     if (error) {

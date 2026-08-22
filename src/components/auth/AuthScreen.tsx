@@ -12,6 +12,22 @@ import { PUBLIC_ROUTES } from '@/seo/routes';
 type Tab = 'signin' | 'signup';
 
 /**
+ * How long an e-mailed code is.
+ *
+ * Supabase lets a project choose anywhere from six to ten digits, and the
+ * default is not the same across projects. Assuming six is how a perfectly
+ * correct eight-digit code ends up sitting in the box with the button greyed
+ * out and nothing explaining why.
+ */
+const EMAIL_CODE_MIN = 6;
+const EMAIL_CODE_MAX = 10;
+
+const emailCodeLooksComplete = (raw: string): boolean => {
+  const digits = raw.replace(/\D/g, '');
+  return digits.length >= EMAIL_CODE_MIN && digits.length <= EMAIL_CODE_MAX;
+};
+
+/**
  * The sign-in page.
  *
  * A full screen rather than a dialog on purpose: this is the moment the app
@@ -175,7 +191,7 @@ function Forms({ onClose }: { onClose: () => void }) {
   const mismatch = tab === 'signup' && !forgot && !byCode && confirm.length > 0 && confirm !== password;
   const needsPassword = !forgot && !byCode;
   const ready = codeSent
-    ? code.replace(/\s/g, '').length === 6 && !busy
+    ? emailCodeLooksComplete(code) && !busy
     : email.includes('@') &&
       (!needsPassword || password.length >= 8) &&
       (tab !== 'signup' || !needsPassword || confirm === password) &&
@@ -269,13 +285,21 @@ function Forms({ onClose }: { onClose: () => void }) {
             <input
               autoFocus
               className="field field-lg t-num text-center"
-              style={{ fontSize: 24, letterSpacing: '0.34em' }}
+              // Tracking loosens for short codes and tightens for long ones, so
+              // ten digits still fit the box instead of scrolling inside it.
+              style={{
+                fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
+                letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
+              }}
               value={code}
               onChange={(e) => setCode(e.target.value)}
               inputMode="numeric"
               autoComplete="one-time-code"
-              maxLength={7}
-              placeholder="000000"
+              // Six is the common length, but it is a per-project setting and
+              // can be anything up to ten. Hard-coding six meant an eight-digit
+              // code could be typed and never submitted.
+              maxLength={EMAIL_CODE_MAX}
+              placeholder="······"
               aria-label={t(L('Код от пощата', 'Code from your inbox'))}
             />
             <button
