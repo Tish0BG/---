@@ -1,14 +1,16 @@
 -- Поправка на журнала за влизания. Безопасно е за повторно пускане.
 --
--- Първата версия четеше new.user_agent и new.aal направо. Ако някоя от двете
--- колони я няма в тази версия на auth.sessions, функцията гърми — а тя нарочно
--- гълта грешките, за да не спре нечие влизане, така че резултатът е тишина и
--- празен журнал.
+-- Диагностиката показа: тригерът съществува и е включен, auth.sessions има 8
+-- реда, а журналът — нула. Разликата е в ролята. Таблицата auth.sessions е на
+-- supabase_auth_admin, а тригерът се изпълнява в контекста на този, който
+-- прави вписването — тоест GoTrue, работещ като supabase_auth_admin. Ако тази
+-- роля няма право да ползва схемата public или да изпълни функцията, тригерът
+-- пада тихо, защото функцията нарочно гълта грешките, за да не спре нечие
+-- влизане.
 --
--- Тази версия минава през to_jsonb(new): липсващ ключ дава NULL вместо
--- изключение, така че тригерът работи независимо коя версия на Supabase стои
--- отдолу.
+-- Тук се дават точно тези права, и нищо повече.
 
+-- 1. Функцията да не зависи от това кои колони има auth.sessions.
 create or replace function public.on_auth_session_created()
 returns trigger
 language plpgsql
@@ -32,16 +34,22 @@ exception when others then
 end;
 $$;
 
+alter function public.on_auth_session_created() owner to postgres;
+
+-- 2. Ролята, която вписва сесиите, трябва да може да стигне до функцията.
+--    Само това — не ѝ се дава достъп до таблицата, защото функцията е
+--    security definer и пише с правата на своя собственик.
+grant usage on schema public to supabase_auth_admin;
+grant execute on function public.on_auth_session_created() to supabase_auth_admin;
+
 drop trigger if exists plauvia_log_signin on auth.sessions;
 create trigger plauvia_log_signin
   after insert on auth.sessions
   for each row execute function public.on_auth_session_created();
 
-/**
- * Приложението също може да отбележи влизане — нужно е само ако тригерът не е
- * могъл да бъде създаден върху auth.sessions. За да не се получат по два реда
- * за едно влизане, вторият в рамките на минута се пропуска мълчаливо.
- */
+-- 3. Приложението също може да отбележи влизане — резервен вариант, ако горното
+--    пак не сработи. Второ „влизане“ в рамките на минута се пропуска, за да не
+--    се получат по два реда, когато и тригерът работи.
 create or replace function public.log_security_event(p_kind text, p_meta jsonb default null)
 returns void
 language plpgsql
@@ -76,22 +84,22 @@ revoke all on function public.log_security_event(text, jsonb) from public, anon;
 grant execute on function public.log_security_event(text, jsonb) to authenticated;
 
 -- ─────────────────────────────────────────────────────── проверка ──
--- Пише пробен ред за твоя профил и веднага го маха. Ако вторият ред покаже 1,
--- таблицата и правата са наред и проблемът е бил само в тригера.
-do $$
-declare v_uid uuid;
-begin
-  select id into v_uid from auth.users order by created_at desc limit 1;
-  if v_uid is not null then
-    insert into public.security_events (user_id, kind, meta)
-    values (v_uid, 'signin', '{"проба": true}'::jsonb);
-    delete from public.security_events where user_id = v_uid and meta ? 'проба';
-  end if;
-end $$;
-
-select 'тригер' as проверка,
-       coalesce((select 'има' from pg_trigger where tgname = 'plauvia_log_signin' limit 1), 'ЛИПСВА') as резултат
+select 'тригер включен' as проверка,
+       coalesce((select case tgenabled when 'O' then 'да' else 'не: ' || tgenabled end
+                   from pg_trigger where tgname = 'plauvia_log_signin'), 'ЛИПСВА') as резултат
 union all
-select 'записът в таблицата работи', 'да'
+select 'supabase_auth_admin може да я изпълни',
+       case when has_function_privilege('supabase_auth_admin',
+              'public.on_auth_session_created()', 'execute') then 'да' else 'НЕ' end
 union all
-select 'редове в журнала досега', count(*)::text from public.security_events;
+select 'supabase_auth_admin вижда схемата public',
+       case when has_schema_privilege('supabase_auth_admin', 'public', 'usage') then 'да' else 'НЕ' end
+union all
+select 'има колона user_agent',
+       case when exists (select 1 from information_schema.columns
+                          where table_schema='auth' and table_name='sessions' and column_name='user_agent')
+            then 'да' else 'не (не пречи)' end
+union all
+select 'последна сесия', coalesce(max(created_at)::text, 'няма') from auth.sessions
+union all
+select 'редове в журнала', count(*)::text from public.security_events;
