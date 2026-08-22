@@ -84,7 +84,7 @@ export function MobileNav() {
             onClick={() => useApp.getState().setQuick('task')}
             className="absolute left-1/2 top-0 grid h-[52px] w-[52px] -translate-x-1/2 -translate-y-[16px] cursor-pointer place-items-center rounded-full text-white active:scale-95"
             style={{
-              background: 'var(--grad-brand)',
+              background: 'var(--grad-accent)',
               boxShadow: 'var(--glow-brand), 0 0 0 4px var(--c-bg)',
               transition: 'transform 0.14s var(--ease)',
             }}
@@ -144,7 +144,7 @@ export function MobileNav() {
           >
             <span
               className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] text-white"
-              style={{ background: 'var(--grad-brand)' }}
+              style={{ background: 'var(--grad-accent)' }}
             >
               <Icon name="timer" size={17} />
             </span>

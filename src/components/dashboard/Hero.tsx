@@ -69,7 +69,7 @@ export function Hero() {
       <span
         aria-hidden
         className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full opacity-[0.22] blur-3xl"
-        style={{ background: 'var(--grad-brand)' }}
+        style={{ background: 'var(--grad-accent)' }}
       />
       <span
         aria-hidden
@@ -86,7 +86,7 @@ export function Hero() {
                 ,{' '}
                 <span
                   style={{
-                    background: 'var(--grad-brand)',
+                    background: 'var(--grad-accent)',
                     WebkitBackgroundClip: 'text',
                     backgroundClip: 'text',
                     color: 'transparent',
@@ -149,7 +149,7 @@ export function Hero() {
               className="h-full rounded-full"
               style={{
                 width: `${Math.max(2, level.progress * 100)}%`,
-                background: 'var(--grad-brand)',
+                background: 'var(--grad-accent)',
                 transition: 'width 0.8s var(--ease-out)',
               }}
             />

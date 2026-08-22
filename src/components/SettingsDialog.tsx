@@ -10,6 +10,8 @@ import { createBackup, inspectBackup, restoreBackup, type BackupSummary } from '
 import { useInstall } from '@/hooks/useInstall';
 import { downloadBlob, formatBytes, formatDate } from '@/lib/util';
 import { useT, useLang, useLangStore, L, type Lang } from '@/i18n';
+import type { Accent, LearningProfile, PrivacySettings, Profile } from '@/types';
+import { claimUsername, normaliseUsername, validateUsername } from '@/services/usernameService';
 import { S } from '@/i18n/strings';
 import { Slider, Toggle } from './ui';
 import { Button, IconButton, Sheet, useIsPhone } from './kit';
@@ -19,6 +21,8 @@ import { Icon } from './Icon';
 type SectionId =
   | 'account'
   | 'appearance'
+  | 'access'
+  | 'privacy'
   | 'study'
   | 'notifications'
   | 'writing'
@@ -29,6 +33,8 @@ type SectionId =
 const SECTIONS: { id: SectionId; icon: string; label: { bg: string; en: string } }[] = [
   { id: 'account', icon: 'user', label: L('Профил и акаунт', 'Profile & account') },
   { id: 'appearance', icon: 'palette', label: L('Изглед и език', 'Appearance & language') },
+  { id: 'access', icon: 'eye', label: L('Достъпност', 'Accessibility') },
+  { id: 'privacy', icon: 'shield', label: L('Поверителност', 'Privacy') },
   { id: 'study', icon: 'timer', label: L('Учене', 'Study') },
   { id: 'notifications', icon: 'bell', label: L('Известия', 'Notifications') },
   { id: 'writing', icon: 'pencil', label: L('Писане', 'Writing') },
@@ -155,6 +161,10 @@ function SectionBody({ id }: { id: SectionId }) {
       );
     case 'appearance':
       return <AppearanceSection />;
+    case 'access':
+      return <AccessibilitySection />;
+    case 'privacy':
+      return <PrivacySection />;
     case 'study':
       return <StudySection />;
     case 'notifications':
@@ -258,6 +268,35 @@ function AppearanceSection() {
       </Group>
 
       <Group
+        title={t(L('Акцент', 'Accent'))}
+        hint={t(
+          L(
+            'Оцветява бутоните, избраното и напредъка. Знакът на Plauvia остава син — самоличност, която се сменя с настройка, не е самоличност.',
+            'Colours the buttons, the selection and the progress. The Plauvia mark stays blue — an identity that changes with a preference is not an identity.',
+          ),
+        )}
+      >
+        <div className="flex flex-wrap gap-2">
+          {ACCENT_CHOICES.map((option) => (
+            <button
+              key={option.id}
+              onClick={() => s.set('accent', option.id)}
+              aria-pressed={s.accent === option.id}
+              className="flex cursor-pointer items-center gap-2 rounded-full border px-3 py-2 text-[13px] font-medium transition-colors"
+              style={{
+                borderColor: s.accent === option.id ? 'var(--c-accent)' : 'var(--c-line)',
+                background: s.accent === option.id ? 'var(--c-accent-soft)' : 'var(--c-surface)',
+              }}
+            >
+              <span aria-hidden className="h-4 w-4 rounded-full" style={{ background: option.swatch }} />
+              {t(option.label)}
+              {s.accent === option.id && <Icon name="check" size={13} strokeWidth={2.6} className="text-accent" />}
+            </button>
+          ))}
+        </div>
+      </Group>
+
+      <Group
         title={t(L('PDF страницата в тъмен режим', 'PDF page in dark mode'))}
         hint={t(L('Само страницата се променя — бележките ти остават както са.', 'Only the page changes; your ink stays exactly as it is.'))}
       >
@@ -288,6 +327,202 @@ function AppearanceSection() {
           hint={t(L('Показва малките изображения в страничния панел на документа.', 'Shows the small page previews in the document sidebar.'))}
         />
       </Group>
+    </div>
+  );
+}
+
+
+/** The six accents, and the swatch each of them shows in its own colour. */
+const ACCENT_CHOICES: { id: Accent; label: { bg: string; en: string }; swatch: string }[] = [
+  { id: 'brand', label: L('Plauvia', 'Plauvia'), swatch: '#1857d6' },
+  { id: 'cyan', label: L('Циан', 'Cyan'), swatch: '#00697f' },
+  { id: 'green', label: L('Зелено', 'Green'), swatch: '#04703f' },
+  { id: 'amber', label: L('Кехлибар', 'Amber'), swatch: '#9a5b00' },
+  { id: 'rose', label: L('Розово', 'Rose'), swatch: '#c22a63' },
+  { id: 'violet', label: L('Виолетово', 'Violet'), swatch: '#6539d6' },
+];
+
+/* ---------------------------------------------------------- accessibility */
+
+/**
+ * The three preferences that decide whether the product is usable at all for
+ * some people, in one place rather than scattered through the appearance tab.
+ *
+ * None of them is asked for during setup. Somebody who needs larger text
+ * already has it turned on system-wide and does not want a wizard asking; the
+ * point of this page is that it is findable, not that it is unavoidable.
+ */
+function AccessibilitySection() {
+  const t = useT();
+  const s = useSettings();
+  const systemReduced =
+    typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  return (
+    <div className="space-y-7">
+      <Group
+        title={t(L('Размер на текста', 'Text size'))}
+        hint={t(
+          L(
+            'Мащабира целия интерфейс наведнъж, не само едно място.',
+            'Scales the whole interface at once, not one corner of it.',
+          ),
+        )}
+      >
+        <div className="grid grid-cols-4 gap-2">
+          {(
+            [
+              [0.9, L('Компактен', 'Compact')],
+              [1, L('Обичаен', 'Default')],
+              [1.15, L('Едър', 'Large')],
+              [1.3, L('Много едър', 'Larger')],
+            ] as const
+          ).map(([scale, label]) => (
+            <button
+              key={scale}
+              onClick={() => s.set('typeScale', scale)}
+              aria-pressed={s.typeScale === scale}
+              className="cursor-pointer rounded-[12px] border p-3 text-center transition-colors"
+              style={{
+                borderColor: s.typeScale === scale ? 'var(--c-accent)' : 'var(--c-line)',
+                background: s.typeScale === scale ? 'var(--c-accent-soft)' : 'var(--c-surface)',
+              }}
+            >
+              <span className="block font-semibold leading-none" style={{ fontSize: `${13 * scale}px` }}>
+                Aa
+              </span>
+              <span className="mt-1.5 block text-[11px] text-muted">{t(label)}</span>
+            </button>
+          ))}
+        </div>
+      </Group>
+
+      <Group
+        title={t(L('Движение', 'Motion'))}
+        hint={
+          systemReduced
+            ? t(L('Системата ти вече иска по-малко движение.', 'Your system already asks for less motion.'))
+            : undefined
+        }
+      >
+        <div className="flex gap-1.5">
+          {(
+            [
+              ['system', L('Като системата', 'Follow the system')],
+              ['reduced', L('По-малко', 'Reduced')],
+              ['full', L('Пълно', 'Full')],
+            ] as const
+          ).map(([id, label]) => (
+            <button
+              key={id}
+              className={`btn flex-1 ${s.motion === id ? 'btn-ghost-active' : 'btn-outline'}`}
+              aria-pressed={s.motion === id}
+              onClick={() => s.set('motion', id)}
+            >
+              {t(label)}
+            </button>
+          ))}
+        </div>
+      </Group>
+
+      <Group title={t(L('Контраст', 'Contrast'))}>
+        <Toggle
+          checked={s.highContrast}
+          onChange={(v) => s.set('highContrast', v)}
+          label={t(L('Висок контраст', 'High contrast'))}
+          hint={t(
+            L(
+              'Подсилва границите между панелите и най-тихия текст, вместо да обръща палитрата.',
+              'Strengthens the borders between panels and the quietest text, rather than inverting the palette.',
+            ),
+          )}
+        />
+      </Group>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- privacy */
+
+/**
+ * Who may see what — set now, for a product that shows nobody anything yet.
+ *
+ * Saying that plainly at the top matters more than the switches do: a privacy
+ * page that implies a profile is already public would be its own small lie.
+ */
+function PrivacySection() {
+  const t = useT();
+  const privacy = useWorkspace((s) => s.privacy);
+  const save = useWorkspace((s) => s.savePrivacy);
+
+  type Row = Exclude<keyof PrivacySettings, 'updatedAt'>;
+  const rows: { key: Row; label: { bg: string; en: string }; hint: { bg: string; en: string } }[] = [
+    {
+      key: 'profile',
+      label: L('Профил', 'Profile'),
+      hint: L('Основният превключвател: без него нищо друго не се вижда.', 'The main switch: with it off, nothing else is visible.'),
+    },
+    {
+      key: 'displayName',
+      label: L('Име за показване', 'Display name'),
+      hint: L('Името, с което те поздравява приложението.', 'The name the app greets you by.'),
+    },
+    {
+      key: 'interests',
+      label: L('Интереси', 'Interests'),
+      hint: L('Предметите, които си избрал при настройката.', 'The subjects you picked during setup.'),
+    },
+    {
+      key: 'achievements',
+      label: L('Постижения', 'Achievements'),
+      hint: L('Ниво, значки и серии.', 'Level, badges and streaks.'),
+    },
+    {
+      key: 'progress',
+      label: L('Напредък', 'Progress'),
+      hint: L('Часове, цели и напредък по учебник.', 'Hours, goals and progress per book.'),
+    },
+  ];
+
+  return (
+    <div className="space-y-7">
+      <div
+        className="flex gap-3 rounded-[var(--radius-lg)] p-3.5"
+        style={{ background: 'var(--c-info-soft)', border: '1px solid color-mix(in srgb, var(--c-info) 30%, transparent)' }}
+      >
+        <Icon name="info" size={16} className="mt-px shrink-0" style={{ color: 'var(--c-info)' }} />
+        <p className="text-[12.5px] leading-relaxed" style={{ color: 'var(--c-info)' }}>
+          {t(
+            L(
+              'Plauvia още няма публични профили — нищо тук не се вижда от друг човек. Настройките съществуват отсега, за да не се налага един ден да се гадае какво би искал.',
+              'Plauvia has no public profiles yet — none of this is visible to anyone else. The settings exist now so that nobody has to guess later what you would have wanted.',
+            ),
+          )}
+        </p>
+      </div>
+
+      {rows.map((row) => (
+        <Group key={row.key} title={t(row.label)} hint={t(row.hint)}>
+          <div className="flex gap-1.5">
+            {(
+              [
+                ['private', L('Само за мен', 'Only me'), 'lock'],
+                ['public', L('Публично', 'Public'), 'globe'],
+              ] as const
+            ).map(([value, label, icon]) => (
+              <button
+                key={value}
+                className={`btn flex-1 ${privacy[row.key] === value ? 'btn-ghost-active' : 'btn-outline'}`}
+                aria-pressed={privacy[row.key] === value}
+                onClick={() => void save({ [row.key]: value } as Partial<PrivacySettings>)}
+              >
+                <Icon name={icon} size={14} />
+                {t(label)}
+              </button>
+            ))}
+          </div>
+        </Group>
+      ))}
     </div>
   );
 }
@@ -631,7 +866,7 @@ function AboutSection() {
       <div className="card-quiet flex items-center gap-3 p-4">
         <span
           className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] text-white"
-          style={{ background: 'var(--grad-brand)' }}
+          style={{ background: 'var(--grad-accent)' }}
         >
           <Icon name="book" size={21} />
         </span>
@@ -733,13 +968,67 @@ function CloudSection() {
 const AVATARS = ['🦉', '🐨', '🦊', '🐼', '🐢', '🦁', '🐙', '🦄', '🐝', '🌿', '⚡️', '🚀'];
 
 /** Who the app thinks you are. */
+/**
+ * How much of the profile is filled in.
+ *
+ * Six things, each worth the same, and no nagging: it is a line of text with a
+ * bar under it, not a badge that follows people around the app. A completion
+ * meter that guilt-trips is a dark pattern with a progress bar on it.
+ */
+function completion(profile: Profile, learning: LearningProfile): { done: number; total: number } {
+  const checks = [
+    profile.name.trim().length > 0,
+    profile.username.trim().length > 0,
+    profile.avatar.length > 0,
+    learning.interests.length > 0,
+    learning.goals.length > 0,
+    learning.styles.length > 0,
+  ];
+  return { done: checks.filter(Boolean).length, total: checks.length };
+}
+
 function ProfileSection() {
   const t = useT();
   const profile = useWorkspace((s) => s.profile);
+  const learning = useWorkspace((s) => s.learning);
   const save = useWorkspace((s) => s.saveProfile);
+  const [handle, setHandle] = useState(profile.username);
+  const [handleMsg, setHandleMsg] = useState<string | null>(null);
+  const { done, total } = completion(profile, learning);
+
+  const commitHandle = () => {
+    const value = handle.trim();
+    if (!value) {
+      setHandleMsg(null);
+      void save({ username: '' });
+      return;
+    }
+    const problem = validateUsername(value);
+    setHandleMsg(problem);
+    if (problem) return;
+    const normalised = normaliseUsername(value);
+    setHandle(normalised);
+    void save({ username: normalised });
+    void claimUsername(normalised).then((err) => setHandleMsg(err));
+  };
 
   return (
     <Group title={t(S.profile)}>
+      <div className="mb-4">
+        <div className="flex items-baseline justify-between">
+          <span className="text-[12.5px] text-muted">
+            {t(L(`Профилът е попълнен ${done} от ${total}`, `Profile ${done} of ${total} filled in`))}
+          </span>
+          <span className="t-num text-[12px] text-faint">{Math.round((done / total) * 100)}%</span>
+        </div>
+        <div className="mt-1.5 h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
+          <span
+            className="block h-full rounded-full transition-[width]"
+            style={{ width: `${(done / total) * 100}%`, background: 'var(--c-accent)' }}
+          />
+        </div>
+      </div>
+
       <div className="flex items-center gap-3">
         <span
           className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-[26px]"
@@ -751,7 +1040,15 @@ function ProfileSection() {
           <input
             value={profile.name}
             onChange={(e) => void save({ name: e.target.value })}
-            placeholder={t(L('Име', 'Name'))}
+            placeholder={t(L('Име', 'First name'))}
+            autoComplete="given-name"
+            className="field"
+          />
+          <input
+            value={profile.lastName}
+            onChange={(e) => void save({ lastName: e.target.value })}
+            placeholder={t(L('Фамилия (по избор)', 'Last name (optional)'))}
+            autoComplete="family-name"
             className="field"
           />
           <input
@@ -764,9 +1061,30 @@ function ProfileSection() {
             value={profile.school}
             onChange={(e) => void save({ school: e.target.value })}
             placeholder={t(L('Училище', 'School'))}
-            className="field sm:col-span-2"
+            className="field"
           />
         </div>
+      </div>
+
+      <div className="mt-3">
+        <span className="relative block">
+          <span aria-hidden className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[13px] text-faint">
+            @
+          </span>
+          <input
+            value={handle}
+            onChange={(e) => setHandle(e.target.value)}
+            onBlur={commitHandle}
+            onKeyDown={(e) => e.key === 'Enter' && commitHandle()}
+            placeholder={t(L('потребителско име (по избор)', 'username (optional)'))}
+            autoComplete="username"
+            spellCheck={false}
+            className="field pl-7"
+          />
+        </span>
+        <p className="mt-1.5 text-[11.5px] leading-relaxed" style={{ color: handleMsg ? 'var(--c-danger)' : 'var(--c-faint)' }}>
+          {handleMsg ?? t(L('Запазва името за теб. Никъде още не се показва публично.', 'Reserves the name for you. Nothing shows it publicly yet.'))}
+        </p>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">

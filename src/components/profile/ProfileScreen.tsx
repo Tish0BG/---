@@ -89,7 +89,7 @@ export function ProfileScreen() {
     >
       {/* ------------------------------------------------------------ header */}
       <Card className="mb-5 overflow-hidden" flush>
-        <div className="relative h-24" style={{ background: 'var(--grad-brand)' }}>
+        <div className="relative h-24" style={{ background: 'var(--grad-accent)' }}>
           <span
             aria-hidden
             className="animate-breathe absolute -right-10 -top-16 h-52 w-52 rounded-full opacity-25 blur-2xl"

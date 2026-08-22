@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import type { Profile, Subject } from '@/types';
+import type { LearningProfile, PrivacySettings, Profile, Subject } from '@/types';
 import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
 
 const PROFILE_KEY = 'profile';
+const LEARNING_KEY = 'learning';
+const PRIVACY_KEY = 'privacy';
 
 /** Ten distinguishable hues that survive both themes. */
 export const SUBJECT_COLORS = [
@@ -47,21 +49,51 @@ export const SUGGESTED_SUBJECTS: { name: string; icon: string }[] = [
 
 export const EMPTY_PROFILE: Profile = {
   name: '',
+  lastName: '',
+  username: '',
   avatar: '🦉',
   color: SUBJECT_COLORS[0],
   school: '',
   grade: '',
+  bio: '',
   createdAt: 0,
+  updatedAt: 0,
+};
+
+export const EMPTY_LEARNING: LearningProfile = {
+  interests: [],
+  level: 'unsure',
+  goals: [],
+  styles: [],
+  sessionMinutes: 0,
+  updatedAt: 0,
+};
+
+/**
+ * Everything closed. Nothing in the product publishes a profile today, and a
+ * default that assumes otherwise is the kind of thing nobody notices until it
+ * has already published something.
+ */
+export const EMPTY_PRIVACY: PrivacySettings = {
+  profile: 'private',
+  displayName: 'private',
+  interests: 'private',
+  achievements: 'private',
+  progress: 'private',
   updatedAt: 0,
 };
 
 interface WorkspaceStore {
   profile: Profile;
+  learning: LearningProfile;
+  privacy: PrivacySettings;
   subjects: Subject[];
   loaded: boolean;
 
   init(): Promise<void>;
   saveProfile(patch: Partial<Profile>): Promise<void>;
+  saveLearning(patch: Partial<LearningProfile>): Promise<void>;
+  savePrivacy(patch: Partial<PrivacySettings>): Promise<void>;
   /**
    * Fills in whatever the account already knows, so signing in lands straight
    * in the app. A questionnaire between "I just registered" and "I can use
@@ -81,16 +113,26 @@ interface WorkspaceStore {
 
 export const useWorkspace = create<WorkspaceStore>((set, get) => ({
   profile: EMPTY_PROFILE,
+  learning: EMPTY_LEARNING,
+  privacy: EMPTY_PRIVACY,
   subjects: [],
   loaded: false,
 
   async init() {
-    const [profile, subjects] = await Promise.all([
+    const [profile, learning, privacy, subjects] = await Promise.all([
       repo.getMeta<Profile>(PROFILE_KEY),
+      repo.getMeta<LearningProfile>(LEARNING_KEY),
+      repo.getMeta<PrivacySettings>(PRIVACY_KEY),
       repo.listSubjects(),
     ]);
     subjects.sort((a, b) => a.order - b.order);
-    set({ profile: { ...EMPTY_PROFILE, ...(profile ?? {}) }, subjects, loaded: true });
+    set({
+      profile: { ...EMPTY_PROFILE, ...(profile ?? {}) },
+      learning: { ...EMPTY_LEARNING, ...(learning ?? {}) },
+      privacy: { ...EMPTY_PRIVACY, ...(privacy ?? {}) },
+      subjects,
+      loaded: true,
+    });
   },
 
   async saveProfile(patch) {
@@ -98,6 +140,18 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     if (!next.createdAt) next.createdAt = Date.now();
     set({ profile: next });
     await repo.setMeta(PROFILE_KEY, next);
+  },
+
+  async saveLearning(patch) {
+    const next = { ...get().learning, ...patch, updatedAt: Date.now() };
+    set({ learning: next });
+    await repo.setMeta(LEARNING_KEY, next);
+  },
+
+  async savePrivacy(patch) {
+    const next = { ...get().privacy, ...patch, updatedAt: Date.now() };
+    set({ privacy: next });
+    await repo.setMeta(PRIVACY_KEY, next);
   },
 
   async adoptAccount(account) {

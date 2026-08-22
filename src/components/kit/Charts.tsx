@@ -70,7 +70,7 @@ export interface BarDatum {
 export function BarChart({
   data,
   height = 132,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   format = (v: number) => String(v),
   goal,
   goalLabel,
@@ -264,7 +264,7 @@ export function Sparkline({
   values,
   width = 96,
   height = 28,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   className = '',
 }: {
   values: number[];
@@ -314,7 +314,7 @@ export function HeatCalendar({
   days,
   weeks = 20,
   cell = 13,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   weekdayLabels,
 }: {
   days: HeatDay[];

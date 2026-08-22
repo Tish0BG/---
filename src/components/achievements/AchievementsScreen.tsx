@@ -61,7 +61,7 @@ export function AchievementsScreen() {
           <span
             aria-hidden
             className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-[0.18] blur-3xl"
-            style={{ background: 'var(--grad-brand)' }}
+            style={{ background: 'var(--grad-accent)' }}
           />
 
           <ProgressRing value={level.progress} size={116} stroke={9} color="var(--c-brand)" colorTo="var(--c-aurora)">

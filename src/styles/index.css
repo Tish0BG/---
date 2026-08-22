@@ -110,6 +110,13 @@
    * them.
    */
   --grad-brand: linear-gradient(135deg, #2a66e2 0%, #1857d6 48%, #1245b4 100%);
+  /**
+   * The accent gradient starts as the brand one and is the only one a chosen
+   * accent replaces. The logo keeps `--grad-brand`, so picking green makes the
+   * buttons green without repainting the mark — an identity that changes with
+   * a preference is not an identity.
+   */
+  --grad-accent: var(--grad-brand);
   --grad-aurora: linear-gradient(135deg, #1857d6 0%, #0d6ad1 50%, #0a9b8f 100%);
   --grad-ember: linear-gradient(135deg, #f0a419 0%, #e08700 55%, #c25a09 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 70%) 0%, rgb(255 255 255 / 0%) 100%);
@@ -207,6 +214,7 @@
   --c-deep: #4aa8f0;
 
   --grad-brand: linear-gradient(135deg, #3b6fe8 0%, #2f62df 48%, #2a5bd7 100%);
+  --grad-accent: var(--grad-brand);
   --grad-aurora: linear-gradient(135deg, #3b6fe8 0%, #2b7fc4 50%, #17897e 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, rgb(255 255 255 / 0%) 100%);
   --glow-brand: 0 8px 30px -10px color-mix(in srgb, var(--c-accent) 48%, transparent);
@@ -230,70 +238,70 @@
   --c-accent-hover: #00596c;
   --c-accent-active: #004a5a;
   --c-accent-soft: #e0f4f9;
-  --grad-brand: linear-gradient(135deg, #0a7d95 0%, #00697f 48%, #00566a 100%);
+  --grad-accent: linear-gradient(135deg, #0a7d95 0%, #00697f 48%, #00566a 100%);
 }
 [data-theme='dark'][data-accent='cyan'] {
   --c-accent: #3ec6e0;
   --c-accent-hover: #63d4ea;
   --c-accent-active: #2bb1cb;
   --c-accent-soft: #0c2630;
-  --grad-brand: linear-gradient(135deg, #0d8ba6 0%, #0a7d95 48%, #086a80 100%);
+  --grad-accent: linear-gradient(135deg, #0d8ba6 0%, #0a7d95 48%, #086a80 100%);
 }
 [data-accent='green'] {
   --c-accent: #04703f;
   --c-accent-hover: #036036;
   --c-accent-active: #02502d;
   --c-accent-soft: #e3f7ec;
-  --grad-brand: linear-gradient(135deg, #06854b 0%, #04703f 48%, #035c34 100%);
+  --grad-accent: linear-gradient(135deg, #06854b 0%, #04703f 48%, #035c34 100%);
 }
 [data-theme='dark'][data-accent='green'] {
   --c-accent: #3ecf87;
   --c-accent-hover: #63dc9f;
   --c-accent-active: #2bb872;
   --c-accent-soft: #0d2519;
-  --grad-brand: linear-gradient(135deg, #14875a 0%, #0f7550 48%, #0b6243 100%);
+  --grad-accent: linear-gradient(135deg, #14875a 0%, #0f7550 48%, #0b6243 100%);
 }
 [data-accent='amber'] {
   --c-accent: #9a5b00;
   --c-accent-hover: #854e00;
   --c-accent-active: #6f4100;
   --c-accent-soft: #fdf1dd;
-  --grad-brand: linear-gradient(135deg, #b06900 0%, #9a5b00 48%, #7f4b00 100%);
+  --grad-accent: linear-gradient(135deg, #b06900 0%, #9a5b00 48%, #7f4b00 100%);
 }
 [data-theme='dark'][data-accent='amber'] {
   --c-accent: #f5b544;
   --c-accent-hover: #f8c76b;
   --c-accent-active: #e0a12f;
   --c-accent-soft: #2a1e08;
-  --grad-brand: linear-gradient(135deg, #a86500 0%, #945800 48%, #7d4a00 100%);
+  --grad-accent: linear-gradient(135deg, #a86500 0%, #945800 48%, #7d4a00 100%);
 }
 [data-accent='rose'] {
   --c-accent: #c22a63;
   --c-accent-hover: #a92355;
   --c-accent-active: #8f1d48;
   --c-accent-soft: #fdeaf1;
-  --grad-brand: linear-gradient(135deg, #d43370 0%, #c22a63 48%, #a12252 100%);
+  --grad-accent: linear-gradient(135deg, #d43370 0%, #c22a63 48%, #a12252 100%);
 }
 [data-theme='dark'][data-accent='rose'] {
   --c-accent: #ff8fb2;
   --c-accent-hover: #ffaac6;
   --c-accent-active: #f2739c;
   --c-accent-soft: #2e131e;
-  --grad-brand: linear-gradient(135deg, #c73168 0%, #b32b5c 48%, #97244d 100%);
+  --grad-accent: linear-gradient(135deg, #c73168 0%, #b32b5c 48%, #97244d 100%);
 }
 [data-accent='violet'] {
   --c-accent: #6539d6;
   --c-accent-hover: #5731bb;
   --c-accent-active: #4a299f;
   --c-accent-soft: #f0eafd;
-  --grad-brand: linear-gradient(135deg, #7546e6 0%, #6539d6 48%, #5430b4 100%);
+  --grad-accent: linear-gradient(135deg, #7546e6 0%, #6539d6 48%, #5430b4 100%);
 }
 [data-theme='dark'][data-accent='violet'] {
   --c-accent: #a68cff;
   --c-accent-hover: #bba7ff;
   --c-accent-active: #8f70f5;
   --c-accent-soft: #1d1636;
-  --grad-brand: linear-gradient(135deg, #6d4ae0 0%, #5f3fd0 48%, #5134b3 100%);
+  --grad-accent: linear-gradient(135deg, #6d4ae0 0%, #5f3fd0 48%, #5134b3 100%);
 }
 
 /**
@@ -513,13 +521,13 @@ h3 {
 
   /** The one button on a screen that carries the action. */
   .btn-primary {
-    background: var(--grad-brand);
+    background: var(--grad-accent);
     color: var(--c-accent-text);
     border-color: color-mix(in srgb, var(--c-brand-deep) 55%, transparent);
     box-shadow: var(--glow-brand);
   }
   .btn-primary:hover:not(:disabled) {
-    background: var(--grad-brand);
+    background: var(--grad-accent);
     filter: brightness(1.07);
     box-shadow:
       var(--glow-brand),

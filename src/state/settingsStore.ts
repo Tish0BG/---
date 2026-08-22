@@ -16,6 +16,10 @@ export const DEFAULT_PRESETS: Record<string, ToolSettings> = {
 
 const DEFAULTS: AppSettings = {
   theme: 'system',
+  accent: 'brand',
+  typeScale: 1,
+  motion: 'system',
+  highContrast: false,
   pdfDarkMode: 'off',
   stylusOnly: false,
   shapeRecognition: false,
@@ -120,14 +124,37 @@ function persist(s: AppSettings) {
   }
 }
 
-/** Applies the theme to <html> and keeps it in sync with the OS setting. */
+/**
+ * Puts every appearance preference onto <html> and keeps them in step with the
+ * operating system.
+ *
+ * All of them are attributes rather than classes because the stylesheet reads
+ * them as selectors — `[data-theme]`, `[data-accent]`, `[data-motion]`,
+ * `[data-contrast]` — which means a preference changes the tokens and nothing
+ * has to re-render to notice.
+ */
 export function initTheme(): () => void {
   const mq = window.matchMedia('(prefers-color-scheme: dark)');
   const apply = () => {
-    const { theme } = useSettings.getState();
+    const { theme, accent, motion, highContrast, typeScale } = useSettings.getState();
+    const root = document.documentElement;
     const dark = theme === 'dark' || (theme === 'system' && mq.matches);
-    document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.documentElement.style.colorScheme = dark ? 'dark' : 'light';
+    root.dataset.theme = dark ? 'dark' : 'light';
+    root.style.colorScheme = dark ? 'dark' : 'light';
+
+    // The default accent is the brand, and the brand is what the bare tokens
+    // already say — so it gets no attribute at all rather than an override
+    // that restates them.
+    if (accent === 'brand') delete root.dataset.accent;
+    else root.dataset.accent = accent;
+
+    if (motion === 'system') delete root.dataset.motion;
+    else root.dataset.motion = motion;
+
+    if (highContrast) root.dataset.contrast = 'high';
+    else delete root.dataset.contrast;
+
+    root.style.setProperty('--type-scale', String(typeScale));
   };
   apply();
   mq.addEventListener('change', apply);

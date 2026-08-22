@@ -63,7 +63,7 @@ export function CountBadge({ count, tone = 'brand' }: { count: number; tone?: Ba
 export function Avatar({
   emoji,
   name,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   size = 32,
   ring,
   className = '',
@@ -111,7 +111,7 @@ export function Avatar({
           cy={box / 2}
           r={r}
           fill="none"
-          stroke="var(--c-brand)"
+          stroke="var(--c-accent)"
           strokeWidth={2.5}
           strokeLinecap="round"
           strokeDasharray={`${c * Math.min(1, Math.max(0, ring))} ${c}`}

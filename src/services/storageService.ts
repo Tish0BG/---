@@ -27,7 +27,7 @@ export interface SyncRow {
 }
 
 /** Meta keys that belong to the account rather than to this browser. */
-export const SYNCED_META_KEYS = ['profile', 'decks', 'game'] as const;
+export const SYNCED_META_KEYS = ['profile', 'learning', 'privacy', 'decks', 'game'] as const;
 
 /**
  * Everything the app needs from persistence lives behind this interface.

@@ -347,8 +347,23 @@ export type FitMode = 'none' | 'width' | 'page';
 
 /* ---------------------------------------------------------------- settings */
 
+/**
+ * The accents a person may choose. A closed list, because every one of them is
+ * measured against the text that sits on it — an arbitrary colour picker hands
+ * out combinations nobody checked.
+ */
+export type Accent = 'brand' | 'cyan' | 'green' | 'amber' | 'rose' | 'violet';
+
+/** Follow the operating system, or override it in one direction. */
+export type MotionPreference = 'system' | 'reduced' | 'full';
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
+  accent: Accent;
+  /** scales the whole type ramp at once, 1 = the designed size */
+  typeScale: number;
+  motion: MotionPreference;
+  highContrast: boolean;
   /** dim/invert the PDF itself in dark mode */
   pdfDarkMode: 'off' | 'dim' | 'invert';
   /** ignore finger input while a drawing tool is active (palm rejection) */
@@ -395,15 +410,80 @@ export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
  * the thing.
  */
 export interface Profile {
+  /** what the app calls you. A first name, not a legal one. */
   name: string;
+  /** optional, and asked for nowhere except settings */
+  lastName: string;
+  /**
+   * The handle, lower-cased and unique. Nothing public points at it yet — it
+   * exists so that when something does, the name a person chose today is
+   * still theirs.
+   */
+  username: string;
   /** single emoji shown as the avatar */
   avatar: string;
   /** accent tint picked at setup */
   color: string;
   school: string;
   grade: string;
+  /** a line about yourself; unused until profiles are shown to anyone else */
+  bio: string;
   createdAt: ISODate;
   /** last edit, so the cloud can merge two devices by recency */
+  updatedAt: ISODate;
+}
+
+/* ------------------------------------------------------- learning profile */
+
+export type LearningLevel = 'unsure' | 'beginner' | 'basic' | 'intermediate' | 'advanced';
+
+export type LearningGoal =
+  | 'foundations'
+  | 'exam'
+  | 'grades'
+  | 'university'
+  | 'new-subject'
+  | 'curiosity'
+  | 'skills';
+
+export type LearningStyle = 'short' | 'deep' | 'practice' | 'examples' | 'visual' | 'problems' | 'mixed';
+
+/**
+ * What the person said they are here to do.
+ *
+ * Kept apart from `Profile` because it answers a different question and has a
+ * different lifetime: a name is who you are, this is what you are working on
+ * this term, and it is expected to change.
+ */
+export interface LearningProfile {
+  /** free-text interests, matching subject names where they exist */
+  interests: string[];
+  level: LearningLevel;
+  goals: LearningGoal[];
+  styles: LearningStyle[];
+  /** minutes the person said a normal sitting is; 0 means "it depends" */
+  sessionMinutes: number;
+  updatedAt: ISODate;
+}
+
+/* ------------------------------------------------------ privacy settings */
+
+export type Visibility = 'private' | 'public';
+
+/**
+ * Who may see what, once there is anyone to see it.
+ *
+ * Every default is the closed one. Nothing in the product publishes a profile
+ * today; these exist so that the day something does, it starts from "nobody"
+ * rather than from a migration that has to guess what people would have
+ * wanted.
+ */
+export interface PrivacySettings {
+  profile: Visibility;
+  displayName: Visibility;
+  interests: Visibility;
+  achievements: Visibility;
+  progress: Visibility;
   updatedAt: ISODate;
 }
 

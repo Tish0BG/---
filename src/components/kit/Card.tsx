@@ -105,7 +105,7 @@ export function StatCard({
   unit,
   hint,
   icon,
-  tone = 'var(--c-brand)',
+  tone = 'var(--c-accent)',
   progress = null,
   delta = null,
   onClick,
