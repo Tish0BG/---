@@ -304,8 +304,8 @@ export function SecuritySection() {
           <p className="text-[12.5px] leading-relaxed text-muted">
             {t(
               L(
-                'Още няма записи. Ако тук е празно и след влизане, скриптът supabase/security.sql не е пуснат.',
-                'Nothing recorded yet. If this stays empty after signing in, supabase/security.sql has not been run.',
+                'Още няма записи. Журналът брои нови влизания — сесията, с която си вътре в момента, е започнала преди той да съществува. Излез и влез отново и първият ред ще се появи.',
+                'Nothing recorded yet. The log counts new sign-ins, and the session you are in began before it existed. Sign out and back in, and the first line appears.',
               ),
             )}
           </p>
