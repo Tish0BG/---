@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
-import { BRAND, type Lang } from '@/brand';
+import { BRAND } from '@/brand';
 import { useLangStore } from '@/i18n';
-import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
+import { PublicFooter, PublicHeader, RouteLink } from '../public/PublicChrome';
 import { Icon } from '../Icon';
-import { landingCopy, type LandingCopy } from './copy';
+import { landingCopy } from './copy';
 import { MiniShot, ProductShot } from './ProductShot';
 
 /**
@@ -17,7 +17,6 @@ import { MiniShot, ProductShot } from './ProductShot';
  */
 export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
-  const setLang = useLangStore((s) => s.setLang);
   const t = landingCopy(lang);
 
   useEffect(() => {
@@ -26,7 +25,7 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
 
   return (
     <div className="scroll-thin h-full overflow-y-auto" style={{ background: 'var(--c-bg)' }}>
-      <Header lang={lang} onLang={setLang} t={t} onStart={onStart} onSignIn={onSignIn} />
+      <PublicHeader onStart={onStart} onSignIn={onSignIn} />
 
       {/* ------------------------------------------------------------ hero */}
       <section className="relative overflow-hidden">
@@ -250,6 +249,16 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
               <Faq key={item.q} q={item.q} a={item.a} />
             ))}
           </div>
+          <RouteLink
+            to="/faq"
+            className="mt-7 inline-flex items-center gap-1.5 text-[13.5px] font-medium"
+            /* the rest of the questions, on a page of their own */
+          >
+            <span style={{ color: 'var(--c-accent)' }}>
+              {lang === 'bg' ? 'Всички въпроси и отговори' : 'All questions and answers'}
+            </span>
+            <Icon name="arrowRight" size={14} style={{ color: 'var(--c-accent)' }} />
+          </RouteLink>
         </div>
       </section>
 
@@ -286,7 +295,7 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
         </div>
       </section>
 
-      <Footer lang={lang} t={t} onSignIn={onSignIn} />
+      <PublicFooter onSignIn={onSignIn} />
     </div>
   );
 }
@@ -312,106 +321,6 @@ function Faq({ q, a }: { q: string; a: string }) {
       </button>
       {open && <p className="animate-in pb-5 pr-8 text-[13.5px] leading-relaxed text-muted">{a}</p>}
     </div>
-  );
-}
-
-/* ---------------------------------------------------------------- header */
-
-function Header({
-  lang,
-  onLang,
-  t,
-  onStart,
-  onSignIn,
-}: {
-  lang: Lang;
-  onLang: (l: Lang) => void;
-  t: LandingCopy;
-  onStart: () => void;
-  onSignIn: () => void;
-}) {
-  return (
-    <header className="glass sticky top-0 z-30 border-b border-line">
-      <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-5 sm:px-8">
-        <a href="/" className="flex items-center gap-2.5" aria-label={BRAND.name}>
-          <PlauviaTile size={30} />
-          <PlauviaWordmark size={17} />
-        </a>
-
-        <nav className="ml-8 hidden items-center gap-6 lg:flex">
-          {t.nav.links.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="text-[13.5px] text-muted transition-colors hover:text-ink"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        <div className="ml-auto flex items-center gap-1.5">
-          <div className="segmented hidden sm:flex" role="group" aria-label="Language">
-            {(['bg', 'en'] as const).map((l) => (
-              <button key={l} aria-pressed={lang === l} onClick={() => onLang(l)} className="px-2.5">
-                {l.toUpperCase()}
-              </button>
-            ))}
-          </div>
-          <button className="btn" onClick={onSignIn}>
-            {t.nav.signIn}
-          </button>
-          <button className="btn btn-primary" onClick={onStart}>
-            {t.nav.start}
-          </button>
-        </div>
-      </div>
-    </header>
-  );
-}
-
-/* ---------------------------------------------------------------- footer */
-
-function Footer({ lang, t, onSignIn }: { lang: Lang; t: LandingCopy; onSignIn: () => void }) {
-  return (
-    <footer className="border-t border-line" style={{ background: 'var(--c-surface)' }}>
-      <div className="mx-auto flex max-w-[1180px] flex-col gap-8 px-5 py-12 sm:flex-row sm:px-8">
-        <div className="min-w-0 flex-1">
-          <span className="flex items-center gap-2.5">
-            <PlauviaTile size={28} />
-            <PlauviaWordmark size={16} />
-          </span>
-          <p className="mt-3 max-w-[34ch] text-[13px] leading-relaxed text-muted">{BRAND.description[lang]}</p>
-          <p className="mt-4 text-[12px] text-faint">{t.footer.madeFor}</p>
-        </div>
-
-        <div className="flex gap-12 text-[13px] sm:gap-16">
-          <div className="flex flex-col gap-2.5">
-            <span className="t-label">{lang === 'bg' ? 'Продукт' : 'Product'}</span>
-            {t.nav.links.map((link) => (
-              <a key={link.href} href={link.href} className="text-muted transition-colors hover:text-ink">
-                {link.label}
-              </a>
-            ))}
-          </div>
-          <div className="flex flex-col gap-2.5">
-            <span className="t-label">{lang === 'bg' ? 'Профил' : 'Account'}</span>
-            <button className="cursor-pointer text-left text-muted transition-colors hover:text-ink" onClick={onSignIn}>
-              {t.nav.signIn}
-            </button>
-            <a href={BRAND.url} className="text-muted transition-colors hover:text-ink" rel="noreferrer">
-              {BRAND.domain}
-            </a>
-          </div>
-        </div>
-      </div>
-
-      <div className="border-t border-line">
-        <p className="mx-auto max-w-[1180px] px-5 py-5 text-[12px] text-faint sm:px-8">
-          © {new Date().getFullYear()} {BRAND.name}. {t.footer.rights}
-        </p>
-      </div>
-    </footer>
   );
 }
 

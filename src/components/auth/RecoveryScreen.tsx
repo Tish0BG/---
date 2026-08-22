@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { Icon } from '../Icon';
+import { PasswordField } from './PasswordField';
 import { useT, L } from '@/i18n';
 
 /**
@@ -15,12 +16,10 @@ export function RecoveryScreen() {
   const t = useT();
   const [password, setPassword] = useState('');
   const [repeat, setRepeat] = useState('');
-  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const email = useAuth((s) => s.user?.email);
 
-  const tooShort = password.length > 0 && password.length < 8;
   const mismatch = repeat.length > 0 && repeat !== password;
   const ready = password.length >= 8 && repeat === password && !busy;
 
@@ -66,52 +65,33 @@ export function RecoveryScreen() {
             if (ready) void submit();
           }}
         >
-          <label className="block">
-            <span className="mb-1 block label">{t(L("Нова парола", "New password"))}</span>
-            <span className="relative block">
-              <input
-                autoFocus
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                type={show ? 'text' : 'password'}
-                placeholder={t(L("Поне 8 знака", "At least 8 characters"))}
-                autoComplete="new-password"
-                className="field h-10 pr-10"
-                style={tooShort ? { borderColor: 'var(--c-danger)' } : undefined}
-              />
-              <button
-                type="button"
-                className="icon-btn absolute right-1 top-1 h-8 w-8"
-                onClick={() => setShow((v) => !v)}
-                aria-label={show ? t(L("Скрий паролата", "Hide the password")) : t(L("Покажи паролата", "Show the password"))}
-              >
-                <Icon name={show ? 'eyeOff' : 'eye'} size={15} />
-              </button>
-            </span>
-            {tooShort && (
-              <span className="mt-1 block text-[11.5px]" style={{ color: 'var(--c-danger)' }}>
-                {t(L(`Още ${8 - password.length} знака.`, `${8 - password.length} more characters.`))}
-              </span>
-            )}
-          </label>
+          <PasswordField
+            id="plauvia-recovery-password"
+            autoFocus
+            label={t(L('Нова парола', 'New password'))}
+            value={password}
+            onChange={setPassword}
+            autoComplete="new-password"
+            placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
+            showMeter
+          />
 
-          <label className="block">
-            <span className="mb-1 block label">{t(L("Повтори я", "Repeat it"))}</span>
-            <input
+          <div>
+            <PasswordField
+              id="plauvia-recovery-repeat"
+              label={t(L('Повтори я', 'Repeat it'))}
               value={repeat}
-              onChange={(e) => setRepeat(e.target.value)}
-              type={show ? 'text' : 'password'}
-              placeholder={t(L("Същата парола", "The same password again"))}
+              onChange={setRepeat}
               autoComplete="new-password"
-              className="field h-10"
-              style={mismatch ? { borderColor: 'var(--c-danger)' } : undefined}
+              placeholder={t(L('Същата парола', 'The same password again'))}
             />
             {mismatch && (
-              <span className="mt-1 block text-[11.5px]" style={{ color: 'var(--c-danger)' }}>
-                {t(L("Двете не съвпадат.", "They do not match."))}
-              </span>
+              <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
+                <Icon name="alert" size={12} />
+                {t(L('Двете не съвпадат.', 'They do not match.'))}
+              </p>
             )}
-          </label>
+          </div>
 
           {error && (
             <p

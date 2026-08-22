@@ -20,12 +20,12 @@ import { useMemo, useState, type ReactNode } from 'react';
  * seventh series and beyond fold into "Other" rather than inventing hues.
  */
 export const SERIES_COLORS = [
-  '#6d5ae6',
+  '#1857d6',
   '#0e9f6e',
   '#e5484d',
-  '#0284c7',
   '#d97706',
   '#8e4ec6',
+  '#0891a8',
 ] as const;
 
 export const OTHER_COLOR = 'var(--c-faint)';
@@ -70,7 +70,7 @@ export interface BarDatum {
 export function BarChart({
   data,
   height = 132,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   format = (v: number) => String(v),
   goal,
   goalLabel,
@@ -264,7 +264,7 @@ export function Sparkline({
   values,
   width = 96,
   height = 28,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   className = '',
 }: {
   values: number[];
@@ -314,7 +314,7 @@ export function HeatCalendar({
   days,
   weeks = 20,
   cell = 13,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   weekdayLabels,
 }: {
   days: HeatDay[];

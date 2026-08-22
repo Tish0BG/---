@@ -27,7 +27,7 @@ export function ProgressRing({
   value,
   size = 64,
   stroke = 6,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   colorTo,
   track = 'var(--c-surface-3)',
   children,
@@ -96,7 +96,7 @@ export function ProgressRing({
 
 export function ProgressBar({
   value,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   height = 8,
   className = '',
   label,
@@ -148,7 +148,7 @@ export function ProgressBar({
 export function ProgressCells({
   value,
   cells = 10,
-  color = 'var(--c-brand)',
+  color = 'var(--c-accent)',
   className = '',
 }: {
   value: number;

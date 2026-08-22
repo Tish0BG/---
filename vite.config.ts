@@ -2,7 +2,7 @@ import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath, URL } from 'node:url';
-import { defineConfig, loadEnv } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 
@@ -17,6 +17,53 @@ import tailwindcss from '@tailwindcss/vite';
  * application, anything it is given is readable by anyone who opens it.
  */
 const pkg = createRequire(import.meta.url)('./package.json') as { version: string };
+
+/**
+ * Sends production's security headers in development too.
+ *
+ * A Content-Security-Policy that is only ever exercised on the live site is a
+ * policy that gets discovered by users. Reading it back out of `vercel.json`
+ * rather than restating it means the two cannot drift, and a violation shows
+ * up in the console on the machine where the code was just written.
+ */
+function productionHeaders(): { key: string; value: string }[] {
+  const file = resolve(process.cwd(), 'vercel.json');
+  const config = JSON.parse(readFileSync(file, 'utf8')) as {
+    headers?: { source: string; headers: { key: string; value: string }[] }[];
+  };
+  return config.headers?.find((h) => h.source === '/(.*)')?.headers ?? [];
+}
+
+function securityHeaders(): Plugin {
+  const global = productionHeaders();
+  // HSTS on http://localhost would pin the dev machine to a protocol the dev
+  // server does not speak.
+  const sendable = global
+    .filter((h) => h.key !== 'Strict-Transport-Security')
+    .map((h) =>
+      h.key === 'Content-Security-Policy'
+        ? {
+            ...h,
+            // The one relaxation: React Fast Refresh injects its preamble as an
+            // inline module script, which production has no equivalent of. Every
+            // other directive — connect-src, img-src, worker-src, style-src — is
+            // the production one, and those are the ones that actually break an
+            // app that renders PDFs and talks to Supabase.
+            value: h.value.replace("script-src 'self'", "script-src 'self' 'unsafe-inline'"),
+          }
+        : h,
+    );
+
+  return {
+    name: 'plauvia-security-headers',
+    configureServer(server) {
+      server.middlewares.use((_req, res, next) => {
+        for (const { key, value } of sendable) res.setHeader(key, value);
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
@@ -51,7 +98,7 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [react(), tailwindcss(), securityHeaders()],
     resolve: {
       alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
     },
@@ -63,6 +110,22 @@ export default defineConfig(({ mode }) => {
       __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     },
     server: { port: 5180, host: true },
+    /**
+     * `vite preview` serves the real build under the real policy — no
+     * `unsafe-inline`, no exceptions. It is the only way to find out before a
+     * deploy that the Content-Security-Policy has quietly stopped the PDF
+     * worker, and the answer to "does the CSP break the app" should never be
+     * a live site.
+     */
+    preview: {
+      port: 5181,
+      host: true,
+      headers: Object.fromEntries(
+        productionHeaders()
+          .filter((h) => h.key !== 'Strict-Transport-Security')
+          .map((h) => [h.key, h.value]),
+      ),
+    },
     // pdf.js ships a large worker; keep it out of the main chunk.
     build: {
       target: 'es2022',

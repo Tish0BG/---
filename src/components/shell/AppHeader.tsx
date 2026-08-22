@@ -74,8 +74,8 @@ export function AppHeader({ onMenu }: { onMenu?: () => void }) {
               onClick={() => useTimer.getState().setView('full')}
               className="t-num mr-1 hidden h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-semibold sm:flex"
               style={{
-                background: 'color-mix(in srgb, var(--c-focus) 14%, transparent)',
-                color: 'var(--c-focus)',
+                background: 'color-mix(in srgb, var(--c-timer-focus) 14%, transparent)',
+                color: 'var(--c-timer-focus)',
               }}
             >
               <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ background: 'currentColor' }} />

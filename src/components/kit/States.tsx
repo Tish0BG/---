@@ -16,7 +16,7 @@ export function EmptyState({
   action,
   secondary,
   compact,
-  tone = 'var(--c-brand)',
+  tone = 'var(--c-accent)',
 }: {
   icon?: string;
   title: ReactNode;

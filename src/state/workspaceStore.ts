@@ -1,9 +1,11 @@
 import { create } from 'zustand';
-import type { Profile, Subject } from '@/types';
+import type { LearningProfile, PrivacySettings, Profile, Subject } from '@/types';
 import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
 
 const PROFILE_KEY = 'profile';
+const LEARNING_KEY = 'learning';
+const PRIVACY_KEY = 'privacy';
 
 /** Ten distinguishable hues that survive both themes. */
 export const SUBJECT_COLORS = [
@@ -47,27 +49,64 @@ export const SUGGESTED_SUBJECTS: { name: string; icon: string }[] = [
 
 export const EMPTY_PROFILE: Profile = {
   name: '',
+  lastName: '',
+  username: '',
   avatar: '🦉',
   color: SUBJECT_COLORS[0],
   school: '',
   grade: '',
+  bio: '',
   createdAt: 0,
+  updatedAt: 0,
+};
+
+export const EMPTY_LEARNING: LearningProfile = {
+  interests: [],
+  level: 'unsure',
+  goals: [],
+  styles: [],
+  sessionMinutes: 0,
+  updatedAt: 0,
+};
+
+/**
+ * Everything closed. Nothing in the product publishes a profile today, and a
+ * default that assumes otherwise is the kind of thing nobody notices until it
+ * has already published something.
+ */
+export const EMPTY_PRIVACY: PrivacySettings = {
+  profile: 'private',
+  displayName: 'private',
+  interests: 'private',
+  achievements: 'private',
+  progress: 'private',
   updatedAt: 0,
 };
 
 interface WorkspaceStore {
   profile: Profile;
+  learning: LearningProfile;
+  privacy: PrivacySettings;
   subjects: Subject[];
   loaded: boolean;
 
   init(): Promise<void>;
   saveProfile(patch: Partial<Profile>): Promise<void>;
+  saveLearning(patch: Partial<LearningProfile>): Promise<void>;
+  savePrivacy(patch: Partial<PrivacySettings>): Promise<void>;
   /**
    * Fills in whatever the account already knows, so signing in lands straight
    * in the app. A questionnaire between "I just registered" and "I can use
    * the thing" is a setup wizard, not a product.
    */
-  adoptAccount(account: { email?: string | null; name?: string | null }): Promise<void>;
+  adoptAccount(account: {
+    email?: string | null;
+    /** whatever the provider called them; Google sends the full name */
+    name?: string | null;
+    /** Google's `given_name`, when the provider bothered to split it */
+    firstName?: string | null;
+    avatarUrl?: string | null;
+  }): Promise<void>;
   /** Adds several subjects at once, for the first-run picker. */
   createSubjects(names: string[]): Promise<void>;
 
@@ -81,16 +120,26 @@ interface WorkspaceStore {
 
 export const useWorkspace = create<WorkspaceStore>((set, get) => ({
   profile: EMPTY_PROFILE,
+  learning: EMPTY_LEARNING,
+  privacy: EMPTY_PRIVACY,
   subjects: [],
   loaded: false,
 
   async init() {
-    const [profile, subjects] = await Promise.all([
+    const [profile, learning, privacy, subjects] = await Promise.all([
       repo.getMeta<Profile>(PROFILE_KEY),
+      repo.getMeta<LearningProfile>(LEARNING_KEY),
+      repo.getMeta<PrivacySettings>(PRIVACY_KEY),
       repo.listSubjects(),
     ]);
     subjects.sort((a, b) => a.order - b.order);
-    set({ profile: { ...EMPTY_PROFILE, ...(profile ?? {}) }, subjects, loaded: true });
+    set({
+      profile: { ...EMPTY_PROFILE, ...(profile ?? {}) },
+      learning: { ...EMPTY_LEARNING, ...(learning ?? {}) },
+      privacy: { ...EMPTY_PRIVACY, ...(privacy ?? {}) },
+      subjects,
+      loaded: true,
+    });
   },
 
   async saveProfile(patch) {
@@ -100,13 +149,36 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     await repo.setMeta(PROFILE_KEY, next);
   },
 
+  async saveLearning(patch) {
+    const next = { ...get().learning, ...patch, updatedAt: Date.now() };
+    set({ learning: next });
+    await repo.setMeta(LEARNING_KEY, next);
+  },
+
+  async savePrivacy(patch) {
+    const next = { ...get().privacy, ...patch, updatedAt: Date.now() };
+    set({ privacy: next });
+    await repo.setMeta(PRIVACY_KEY, next);
+  },
+
   async adoptAccount(account) {
     const profile = get().profile;
-    const fromAccount = (account.name ?? '').trim();
+    // Google hands over "Tihomir Georgiev"; the dashboard says "Good
+    // afternoon, ___". A greeting that uses somebody's full legal name reads
+    // like a letter from a bank, so the given name wins where there is one and
+    // the first word does the job where there is not.
+    const given = (account.firstName ?? '').trim();
+    const full = (account.name ?? '').trim();
+    const fromAccount = given || full.split(/\s+/)[0] || '';
     const fromEmail = (account.email ?? '').split('@')[0].replace(/[._-]+/g, ' ').trim();
     const name = profile.name.trim() || fromAccount || titleCase(fromEmail);
-    if (profile.name.trim() === name && profile.createdAt) return;
-    await get().saveProfile({ name, createdAt: profile.createdAt || Date.now() });
+    // The surname is kept, separately, when the provider gave a full one — it
+    // is optional everywhere in the product, so it is stored and never asked.
+    const rest = full.split(/\s+/).slice(1).join(' ');
+    const lastName = profile.lastName.trim() || (fromAccount === given || full.startsWith(name) ? rest : '');
+
+    if (profile.name.trim() === name && profile.lastName.trim() === lastName && profile.createdAt) return;
+    await get().saveProfile({ name, lastName, createdAt: profile.createdAt || Date.now() });
   },
 
   async createSubjects(names) {

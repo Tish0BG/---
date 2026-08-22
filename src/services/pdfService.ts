@@ -126,7 +126,12 @@ export class PdfSession implements PageSource {
     canvas: HTMLCanvasElement,
     scale: number,
   ): Promise<PageViewport | null> {
-    this.cancel(key);
+    // Awaited, not just asked for: pdf.js keeps a canvas marked busy until a
+    // cancelled task has actually settled, so starting the next render right
+    // after `cancel()` returns is what produced "Cannot use the same canvas
+    // during multiple render() operations" — and, on screen, a page that
+    // simply never appeared while zooming.
+    await this.release(key);
     const page = await this.getPage(pageNumber);
     if (this.destroyed) return null;
     const viewport = page.getViewport({ scale });
@@ -152,11 +157,16 @@ export class PdfSession implements PageSource {
   }
 
   cancel(key: string): void {
-    const t = this.tasks.get(key);
-    if (t) {
-      t.cancel();
-      this.tasks.delete(key);
-    }
+    void this.release(key);
+  }
+
+  /** Cancels a render and resolves once pdf.js has let go of its canvas. */
+  private async release(key: string): Promise<void> {
+    const task = this.tasks.get(key);
+    if (!task) return;
+    this.tasks.delete(key);
+    task.cancel();
+    await task.promise.catch(() => undefined);
   }
 
   /** Plain text of a page, cached. Empty string for scanned/image-only pages. */

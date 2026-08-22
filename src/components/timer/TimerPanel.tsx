@@ -23,7 +23,7 @@ import { Ring } from './Ring';
 import { useApp } from '@/state/appStore';
 
 export const MODE_COLOR: Record<TimerMode, string> = {
-  work: 'var(--c-focus)',
+  work: 'var(--c-timer-focus)',
   break: 'var(--c-rest)',
   long: 'var(--c-deep)',
 };
@@ -258,7 +258,7 @@ export function StatsTab() {
         <div className="h-2 overflow-hidden rounded-full bg-surface-3">
           <div
             className="h-full rounded-full transition-[width] duration-500"
-            style={{ width: `${pct}%`, background: 'var(--c-focus)' }}
+            style={{ width: `${pct}%`, background: 'var(--c-timer-focus)' }}
           />
         </div>
         <div className="mt-1 flex justify-between text-[11px] text-muted">
@@ -277,7 +277,7 @@ export function StatsTab() {
                 className="w-full rounded-[3px] transition-[height] duration-500"
                 style={{
                   height: `${Math.max(3, (d.minutes / max) * 100)}%`,
-                  background: i === week.length - 1 ? 'var(--c-focus)' : 'var(--c-line-strong)',
+                  background: i === week.length - 1 ? 'var(--c-timer-focus)' : 'var(--c-line-strong)',
                 }}
               />
               <span className="text-[10px] text-muted">{d.label}</span>
