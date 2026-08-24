@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BRAND } from '@/brand';
 import { useLangStore } from '@/i18n';
-import { PublicFooter, PublicHeader, RouteLink } from '../public/PublicChrome';
+import { PublicFooter, PublicHeader, RouteLink, SectionLink } from '../public/PublicChrome';
 import { Icon } from '../Icon';
 import { landingCopy } from './copy';
 import { MiniShot, ProductShot } from './ProductShot';
@@ -23,10 +23,26 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
     document.documentElement.lang = lang;
   }, [lang]);
 
+  /**
+   * Somebody opened `/homepage#inside` directly — from a middle-click, or a
+   * link they were sent. The browser tried to scroll before any of this
+   * existed, so it is done again once it does.
+   */
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const id = window.setTimeout(
+      () => document.getElementById(hash)?.scrollIntoView({ block: 'start' }),
+      60,
+    );
+    return () => window.clearTimeout(id);
+  }, []);
+
   return (
     <div className="scroll-thin h-full overflow-y-auto" style={{ background: 'var(--c-bg)' }}>
       <PublicHeader onStart={onStart} onSignIn={onSignIn} />
 
+      <main id="content">
       {/* ------------------------------------------------------------ hero */}
       <section className="relative overflow-hidden">
         <Glow />
@@ -66,9 +82,9 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
                 {t.hero.primary}
                 <Icon name="arrowRight" size={16} />
               </button>
-              <a href="#how" className="btn btn-outline btn-lg px-5">
+              <SectionLink hash="how" className="btn btn-outline btn-lg px-5">
                 {t.hero.secondary}
-              </a>
+              </SectionLink>
             </div>
 
             <ul
@@ -115,10 +131,13 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
               >
                 <Icon name={p.icon} size={20} />
               </span>
-              <h3 className="mt-4 flex items-baseline gap-2 text-[16.5px] font-semibold tracking-[-0.018em]">
+              {/* h2, not h3: these four are the top-level claim of the page and
+                  they sit directly under the h1 with nothing between. A level
+                  skipped is a screen reader's outline with a hole in it. */}
+              <h2 className="mt-4 flex items-baseline gap-2 text-[16.5px] font-semibold tracking-[-0.018em]">
                 {p.title}
                 <span className="t-num text-[11px] font-normal text-faint">0{i + 1}</span>
-              </h3>
+              </h2>
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{p.body}</p>
             </article>
           ))}
@@ -291,6 +310,8 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
           </div>
         </div>
       </section>
+
+      </main>
 
       <PublicFooter onSignIn={onSignIn} />
     </div>

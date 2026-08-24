@@ -1,22 +1,36 @@
 import { BRAND, type Lang } from '@/brand';
 import {
+  DEFAULT_LANG,
+  LANGS,
+  OG_LOCALE,
   PUBLIC_ROUTES,
+  appPageByPath,
   isAppPath,
   isUnknownPath,
+  localePath,
   normalisePath,
+  parsePath,
   routeByPath,
   type PublicRoute,
   type RouteCopy,
 } from './routes';
+import { schemaGraph, shareImageAlt } from './schema';
 
 /**
  * Everything a page tells a crawler, written from one place.
  *
- * The build emits a pre-rendered shell per public route, so the first byte a
- * crawler reads already carries the right title and description. This module
- * is what keeps them right afterwards — when someone navigates client-side, or
- * switches the interface language, and the head would otherwise still be
- * describing the page they arrived on.
+ * The build emits a pre-rendered shell per public route per language, so the
+ * first byte a crawler reads already carries the right title, description,
+ * canonical and hreflang set. This module is what keeps them right afterwards
+ * — when someone navigates client-side, or crosses from the site into the
+ * app, and the head would otherwise still be describing the page they arrived
+ * on.
+ *
+ * The rule the whole file turns on: **the address decides the language of a
+ * public page**, not a preference and not the browser. `/faq` is the
+ * Bulgarian page and `/en/faq` is the English one, always, for everybody. A
+ * stored preference only gets a say where there is no address to ask — inside
+ * the app, which no search engine sees.
  */
 
 const ORIGIN = BRAND.url;
@@ -32,17 +46,47 @@ function meta(selector: string, attr: 'name' | 'property', key: string, content:
   tag.content = content;
 }
 
-function link(rel: string, href: string, hreflang?: string): void {
-  const selector = hreflang ? `link[rel="${rel}"][hreflang="${hreflang}"]` : `link[rel="${rel}"]:not([hreflang])`;
-  let tag = document.head.querySelector<HTMLLinkElement>(selector);
+function link(rel: string, href: string): void {
+  let tag = document.head.querySelector<HTMLLinkElement>(`link[rel="${rel}"]:not([hreflang])`);
   if (!tag) {
     tag = document.createElement('link');
     tag.rel = rel;
-    if (hreflang) tag.hreflang = hreflang;
     document.head.appendChild(tag);
   }
   tag.href = href;
 }
+
+/**
+ * The `hreflang` set, rewritten whole on every navigation.
+ *
+ * Whole, rather than patched, because the alternates are a property of the
+ * page and not of the site: carrying `/about`'s set into `/app/calendar`
+ * would tell a crawler that a screen behind a login is the English version of
+ * the About page. Anything with no translations to declare gets an empty set
+ * and the tags disappear.
+ */
+function setAlternates(entries: [string, string][]): void {
+  for (const tag of document.head.querySelectorAll('link[rel="alternate"][hreflang]')) tag.remove();
+  for (const [hreflang, href] of entries) {
+    const tag = document.createElement('link');
+    tag.rel = 'alternate';
+    tag.hreflang = hreflang;
+    tag.href = href;
+    document.head.appendChild(tag);
+  }
+}
+
+/** The absolute URL of a public page in one language. */
+export const canonicalFor = (path: string, lang: Lang = DEFAULT_LANG): string => {
+  const target = localePath(path, lang);
+  return target === '/' ? `${ORIGIN}/` : `${ORIGIN}${target}`;
+};
+
+/** Every language version of one public page, plus the default as x-default. */
+export const alternatesFor = (path: string): [string, string][] => [
+  ...LANGS.map((l): [string, string] => [l, canonicalFor(path, l)]),
+  ['x-default', canonicalFor(path, DEFAULT_LANG)],
+];
 
 /**
  * What an address that is not a page should call itself.
@@ -59,8 +103,8 @@ const NOT_FOUND: { title: RouteCopy; description: RouteCopy } = {
     en: 'Page not found — Plauvia',
   },
   description: {
-    bg: 'Тази страница не съществува. Върни се към началото на Plauvia или виж картата на сайта.',
-    en: 'This page does not exist. Go back to the Plauvia home page, or see the site map.',
+    bg: 'Тази страница не съществува. Върни се към началото на Plauvia или виж въпросите и отговорите.',
+    en: 'This page does not exist. Go back to the Plauvia home page, or see the questions and answers.',
   },
 };
 
@@ -85,7 +129,7 @@ const NOT_FOUND: { title: RouteCopy; description: RouteCopy } = {
  */
 let windowLabel: string | null = null;
 let lastPath = normalisePath(window.location.pathname);
-let lastLang: Lang = 'bg';
+let lastLang: Lang = DEFAULT_LANG;
 
 const tabTitle = (path: string, lang: Lang): string =>
   windowLabel && isAppPath(path) ? `${windowLabel} · ${BRAND.name}` : pageTitle(path, lang);
@@ -100,63 +144,74 @@ const tabTitle = (path: string, lang: Lang): string =>
  */
 export const currentTabTitle = (lang: Lang = lastLang): string => tabTitle(lastPath, lang);
 
+/** The language a given address is written in, ignoring any preference. */
+export function langForPath(path: string, fallback: Lang): Lang {
+  return routeByPath(path) ? parsePath(path).lang : fallback;
+}
+
 /** The title this address should be wearing, whatever else has borrowed the tab. */
-export function pageTitle(path: string, lang: Lang): string {
+export function pageTitle(path: string, prefLang: Lang): string {
+  const lang = langForPath(path, prefLang);
   const route = routeByPath(path);
   if (route) return route.title[lang];
   if (isUnknownPath(path)) return NOT_FOUND.title[lang];
-  return `${BRAND.name} — ${BRAND.tagline[lang]}`;
+  // An app address, before a screen has named itself. Its title is in the
+  // table too, so the tab does not change the moment the bundle finishes
+  // loading and the client writes over what the shell said.
+  return appPageByPath(path)?.title[lang] ?? `${BRAND.name} — ${BRAND.tagline[lang]}`;
 }
 
-export const canonicalFor = (path: string): string => {
-  const clean = normalisePath(path);
-  return clean === '/' ? `${ORIGIN}/` : `${ORIGIN}${clean}`;
-};
-
 /**
- * Points the head at one public route.
+ * Points the head at one address.
  *
  * `indexable: false` gets a real `noindex` rather than a robots.txt line: the
  * app's own screens are reachable by URL and a directive in the page is the
  * only one a crawler is obliged to honour once it has the page.
  */
-export function applyHead(path: string, lang: Lang, label?: string | null): void {
+export function applyHead(path: string, prefLang: Lang, label?: string | null): void {
   const route = routeByPath(path);
   const missing = isUnknownPath(path);
-  const title = pageTitle(path, lang);
+  const lang = langForPath(path, prefLang);
+  const title = pageTitle(path, prefLang);
   const description = route
     ? route.description[lang]
     : missing
       ? NOT_FOUND.description[lang]
-      : BRAND.meta[lang];
-  // Anything that is not a public page is its own canonical: the two app
+      : (appPageByPath(path)?.description[lang] ?? BRAND.meta[lang]);
+  // Anything that is not a public page is its own canonical: the app
   // addresses because they are real, and a mistyped one because pointing it
   // at the home page is how a 404 becomes a duplicate of the front door.
-  const canonical = canonicalFor(route ? route.path : path);
+  const canonical = route ? canonicalFor(route.path, lang) : canonicalFor(parsePath(path).path, DEFAULT_LANG);
 
   lastPath = normalisePath(path);
   lastLang = lang;
   if (label !== undefined) windowLabel = label;
-  document.title = tabTitle(path, lang);
+  document.title = tabTitle(path, prefLang);
   document.documentElement.lang = lang;
 
   meta('meta[name="description"]', 'name', 'description', description);
   meta('meta[name="robots"]', 'name', 'robots', route?.indexable ? 'index,follow' : 'noindex,follow');
 
   link('canonical', canonical);
-  // The same page in both languages lives at the same address — the interface
-  // language is a preference, not a separate URL — so the alternates point at
-  // this canonical and x-default with it.
-  link('alternate', canonical, 'bg');
-  link('alternate', canonical, 'en');
-  link('alternate', canonical, 'x-default');
+  // Only a page that genuinely exists in both languages declares alternates.
+  // The app's screens have one address and no translation of it, and an
+  // address that is not a page has nothing to be an alternate of.
+  setAlternates(route ? alternatesFor(route.path) : []);
 
   meta('meta[property="og:title"]', 'property', 'og:title', title);
   meta('meta[property="og:description"]', 'property', 'og:description', description);
   meta('meta[property="og:url"]', 'property', 'og:url', canonical);
-  meta('meta[property="og:locale"]', 'property', 'og:locale', lang === 'bg' ? 'bg_BG' : 'en_US');
+  meta('meta[property="og:locale"]', 'property', 'og:locale', OG_LOCALE[lang]);
+  meta(
+    'meta[property="og:locale:alternate"]',
+    'property',
+    'og:locale:alternate',
+    OG_LOCALE[lang === 'bg' ? 'en' : 'bg'],
+  );
+  meta('meta[property="og:image:alt"]', 'property', 'og:image:alt', shareImageAlt(lang));
   meta('meta[name="twitter:title"]', 'name', 'twitter:title', title);
   meta('meta[name="twitter:description"]', 'name', 'twitter:description', description);
+  meta('meta[name="twitter:image:alt"]', 'name', 'twitter:image:alt', shareImageAlt(lang));
 
   writeStructuredData(route, lang);
 }
@@ -164,52 +219,11 @@ export function applyHead(path: string, lang: Lang, label?: string | null): void
 /* ---------------------------------------------------------- structured data */
 
 /**
- * JSON-LD for the things Plauvia genuinely is: an organisation, a website with
- * a name, and a piece of software. There is no `aggregateRating` and no
- * `review` block anywhere in here, because there are no ratings and no
- * reviews — inventing them is the one SEO trick that is also a lie.
+ * The graph itself lives in `schema.ts`, which the build script also reads —
+ * so what a crawler is handed in the shell and what the browser rewrites on
+ * the next navigation are the same object, built by the same code.
  */
 function writeStructuredData(route: PublicRoute | undefined, lang: Lang): void {
-  const graph: Record<string, unknown>[] = [
-    {
-      '@type': 'Organization',
-      '@id': `${ORIGIN}/#organization`,
-      name: BRAND.name,
-      url: `${ORIGIN}/`,
-      logo: `${ORIGIN}/icons/icon-512.png`,
-      description: BRAND.description[lang],
-    },
-    {
-      '@type': 'WebSite',
-      '@id': `${ORIGIN}/#website`,
-      name: BRAND.name,
-      url: `${ORIGIN}/`,
-      inLanguage: ['bg', 'en'],
-      publisher: { '@id': `${ORIGIN}/#organization` },
-    },
-    {
-      '@type': 'SoftwareApplication',
-      '@id': `${ORIGIN}/#app`,
-      name: BRAND.name,
-      applicationCategory: 'EducationalApplication',
-      operatingSystem: 'Web browser',
-      url: `${ORIGIN}/`,
-      description: BRAND.description[lang],
-      // Free to use. Stated as a price rather than as a claim about value.
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' },
-    },
-  ];
-
-  if (route && route.id !== 'home') {
-    graph.push({
-      '@type': 'BreadcrumbList',
-      itemListElement: [
-        { '@type': 'ListItem', position: 1, name: BRAND.name, item: `${ORIGIN}/` },
-        { '@type': 'ListItem', position: 2, name: route.label[lang], item: canonicalFor(route.path) },
-      ],
-    });
-  }
-
   let tag = document.head.querySelector<HTMLScriptElement>('script[type="application/ld+json"]#plauvia-ld');
   if (!tag) {
     tag = document.createElement('script');
@@ -217,7 +231,7 @@ function writeStructuredData(route: PublicRoute | undefined, lang: Lang): void {
     tag.id = 'plauvia-ld';
     document.head.appendChild(tag);
   }
-  tag.textContent = JSON.stringify({ '@context': 'https://schema.org', '@graph': graph });
+  tag.textContent = JSON.stringify(schemaGraph(route, lang));
 }
 
 /**

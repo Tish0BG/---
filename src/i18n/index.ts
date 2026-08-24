@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { guessLang, rememberLang, type Lang } from '@/brand';
+import { entryPath, parsePath, routeByPath } from '@/seo/routes';
 
 export type { Lang };
 
@@ -30,8 +31,29 @@ interface LangStore {
   setLang(lang: Lang): void;
 }
 
+/**
+ * The language the very first render is in.
+ *
+ * The address wins wherever the address says anything: `/en/faq` is the
+ * English page and `/faq` is the Bulgarian one, for everybody. Reading it
+ * here rather than correcting it in an effect is what stops the page being
+ * painted once in the remembered language and then again in the right one —
+ * a flash on the largest element of the page, in the wrong language, on every
+ * visit by anyone whose preference disagrees with the link they followed.
+ *
+ * Only where there is no address to read — inside the app — does the
+ * remembered preference decide.
+ */
+function initialLang(): Lang {
+  const here = entryPath(window.location.pathname);
+  if (!routeByPath(here)) return guessLang();
+  const lang = parsePath(here).lang;
+  rememberLang(lang);
+  return lang;
+}
+
 export const useLangStore = create<LangStore>((set) => ({
-  lang: guessLang(),
+  lang: initialLang(),
   setLang(lang) {
     rememberLang(lang);
     document.documentElement.lang = lang;

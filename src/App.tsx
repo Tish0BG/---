@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp, resolveView } from '@/state/appStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useViewer, installAutosaveGuards } from '@/state/viewerStore';
@@ -15,7 +15,8 @@ import { installProgressEffects } from '@/services/progressBus';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
-import { isAppPath, normalisePath, routeByPath } from '@/seo/routes';
+import { applyAppPath } from '@/state/appAddress';
+import { HOME, entryPath, isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { CommandPalette } from '@/components/shell/CommandPalette';
@@ -93,6 +94,7 @@ export default function App() {
   const view = useApp((s) => s.view);
   const settingsOpen = useApp((s) => s.settingsOpen);
   const authOpen = useApp((s) => s.authOpen);
+  const authMode = useApp((s) => s.authMode);
   const authReady = useAuth((s) => s.ready);
   const cloudConfigured = useAuth((s) => s.configured);
   const signedIn = useAuth((s) => !!s.user);
@@ -150,8 +152,7 @@ export default function App() {
         // "Open what you had open" is for somebody arriving at the front
         // door. An address that names a screen or a document has said where
         // to go, and it outranks what this device happens to remember.
-        const here = normalisePath(window.location.pathname);
-        if (here === '/app' || here.startsWith('/app/')) return;
+        if (isAppPath(entryPath(window.location.pathname))) return;
         const last = useSettings.getState().lastDocId;
         const exists = useLibrary.getState().documents.some((d) => d.id === last && !d.deletedAt);
         if (last && exists) void useViewer.getState().openDocument(last);
@@ -207,20 +208,59 @@ export default function App() {
    * yanking the person back to the same screen.
    */
   useEffect(() => {
-    // /login and /signup are the door itself: somebody who pasted one has
-    // asked for the form, so it opens over whatever else would have shown.
-    // The screens under /app are not the door — they are the destination, and
-    // the render below decides whether the person can be let in yet.
-    const here = normalisePath(window.location.pathname);
-    if (here === '/login' || here === '/signup') {
-      useApp.getState().setAuth(true, here === '/signup' ? 'signup' : 'signin');
-    }
     const go = new URLSearchParams(window.location.search).get('go');
     if (!go) return;
     const target = resolveView(go);
     if (target) useApp.getState().go(target);
     history.replaceState(null, '', window.location.pathname);
   }, []);
+
+  /**
+   * The door has an address of its own.
+   *
+   * Pressing "Sign in" used to leave the address wherever it was, so the form
+   * appeared at `/homepage` and could not be linked to, bookmarked, or closed
+   * with Back. Now the two halves are `/login` and `/register`, and switching
+   * between them replaces rather than pushes — Back should leave the door, not
+   * step through both sides of it.
+   *
+   * `doorFrom` is where the person was standing when it opened. It matters for
+   * the case where they were not standing on the site at all: somebody who
+   * followed a link to `/calendar` while signed out sees the form at `/login`,
+   * and lands on the calendar rather than the dashboard once they are in.
+   */
+  const doorFrom = useRef<string | null>(null);
+
+  useEffect(() => {
+    const route = useRoute.getState();
+    // The door is showing either because somebody pressed "Sign in", or
+    // because they followed a link to a screen that needs a session. Both are
+    // the door, and the door is always at its own address.
+    const atDoor = !signedIn && cloudConfigured && (authOpen || isAppPath(route.path));
+
+    if (atDoor) {
+      const want = authMode === 'signup' ? '/register' : '/login';
+      if (route.path === want) return;
+      const swapping = route.path === '/login' || route.path === '/register';
+      if (!swapping) doorFrom.current = route.path;
+      // Replacing rather than pushing when the address being covered is a
+      // screen: that address answers with the door too, so a Back button that
+      // returned to it would only arrive here again.
+      route.go(want, { replace: swapping || isAppPath(route.path) });
+      return;
+    }
+    // Shut, by the close button or by signing in. Either way the address goes
+    // back to whatever it was covering.
+    const back = doorFrom.current;
+    doorFrom.current = null;
+    if (!back || !(route.path === '/login' || route.path === '/register')) return;
+    route.go(back);
+    // In the same tick, not behind a dynamic import: the shell mounts the
+    // moment this render lands and starts writing the address from the app's
+    // state, so a screen that arrives a microtask later has already been
+    // overwritten by the dashboard.
+    if (signedIn && isAppPath(back)) applyAppPath(back);
+  }, [authOpen, signedIn, cloudConfigured, authMode, path]);
 
   const openSearch = useCallback(() => {
     setSidebarOpen(true);
@@ -253,9 +293,26 @@ export default function App() {
 
   /* --------------------------------------------------------------- views */
 
+  /**
+   * The public web, which is not the same thing as "logged out".
+   *
+   * Someone reading the privacy policy may well be signed in; someone
+   * following a link to the FAQ should get the FAQ, not the dashboard. So the
+   * public pages are answered by address, before the account gate, and only
+   * the home page falls through to the marketing-page-or-app decision below.
+   */
+  const publicRoute = routeByPath(path);
+  const article = (publicRoute && publicRoute.id !== 'home') || isUnknownPath(path);
+
   // Waiting for the session check too, otherwise someone who is already
   // signed in sees the front door flash past on every reload.
-  if (!libraryLoaded || !workspaceLoaded || !authReady) return <Splash />;
+  //
+  // A page of the site is exempt. It is made of nothing but text that is
+  // already in the bundle — it does not read the library, the workspace or
+  // the session — so making somebody who followed a link to the privacy
+  // policy watch a splash screen while IndexedDB opens and a token is
+  // refreshed is a wait that buys them nothing.
+  if (!article && (!libraryLoaded || !workspaceLoaded || !authReady)) return <Splash />;
 
   // Arrived from a "reset your password" e-mail: ask for the new one before
   // anything else, or the link just logs them in with the old password.
@@ -275,15 +332,6 @@ export default function App() {
       </Suspense>
     );
 
-  /**
-   * The public web, which is not the same thing as "logged out".
-   *
-   * Someone reading the privacy policy may well be signed in; someone
-   * following a link to the FAQ should get the FAQ, not the dashboard. So the
-   * public pages are answered by address, before the account gate, and only
-   * the home page falls through to the marketing-page-or-app decision below.
-   */
-  const publicRoute = routeByPath(path);
   const openAuth = (mode: 'signin' | 'signup' = 'signin') => useApp.getState().setAuth(true, mode);
   const openSignUp = () => openAuth('signup');
   const openSignIn = () => openAuth('signin');
@@ -327,8 +375,16 @@ export default function App() {
         <AuthScreen
           onClose={() => {
             // Closing after signing in is not a refusal; it is just the screen
-            // getting out of the way.
-            if (!useAuth.getState().user) useApp.getState().setAuth(false);
+            // getting out of the way, and the address effect above puts the
+            // person back where they were going.
+            if (useAuth.getState().user) return;
+            useApp.getState().setAuth(false);
+            // Turned away from the door instead. The address has to leave with
+            // them: a screen answers with the door too, so staying anywhere
+            // under it would only open the form again.
+            const back = doorFrom.current;
+            doorFrom.current = null;
+            useRoute.getState().go(back && !isAppPath(back) ? back : HOME);
           }}
         />
       </Suspense>

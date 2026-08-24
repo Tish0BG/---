@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { applyHead } from '@/seo/head';
-import { normalisePath } from '@/seo/routes';
+import { entryPath, isAppPath, normalisePath } from '@/seo/routes';
 import { currentLang, tr, L } from '@/i18n';
 import { useApp, VIEW_TITLES, resolveView, type AppView } from './appStore';
+import { useAuth } from './authStore';
 import { useRoute } from './routeStore';
 import { useTimer } from './timerStore';
 import { useViewer } from './viewerStore';
@@ -30,17 +31,17 @@ import { useWorkspace } from './workspaceStore';
 
 /** The address of each screen. The slug is the name the app already uses. */
 export const VIEW_PATHS: Record<AppView, string> = {
-  dashboard: '/app',
-  tasks: '/app/tasks',
-  calendar: '/app/calendar',
-  goals: '/app/goals',
-  exams: '/app/exams',
-  drive: '/app/library',
-  cards: '/app/cards',
-  subjects: '/app/subjects',
-  stats: '/app/stats',
-  achievements: '/app/achievements',
-  profile: '/app/profile',
+  dashboard: '/dashboard',
+  tasks: '/tasks',
+  calendar: '/calendar',
+  goals: '/goals',
+  exams: '/exams',
+  drive: '/library',
+  cards: '/cards',
+  subjects: '/subjects',
+  stats: '/stats',
+  achievements: '/achievements',
+  profile: '/profile',
 };
 
 /**
@@ -52,18 +53,24 @@ export const VIEW_PATHS: Record<AppView, string> = {
  */
 export function appAddress(): string {
   const doc = useViewer.getState().docId;
-  if (doc) return `/app/d/${doc}`;
+  if (doc) return `/document/${doc}`;
 
   const app = useApp.getState();
-  // The settings are one window; which room you are standing in is internal,
-  // like a scroll position. A room only reaches the address when something
-  // asked for it by name — `/app/settings/sync` is a link worth sending, and
-  // clicking through the list afterwards is not worth a history entry each.
-  if (app.settingsOpen) {
-    return app.settingsSection ? `/app/settings/${app.settingsSection}` : '/app/settings';
-  }
-  if (useTimer.getState().view === 'full') return '/app/focus';
-  if (app.subjectId) return `/app/subjects/${app.subjectId}`;
+  /**
+   * The settings are one window, and the address says so: `/settings`,
+   * whichever room you are standing in.
+   *
+   * Which room that is stays internal, like a scroll position. It used to
+   * reach the address, which meant the thing read `/settings/security` and
+   * then `/settings/backup` as somebody clicked down the list — a different
+   * address for every glance at the same window.
+   *
+   * `/settings/sync` still *opens* the sync section when somebody follows a
+   * link to it. It just does not stay in the address afterwards.
+   */
+  if (app.settingsOpen) return '/settings';
+  if (useTimer.getState().view === 'full') return '/focus';
+  if (app.subjectId) return `/subjects/${app.subjectId}`;
   return VIEW_PATHS[app.view];
 }
 
@@ -83,7 +90,24 @@ export function appLabel(): string {
 }
 
 /**
- * The way back in: a pasted link, a bookmark, or the Back button.
+ * The way back in, for any address at all.
+ *
+ * Called on every arrival — a pasted link, a bookmark, the Back button — and
+ * it has to answer the negative case as well as the positive one: walking
+ * back out of `/login` to `/homepage` must *shut* the door, or the form stays
+ * on the screen over a page whose address says it is not there.
+ */
+export function applyAddress(path: string): void {
+  if (isAppPath(path)) {
+    applyAppPath(path);
+    return;
+  }
+  const app = useApp.getState();
+  if (app.authOpen && !useAuth.getState().user) app.setAuth(false);
+}
+
+/**
+ * The way back into the app itself.
  *
  * Deliberately tolerant. An address that names a document which has since
  * been deleted, or a subject that no longer exists, opens the screen it
@@ -91,9 +115,8 @@ export function appLabel(): string {
  * have, not a fault to report.
  */
 export function applyAppPath(path: string): void {
-  const clean = normalisePath(path);
-  const rest = clean.startsWith('/app/') ? clean.slice(5) : '';
-  const [head, id] = rest.split('/');
+  const clean = entryPath(path);
+  const [, head = '', id = ''] = clean.split('/');
   const app = useApp.getState();
 
   // An address says what is open *and* what is not. Pressing Back out of the
@@ -101,9 +124,9 @@ export function applyAppPath(path: string): void {
   // address says it should not be there.
   if (head !== 'settings' && app.settingsOpen) app.setSettings(false);
   if (head !== 'focus' && useTimer.getState().view === 'full') useTimer.getState().setView('mini');
-  if (head !== 'd' && useViewer.getState().docId) void useViewer.getState().closeDocument();
+  if (head !== 'document' && useViewer.getState().docId) void useViewer.getState().closeDocument();
 
-  if (head === 'd' && id) {
+  if (head === 'document' && id) {
     void useViewer.getState().openDocument(id);
     return;
   }
@@ -119,7 +142,13 @@ export function applyAppPath(path: string): void {
     app.openSubject(id);
     return;
   }
-  if (clean === '/app' || head === '') {
+  // The door. `/login` and `/register` are addresses like any other: pasted,
+  // bookmarked, and reached with Back.
+  if (head === 'login' || head === 'register') {
+    app.setAuth(true, head === 'register' ? 'signup' : 'signin');
+    return;
+  }
+  if (head === 'dashboard' || head === '') {
     app.go('dashboard');
     return;
   }
@@ -143,7 +172,15 @@ function sync(): void {
   const label = appLabel();
   const here = normalisePath(window.location.pathname);
 
-  if (next !== here) history.pushState(null, '', `${next}${window.location.hash}`);
+  if (next !== here) {
+    // Collapsing `/settings/sync` to `/settings` is the address correcting
+    // itself, not a move. Pushing would leave a Back button that walks
+    // straight back into the same correction.
+    const correcting = here.startsWith('/settings/') && next === '/settings';
+    const url = `${next}${window.location.hash}`;
+    if (correcting) history.replaceState(null, '', url);
+    else history.pushState(null, '', url);
+  }
   if (useRoute.getState().path !== next) useRoute.setState({ path: next });
 
   applyHead(next, currentLang(), label);

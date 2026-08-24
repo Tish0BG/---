@@ -5,10 +5,84 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/",
+      "destination": "/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/en",
+      "destination": "/en/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/home",
+      "destination": "/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/index",
+      "destination": "/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/en/home",
+      "destination": "/en/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/signup",
+      "destination": "/register",
+      "permanent": true
+    },
+    {
+      "source": "/bg",
+      "destination": "/homepage",
+      "permanent": true
+    },
+    {
+      "source": "/bg/:path*",
+      "destination": "/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/app",
+      "destination": "/dashboard",
+      "permanent": true
+    },
+    {
+      "source": "/app/d/:id",
+      "destination": "/document/:id",
+      "permanent": true
+    },
+    {
+      "source": "/app/:path*",
+      "destination": "/:path*",
+      "permanent": true
+    },
+    {
+      "source": "/sitemap",
+      "destination": "/sitemap.xml",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
-      "source": "/(.*)",
-      "destination": "/index.html"
+      "source": "/document/:id",
+      "destination": "/dashboard/index.html"
+    },
+    {
+      "source": "/subjects/:id",
+      "destination": "/dashboard/index.html"
+    },
+    {
+      "source": "/settings/:section",
+      "destination": "/dashboard/index.html"
+    },
+    {
+      "source": "/(tasks|calendar|goals|exams|library|cards|focus|stats|achievements|subjects|profile|settings)",
+      "destination": "/dashboard/index.html"
     }
   ],
   "headers": [

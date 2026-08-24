@@ -60,6 +60,12 @@ export function AuthScreen({ onClose }: { onClose: () => void }) {
 function Forms({ onClose }: { onClose: () => void }) {
   const t = useT();
   const [tab, setTab] = useState<Tab>(() => useApp.getState().authMode);
+  // The address says which half of the door is open, so switching halves has
+  // to reach it: "create an account" is /register whether it was opened from
+  // the button on the site or from the link at the bottom of this form.
+  useEffect(() => {
+    useApp.getState().setAuthMode(tab);
+  }, [tab]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');

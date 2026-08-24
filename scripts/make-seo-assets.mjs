@@ -1,26 +1,58 @@
 /**
  * Emits the two files a crawler asks for before it asks for anything else,
- * and one pre-rendered shell per public page.
+ * and one pre-rendered shell per public page per language.
  *
  * Plauvia is a single-page application: without this step every address would
  * serve the same `index.html`, so every page in the index would carry the home
- * page's title and description. Rather than adding a server to fix that, the
- * build writes `dist/<route>/index.html` — the identical bundle, with the head
- * tags for that route already correct. The client re-applies them on
- * navigation; this is only about the very first byte.
+ * page's title, the home page's canonical and the home page's language.
+ * Rather than adding a server to fix that, the build writes a real file at
+ * every address that is meant to exist — `dist/about/index.html`,
+ * `dist/en/about/index.html`, and so on — each the identical bundle with the
+ * head tags for that page in that language already correct.
+ *
+ * Three consequences worth stating, because they are the point:
+ *
+ *   · Every indexable URL is a file, so Vercel answers it 200 from the
+ *     filesystem with no rewrite involved, and anything that is *not* a file
+ *     falls through to `404.html` with a real 404 status. A single catch-all
+ *     rewrite would have turned every mistyped address into a soft 404.
+ *   · The app's own addresses get shells too, carrying `noindex`. They are
+ *     real links people paste; they are not pages a search engine should keep.
+ *   · Each shell carries a `<noscript>` copy of its heading, its description
+ *     and the whole navigation, in both languages. It is what a client with
+ *     no JavaScript — and the first pass of a crawler that has not run any
+ *     yet — reads instead of an empty `<div id="root">`.
+ *
+ * The client re-applies the same tags on navigation; this is about the very
+ * first byte.
  */
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { PUBLIC_ROUTES } from '../src/seo/routes.ts';
+import {
+  APP_PAGES,
+  DEFAULT_LANG,
+  LANGS,
+  OG_LOCALE,
+  PUBLIC_ROUTES,
+  localePath,
+} from '../src/seo/routes.ts';
+import { schemaGraph, shareImageAlt } from '../src/seo/schema.ts';
 import { BRAND } from '../src/brand.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const dist = resolve(root, 'dist');
 const ORIGIN = BRAND.url;
 
-const canonical = (path) => (path === '/' ? `${ORIGIN}/` : `${ORIGIN}${path}`);
+/** The absolute address of one public page in one language. */
+const url = (path, lang) => {
+  const target = localePath(path, lang);
+  return target === '/' ? `${ORIGIN}/` : `${ORIGIN}${target}`;
+};
+
+const esc = (s) =>
+  String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /* ------------------------------------------------------------- sitemap.xml */
 
@@ -64,32 +96,31 @@ const lastModified = (id) => {
 };
 
 /**
- * Both languages live at one address.
+ * Every language version of a page names every other one, itself included,
+ * and the default answers for `x-default`.
  *
- * Plauvia is not translated by URL — `/faq` serves Bulgarian or English
- * depending on the reader's choice, and there is no `/en/faq` to point at. So
- * every entry declares the same address under both `hreflang` values plus
- * `x-default`, which is the honest way to say "this page exists in these two
- * languages, here". Inventing per-language URLs that the app does not serve
- * would be worse than saying nothing: every one of them would be a 404 on the
- * first crawl.
+ * This is the part that has to be symmetrical or Google discards the lot: if
+ * `/faq` claims `/en/faq` as its English version, `/en/faq` has to claim
+ * `/faq` back. Generating both sides from one list is how that stays true —
+ * which is exactly what the old file could not do, because there was only
+ * ever one URL and all three annotations pointed at it.
  */
 const alternates = (path) =>
-  ['bg', 'en', 'x-default']
-    .map(
-      (hreflang) =>
-        `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${canonical(path)}" />`,
-    )
+  [...LANGS.map((l) => [l, url(path, l)]), ['x-default', url(path, DEFAULT_LANG)]]
+    .map(([hreflang, href]) => `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${href}" />`)
     .join('\n');
 
-const urls = PUBLIC_ROUTES.filter((r) => r.indexable)
+const indexable = PUBLIC_ROUTES.filter((r) => r.indexable);
+
+const entries = indexable
+  .flatMap((r) => LANGS.map((lang) => ({ route: r, lang })))
   .map(
-    (r) => `  <url>
-    <loc>${canonical(r.path)}</loc>
-${alternates(r.path)}
-    <lastmod>${lastModified(r.id)}</lastmod>
-    <changefreq>${r.changefreq}</changefreq>
-    <priority>${r.priority.toFixed(1)}</priority>
+    ({ route, lang }) => `  <url>
+    <loc>${url(route.path, lang)}</loc>
+${alternates(route.path)}
+    <lastmod>${lastModified(route.id)}</lastmod>
+    <changefreq>${route.changefreq}</changefreq>
+    <priority>${route.priority.toFixed(1)}</priority>
   </url>`,
   )
   .join('\n');
@@ -98,65 +129,268 @@ writeFileSync(
   resolve(dist, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
-${urls}
+${entries}
 </urlset>
 `,
 );
 
-/* --------------------------------------------------- one shell per route */
+/* -------------------------------------------------------------- robots.txt */
+
+/**
+ * Written by the build rather than kept as a file in `public/`, so that the
+ * origin, the sitemap address and the reasoning below cannot drift away from
+ * the table the rest of the site is generated from.
+ *
+ * The substance of it is one decision: crawling is allowed everywhere, and
+ * what must not be indexed says so in its own head. See the text itself.
+ */
+writeFileSync(
+  resolve(dist, 'robots.txt'),
+  `# ${BRAND.name} — ${ORIGIN}
+#
+# The app's own addresses — /login, /signup and everything under /app — are
+# deliberately NOT disallowed here. They must not be indexed, and the way to
+# say that is the noindex directive each of them carries in its own head; a
+# crawler has to be allowed to fetch a page in order to read it. Blocking them
+# here instead would leave Google with an address it may not open and may not
+# rule out, which is how a login form ends up in the index as a bare URL.
+#
+# robots.txt is not a security control either. Everything private sits behind
+# authentication and row-level security.
+#
+# Nothing needed for rendering is blocked — stylesheets, scripts, fonts and
+# images are all open, because a page Google cannot render is a page Google
+# cannot judge.
+
+User-agent: *
+Allow: /
+
+# The one exception: the legacy "?go=" shortcut, which names a screen inside
+# the app. Every value of it answers with the same shell under a different
+# address, and there is no end to the values.
+Disallow: /*?go=
+
+Sitemap: ${ORIGIN}/sitemap.xml
+`,
+);
+
+/* ------------------------------------------------------ one shell per page */
 
 const shell = readFileSync(resolve(dist, 'index.html'), 'utf8');
 
-/** Replaces a tag's content in the shell, or appends it if it was not there. */
-const setMeta = (html, attr, key, value) => {
-  const re = new RegExp(`(<meta\\s+${attr}="${key}"\\s+content=")[^"]*(")`, 'i');
-  if (re.test(html)) return html.replace(re, `$1${escape(value)}$2`);
-  return html.replace('</head>', `    <meta ${attr}="${key}" content="${escape(value)}" />\n  </head>`);
-};
-
-const escape = (s) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
-let written = 0;
-for (const route of PUBLIC_ROUTES) {
-  /**
-   * The shell speaks Bulgarian.
-   *
-   * It used to carry the English titles on the theory that a crawler has not
-   * told us a language yet and English is the wider audience. That was wrong
-   * for this product: the page already declares `lang="bg"`, the readers are
-   * Bulgarian students, and a Bulgarian search result with an English headline
-   * reads as somebody else's site. The client still swaps to English the
-   * moment it knows the visitor prefers it.
-   */
-  const lang = 'bg';
-  let html = shell
-    .replace(/<title>[^<]*<\/title>/i, `<title>${escape(route.title[lang])}</title>`)
-    .replace(/(<link rel="canonical" href=")[^"]*(")/i, `$1${canonical(route.path)}$2`);
-  html = setMeta(html, 'name', 'description', route.description[lang]);
-  html = setMeta(html, 'property', 'og:title', route.title[lang]);
-  html = setMeta(html, 'property', 'og:description', route.description[lang]);
-  html = setMeta(html, 'property', 'og:url', canonical(route.path));
-  html = setMeta(html, 'name', 'twitter:title', route.title[lang]);
-  html = setMeta(html, 'name', 'twitter:description', route.description[lang]);
-  html = setMeta(html, 'name', 'robots', route.indexable ? 'index,follow' : 'noindex,follow');
-
-  // The head says the same thing the sitemap does: one address, two
-  // languages. Written after the canonical link so the two sit together.
-  const hreflangs = ['bg', 'en', 'x-default']
-    .map((h) => `    <link rel="alternate" hreflang="${h}" href="${canonical(route.path)}" />`)
-    .join('\n');
-  html = html.replace(/\n\s*<link rel="alternate" hreflang="[^"]*"[^>]*>/g, '');
-  html = html.replace(/(<link rel="canonical" href="[^"]*"\s*\/?>)/i, `$1\n${hreflangs}`);
-
-  if (route.path === '/') {
-    writeFileSync(resolve(dist, 'index.html'), html);
-  } else {
-    const dir = resolve(dist, route.path.replace(/^\//, ''));
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(resolve(dir, 'index.html'), html);
-  }
-  written += 1;
+if (!shell.includes('<!--seo-->') || !shell.includes('<!--fallback-->')) {
+  console.error('\n  Plauvia · index.html е без маркерите <!--seo--> / <!--fallback-->.\n');
+  process.exit(1);
 }
+
+/**
+ * The head, written whole rather than patched tag by tag.
+ *
+ * Patching was the old way and it had the failure mode you would expect: a
+ * tag the shell happened not to carry was silently appended, a tag it carried
+ * twice was half-updated, and nothing ever noticed. One block, replaced
+ * between two markers, cannot drift.
+ */
+function head({ lang, title, description, canonical, hreflang = true, robots, route }) {
+  const other = lang === 'bg' ? 'en' : 'bg';
+  const lines = [
+    `<title>${esc(title)}</title>`,
+    `<meta name="description" content="${esc(description)}" />`,
+    `<meta name="robots" content="${robots}" />`,
+  ];
+  if (canonical) lines.push(`<link rel="canonical" href="${canonical}" />`);
+  if (hreflang && route) {
+    for (const l of LANGS) lines.push(`<link rel="alternate" hreflang="${l}" href="${url(route.path, l)}" />`);
+    lines.push(`<link rel="alternate" hreflang="x-default" href="${url(route.path, DEFAULT_LANG)}" />`);
+  }
+  lines.push(
+    '',
+    `<meta property="og:site_name" content="${BRAND.name}" />`,
+    `<meta property="og:type" content="website" />`,
+    ...(canonical ? [`<meta property="og:url" content="${canonical}" />`] : []),
+    `<meta property="og:title" content="${esc(title)}" />`,
+    `<meta property="og:description" content="${esc(description)}" />`,
+    `<meta property="og:image" content="${ORIGIN}/og.png" />`,
+    `<meta property="og:image:width" content="1200" />`,
+    `<meta property="og:image:height" content="630" />`,
+    `<meta property="og:image:alt" content="${esc(shareImageAlt(lang))}" />`,
+    `<meta property="og:locale" content="${OG_LOCALE[lang]}" />`,
+    `<meta property="og:locale:alternate" content="${OG_LOCALE[other]}" />`,
+    '',
+    `<meta name="twitter:card" content="summary_large_image" />`,
+    `<meta name="twitter:title" content="${esc(title)}" />`,
+    `<meta name="twitter:description" content="${esc(description)}" />`,
+    `<meta name="twitter:image" content="${ORIGIN}/og.png" />`,
+    `<meta name="twitter:image:alt" content="${esc(shareImageAlt(lang))}" />`,
+    '',
+    `<script type="application/ld+json" id="plauvia-ld">${JSON.stringify(schemaGraph(route, lang))
+      .replace(/</g, '\\u003c')}</script>`,
+  );
+  return lines.map((l) => (l ? `    ${l}` : '')).join('\n');
+}
+
+/**
+ * What is in the document before a single line of JavaScript runs.
+ *
+ * Google renders JavaScript, so this is not the difference between indexed
+ * and not. It is the difference between a page whose subject and links are
+ * legible on the first pass and one that is an empty div until a second pass
+ * that may be days later — and it is the whole of the page for anyone
+ * browsing without scripts. Every public address in both languages appears in
+ * it, so no page depends on a rendered nav to be discovered.
+ */
+function fallback(route, lang) {
+  const links = PUBLIC_ROUTES.flatMap((r) =>
+    LANGS.map(
+      (l) =>
+        `        <li><a href="${localePath(r.path, l)}" hreflang="${l}" lang="${l}">${esc(r.label[l])}${
+          l === DEFAULT_LANG ? '' : ' (English)'
+        }</a></li>`,
+    ),
+  ).join('\n');
+
+  return `<noscript>
+      <div style="max-width:44rem;margin:0 auto;padding:2rem 1.25rem;font-family:system-ui,sans-serif;line-height:1.6">
+        <p><strong>${BRAND.name}</strong> — ${esc(BRAND.tagline[lang])}</p>
+        <h1>${esc(route.heading[lang])}</h1>
+        <p>${esc(route.description[lang])}</p>
+        <p>${esc(
+          lang === 'bg'
+            ? 'Plauvia работи с включен JavaScript. Страниците по-долу са достъпни и без него като адреси.'
+            : 'Plauvia needs JavaScript to run. The pages below are reachable as addresses regardless.',
+        )}</p>
+        <nav aria-label="${lang === 'bg' ? 'Страници' : 'Pages'}">
+          <ul>
+${links}
+          </ul>
+        </nav>
+      </div>
+    </noscript>`;
+}
+
+/** Writes one address: the shell, with this page's head and this page's fallback. */
+function emit(file, { lang, seo, body = '' }) {
+  let html = shell
+    // The note to whoever edits `index.html` is for `index.html`. Shipping it
+    // on every page would leave an English page carrying a comment about the
+    // Bulgarian one.
+    .replace(/\n\s*<!--\s*\n\s+Everything between[\s\S]*?-->/, '')
+    .replace(/<html lang="[^"]*"/i, `<html lang="${lang}"`)
+    .replace(/<!--seo-->[\s\S]*?<!--\/seo-->/, () => `<!--seo-->\n${seo}\n    <!--/seo-->`)
+    .replace(/<!--fallback-->[\s\S]*?<!--\/fallback-->/, () => `<!--fallback-->${body}<!--/fallback-->`);
+
+  const target = resolve(dist, file);
+  mkdirSync(dirname(target), { recursive: true });
+  writeFileSync(target, html);
+  return file;
+}
+
+const written = [];
+
+/* the public web, in every language it exists in */
+for (const route of PUBLIC_ROUTES) {
+  for (const lang of LANGS) {
+    const path = localePath(route.path, lang);
+    written.push(
+      emit(`${path.replace(/^\//, '')}/index.html`, {
+        lang,
+        seo: head({
+          lang,
+          route,
+          title: route.title[lang],
+          description: route.description[lang],
+          canonical: url(route.path, lang),
+          robots: route.indexable ? 'index,follow' : 'noindex,follow',
+        }),
+        body: fallback(route, lang),
+      }),
+    );
+  }
+}
+
+/**
+ * The root, which is a doorway rather than a page.
+ *
+ * `/` permanently redirects to `/homepage`, so on the live site this file is
+ * never served — but a redirect is a rule of the host, and the host is not the
+ * only thing that ever opens this folder. `npm run preview` opens it, the
+ * service worker starts from it offline, and somebody dragging `dist` onto a
+ * static server opens it. All three get the home page, with its canonical
+ * pointing at the name the page actually has, and the client moves the address
+ * across the moment it boots.
+ */
+{
+  const home = PUBLIC_ROUTES.find((r) => r.id === 'home');
+  written.push(
+    emit('index.html', {
+      lang: DEFAULT_LANG,
+      seo: head({
+        lang: DEFAULT_LANG,
+        route: home,
+        title: home.title[DEFAULT_LANG],
+        description: home.description[DEFAULT_LANG],
+        canonical: url(home.path, DEFAULT_LANG),
+        robots: 'index,follow',
+      }),
+      body: fallback(home, DEFAULT_LANG),
+    }),
+  );
+}
+
+/**
+ * The app's own addresses.
+ *
+ * Real files rather than a rewrite, so `/login` answers 200 with a page that
+ * says `noindex` in its own head — the only instruction a crawler must obey —
+ * instead of either a raw 404 from the host or a copy of the home page's
+ * metadata. `/app/*` below them needs one rewrite, because a screen's address
+ * can carry an id nobody can enumerate at build time.
+ *
+ * The titles come from the same table the client reads, so the tab does not
+ * change the moment the bundle finishes loading.
+ */
+for (const page of APP_PAGES) {
+  written.push(
+    emit(`${page.path.replace(/^\//, '')}/index.html`, {
+      lang: DEFAULT_LANG,
+      seo: head({
+        lang: DEFAULT_LANG,
+        route: undefined,
+        title: page.title[DEFAULT_LANG],
+        description: page.description[DEFAULT_LANG],
+        canonical: `${ORIGIN}${page.path}`,
+        hreflang: false,
+        robots: 'noindex,follow',
+      }),
+    }),
+  );
+}
+
+/**
+ * The page for an address that is not one.
+ *
+ * Vercel serves this file, with a real 404 status, for anything that did not
+ * match a file above. It carries no canonical on purpose: one address's
+ * canonical cannot be right for the thousand different mistyped URLs this
+ * same file answers, and pointing them all at the home page is precisely how
+ * a 404 becomes a duplicate of the front door. The client writes a
+ * self-referencing one once it knows which address it landed on.
+ */
+written.push(
+  emit('404.html', {
+    lang: DEFAULT_LANG,
+    seo: head({
+      lang: DEFAULT_LANG,
+      route: undefined,
+      title: 'Няма такава страница — Plauvia',
+      description: 'Тази страница не съществува. Върни се към началото на Plauvia.',
+      canonical: null,
+      hreflang: false,
+      robots: 'noindex,follow',
+    }),
+    body: fallback(PUBLIC_ROUTES[0], DEFAULT_LANG),
+  }),
+);
 
 /* ------------------------------------------------- the consistency check */
 
@@ -173,22 +407,40 @@ for (const route of PUBLIC_ROUTES) {
  * deploy; not failing costs whoever opens the site next.
  */
 const missing = [];
-for (const route of PUBLIC_ROUTES) {
-  const file =
-    route.path === '/'
-      ? resolve(dist, 'index.html')
-      : resolve(dist, route.path.replace(/^\//, ''), 'index.html');
-  const html = readFileSync(file, 'utf8');
+for (const file of written) {
+  const html = readFileSync(resolve(dist, file), 'utf8');
   for (const ref of new Set(html.match(/\/assets\/[A-Za-z0-9._-]+\.(?:js|css)/g) ?? [])) {
-    if (!existsSync(resolve(dist, ref.replace(/^\//, '')))) missing.push(`${route.path} → ${ref}`);
+    if (!existsSync(resolve(dist, ref.replace(/^\//, '')))) missing.push(`${file} → ${ref}`);
   }
+}
+
+/** Every address in the sitemap must be one of the files just written. */
+const sitemap = readFileSync(resolve(dist, 'sitemap.xml'), 'utf8');
+for (const loc of sitemap.match(/<loc>([^<]+)<\/loc>/g) ?? []) {
+  const path = loc.replace(/<\/?loc>/g, '').slice(ORIGIN.length);
+  const file = `${path.replace(/^\//, '')}/index.html`;
+  if (!existsSync(resolve(dist, file))) missing.push(`sitemap.xml → ${path} (няма такъв файл)`);
 }
 
 if (missing.length) {
   console.error('\n  Plauvia · сглобяването сочи към файлове, които ги няма:\n');
   for (const line of missing) console.error(`    ${line}`);
-  console.error('\n  Това би дало бял екран на живо. Спирам, вместо да го пусна.\n');
+  console.error('\n  Това би дало бял екран или 404 на живо. Спирам, вместо да го пусна.\n');
   process.exit(1);
 }
 
-console.log(`  Plauvia · sitemap.xml, robots.txt и ${written} страници с готови мета-етикети`);
+/* A folder left over from an earlier build is a page nobody meant to publish. */
+const stale = readdirSync(dist, { withFileTypes: true })
+  .filter((e) => e.isDirectory())
+  .map((e) => `/${e.name}`)
+  .filter(
+    (p) =>
+      !written.some((f) => f.startsWith(`${p.slice(1)}/`)) &&
+      !['/assets', '/fonts', '/icons', '/cmaps', '/standard_fonts', '/wasm', '/iccs', '/en'].includes(p),
+  );
+
+if (stale.length) console.warn(`  Plauvia · непознати папки в dist: ${stale.join(', ')}`);
+
+console.log(
+  `  Plauvia · sitemap.xml (${indexable.length * LANGS.length} адреса), robots.txt и ${written.length} страници с готови мета-етикети`,
+);

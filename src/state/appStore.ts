@@ -75,6 +75,8 @@ interface AppStore {
   setPalette(open: boolean): void;
   setSettings(open: boolean, section?: string): void;
   setAuth(open: boolean, mode?: 'signin' | 'signup'): void;
+  /** which half of the door is showing, without deciding whether it is open */
+  setAuthMode(mode: 'signin' | 'signup'): void;
   setQuick(kind: QuickKind): void;
   setFilter(subjectId: string | null): void;
   clearFocus(): void;
@@ -108,6 +110,10 @@ export const useApp = create<AppStore>((set) => ({
   setSettings(open, section) {
     set({ settingsOpen: open, settingsSection: open ? (section ?? null) : null });
   },
+  setAuthMode(mode) {
+    set({ authMode: mode });
+  },
+
   setAuth(open, mode) {
     set({ authOpen: open, ...(mode ? { authMode: mode } : {}) });
   },
