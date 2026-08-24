@@ -17,22 +17,11 @@
 /app/d/:id       /document/:id     301!
 /app/*           /:splat           301!
 
-# One shell answers every screen; each carries noindex in its own head.
+# Every screen has a file of its own; only the addresses that carry an id need
+# a rule, because no build can enumerate them.
 /document/*      /dashboard/index.html   200
 /subjects/*      /dashboard/index.html   200
 /settings/*      /dashboard/index.html   200
-/tasks           /dashboard/index.html   200
-/calendar        /dashboard/index.html   200
-/goals           /dashboard/index.html   200
-/exams           /dashboard/index.html   200
-/library         /dashboard/index.html   200
-/cards           /dashboard/index.html   200
-/focus           /dashboard/index.html   200
-/stats           /dashboard/index.html   200
-/achievements    /dashboard/index.html   200
-/subjects        /dashboard/index.html   200
-/profile         /dashboard/index.html   200
-/settings        /dashboard/index.html   200
 
 # Everything else that does not exist is a real 404, answered by the branded page.
 /*               /404.html         404

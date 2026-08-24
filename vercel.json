@@ -70,19 +70,15 @@
   "rewrites": [
     {
       "source": "/document/:id",
-      "destination": "/dashboard/index.html"
+      "destination": "/dashboard"
     },
     {
       "source": "/subjects/:id",
-      "destination": "/dashboard/index.html"
+      "destination": "/dashboard"
     },
     {
       "source": "/settings/:section",
-      "destination": "/dashboard/index.html"
-    },
-    {
-      "source": "/(tasks|calendar|goals|exams|library|cards|focus|stats|achievements|subjects|profile|settings)",
-      "destination": "/dashboard/index.html"
+      "destination": "/dashboard"
     }
   ],
   "headers": [

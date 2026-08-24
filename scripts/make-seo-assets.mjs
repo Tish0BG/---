@@ -32,6 +32,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   APP_PAGES,
+  APP_SCREEN_PATHS,
   DEFAULT_LANG,
   LANGS,
   OG_LOCALE,
@@ -349,7 +350,21 @@ for (const route of PUBLIC_ROUTES) {
  * The titles come from the same table the client reads, so the tab does not
  * change the moment the bundle finishes loading.
  */
-for (const page of APP_PAGES) {
+const dashboard = APP_PAGES.find((p) => p.path === '/dashboard');
+
+/**
+ * A file for every screen, not a routing rule for every screen.
+ *
+ * `/tasks` and `/calendar` could be one rewrite between them, and were — and
+ * the rewrite is the part that broke on the live site while every local check
+ * passed, because a rule is a promise about how the host behaves and a file is
+ * just a file. Twelve copies of a 5 KB shell is a cheap price for an address
+ * that answers from the filesystem, the same way `/about` does.
+ *
+ * Only the three addresses that carry an id still need a rule, because no
+ * build can enumerate them.
+ */
+for (const page of [...APP_PAGES, ...APP_SCREEN_PATHS.map((path) => ({ ...dashboard, path }))]) {
   written.push(
     emit(`${page.path.replace(/^\//, '')}/index.html`, {
       lang: DEFAULT_LANG,
