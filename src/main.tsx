@@ -1,6 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './App';
+import { Analytics } from './components/system/Analytics';
 import { ErrorBoundary } from './components/system/ErrorBoundary';
 import './styles/index.css';
 
@@ -8,6 +9,9 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <ErrorBoundary>
       <App />
+      {/* Reads the address itself and draws nothing anywhere else, so it sits
+          beside the app rather than inside one of its branches. */}
+      <Analytics />
     </ErrorBoundary>
   </StrictMode>,
 );

@@ -62,8 +62,8 @@ export const ABOUT: Section[] = [
         en: 'Device first. Everything is written to your browser before anything else, so the app opens and works with no network. An account is optional and adds exactly one thing: the same library on a second device.',
       },
       {
-        bg: 'Няма реклами, няма проследяване и няма аналитични скриптове на трети страни. Това не е обещание за бъдещето — това е описание на кода, който се изпълнява в момента.',
-        en: 'There are no ads, no tracking and no third-party analytics scripts. That is not a promise about the future — it is a description of the code that runs today.',
+        bg: 'Няма реклами, няма рекламни мрежи и няма проследяване между сайтове. Вътре в приложението няма никаква аналитика: какво отваряш, какво пишеш и колко учиш не се мери от никого. Публичните страници — тази, началната, въпросите — броят посещения без бисквитки, за да се знае дали някой стига дотук. Това не е обещание за бъдещето, а описание на кода, който се изпълнява в момента.',
+        en: 'There are no ads, no ad networks and no cross-site tracking. Inside the app there is no analytics at all: what you open, what you write and how long you study is measured by nobody. The public pages — this one, the home page, the questions — count visits without cookies, so that it is known whether anyone gets this far. That is not a promise about the future; it is a description of the code that runs today.',
       },
     ],
   },

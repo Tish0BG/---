@@ -41,8 +41,12 @@ export const PRIVACY: Section[] = [
     h: { bg: 'Без профил не се събира нищо', en: 'Without an account, nothing is collected' },
     p: [
       {
-        bg: 'Ако използваш Plauvia без да влизаш в профил, никакви твои данни не напускат устройството ти. Учебниците, бележките, картите, задачите и часовете се пазят в браузъра (IndexedDB и localStorage) и не се изпращат никъде. Няма аналитични скриптове, няма пиксели, няма рекламни мрежи.',
-        en: 'If you use Plauvia without signing in, none of your data leaves your device. Textbooks, notes, cards, tasks and hours are kept in the browser (IndexedDB and localStorage) and are sent nowhere. There are no analytics scripts, no pixels and no ad networks.',
+        bg: 'Ако използваш Plauvia без да влизаш в профил, никакви твои данни не напускат устройството ти. Учебниците, бележките, картите, задачите и часовете се пазят в браузъра (IndexedDB и localStorage) и не се изпращат никъде. Няма пиксели и няма рекламни мрежи, а вътре в приложението няма и аналитика.',
+        en: 'If you use Plauvia without signing in, none of your data leaves your device. Textbooks, notes, cards, tasks and hours are kept in the browser (IndexedDB and localStorage) and are sent nowhere. There are no pixels and no ad networks, and inside the app there is no analytics either.',
+      },
+      {
+        bg: 'Публичните страници са отделен случай и е честно да се каже. Началната страница, „За Plauvia“, въпросите и правните текстове броят посещения през Vercel Web Analytics: записват се адресът на страницата, откъде е дошло посещението, държавата и видът устройство. Няма бисквитка, няма запис в браузъра ти и нищо, което да те свърже с посещение отпреди ден. Броенето спира на вратата — щом отвориш приложението, нищо повече не се измерва.',
+        en: 'The public pages are a separate case, and it is fair to say so. The home page, About, the questions and the legal texts count visits through Vercel Web Analytics: the page address, where the visit came from, the country and the kind of device are recorded. There is no cookie, nothing written to your browser, and nothing that ties you to a visit from a day ago. The counting stops at the door — once you open the app, nothing further is measured.',
       },
     ],
   },
@@ -77,8 +81,8 @@ export const PRIVACY: Section[] = [
     h: { bg: 'Какво нарочно не се събира', en: 'What is deliberately not collected' },
     p: [
       {
-        bg: 'Няма поле за адрес, телефон, точна дата на раждане, местоположение или документ за самоличност — нито в интерфейса, нито в базата. Не се използват рекламни или аналитични бисквитки. Не се прави профилиране и не се взимат автоматизирани решения с правен ефект.',
-        en: 'There is no field for an address, a phone number, an exact date of birth, a location or an identity document — not in the interface and not in the database. No advertising or analytics cookies are used. There is no profiling and no automated decision-making with legal effect.',
+        bg: 'Няма поле за адрес, телефон, точна дата на раждане, местоположение или документ за самоличност — нито в интерфейса, нито в базата. Не се използват рекламни или аналитични бисквитки. Не се прави профилиране, не се проследява поведение между сайтове и не се взимат автоматизирани решения с правен ефект.',
+        en: 'There is no field for an address, a phone number, an exact date of birth, a location or an identity document — not in the interface and not in the database. No advertising or analytics cookies are used. There is no profiling, no cross-site tracking and no automated decision-making with legal effect.',
       },
     ],
   },
@@ -267,8 +271,8 @@ export const COOKIES: Section[] = [
     h: { bg: 'Няма бисквитки за проследяване', en: 'No tracking cookies' },
     p: [
       {
-        bg: 'Няма Google Analytics, няма рекламни пиксели, няма скриптове на трети страни, които да четат поведението ти. Затова не се иска и съгласие: съгласие се иска за нещата, които не са необходими, а тук такива няма.',
-        en: 'There is no Google Analytics, no advertising pixel and no third-party script reading your behaviour. That is also why no consent is requested: consent is for the things that are not necessary, and there are none here.',
+        bg: 'Няма Google Analytics, няма рекламни пиксели и няма скрипт, който да те следва от сайт на сайт. Публичните страници броят посещенията си през Vercel Web Analytics, но без бисквитка и без нищо записано в браузъра ти — затова и няма банер, който да иска съгласие: съгласие се иска за неща, които оставят следа на устройството ти, а такива тук няма.',
+        en: 'There is no Google Analytics, no advertising pixel and no script that follows you from site to site. The public pages count their visits through Vercel Web Analytics, but with no cookie and nothing written to your browser — which is why there is no banner asking for consent: consent is for things that leave a trace on your device, and there are none here.',
       },
     ],
   },

@@ -50,11 +50,11 @@ const EN: LandingCopy = {
     lead: 'Plauvia keeps your textbooks, tasks, flashcards and study time in one place — so the work you plan is the work that actually gets done.',
     primary: 'Get started',
     secondary: 'See how it works',
-    trust: ['Works offline', 'No ads, no tracking', 'Your data stays yours'],
+    trust: ['Works offline', 'No ads, no profiling', 'Your data stays yours'],
   },
   metrics: [
     { value: '11', label: 'screens, one product' },
-    { value: '0', label: 'ads or trackers' },
+    { value: '0', label: 'ad networks' },
     { value: '100%', label: 'works offline' },
     { value: '2', label: 'languages' },
   ],
@@ -203,8 +203,8 @@ const EN: LandingCopy = {
         icon: 'shield',
       },
       {
-        title: 'No ads, no tracking',
-        body: 'Nothing is measured, sold or sent anywhere you did not ask it to go.',
+        title: 'No ads, no profiling',
+        body: 'Nothing you do inside the app is measured, and nothing about you is sold or sent anywhere you did not ask it to go.',
         icon: 'eyeOff',
       },
       {
@@ -263,11 +263,11 @@ const BG: LandingCopy = {
     lead: 'Plauvia държи учебниците, задачите, картите и учебното време на едно място — така че планираното наистина да се случва.',
     primary: 'Започни',
     secondary: 'Виж как работи',
-    trust: ['Работи офлайн', 'Без реклами и проследяване', 'Данните остават твои'],
+    trust: ['Работи офлайн', 'Без реклами и профилиране', 'Данните остават твои'],
   },
   metrics: [
     { value: '11', label: 'екрана, един продукт' },
-    { value: '0', label: 'реклами и тракери' },
+    { value: '0', label: 'рекламни мрежи' },
     { value: '100%', label: 'работи офлайн' },
     { value: '2', label: 'езика' },
   ],
@@ -416,8 +416,8 @@ const BG: LandingCopy = {
         icon: 'shield',
       },
       {
-        title: 'Без реклами и проследяване',
-        body: 'Нищо не се мери, не се продава и не тръгва натам, накъдето не си го пратил.',
+        title: 'Без реклами и профилиране',
+        body: 'Нищо от това, което правиш вътре в приложението, не се мери, а нищо за теб не се продава и не тръгва натам, накъдето не си го пратил.',
         icon: 'eyeOff',
       },
       {
