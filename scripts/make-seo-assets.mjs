@@ -10,7 +10,7 @@
  * navigation; this is only about the very first byte.
  */
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PUBLIC_ROUTES } from '../src/seo/routes.ts';
@@ -156,6 +156,39 @@ for (const route of PUBLIC_ROUTES) {
     writeFileSync(resolve(dir, 'index.html'), html);
   }
   written += 1;
+}
+
+/* ------------------------------------------------- the consistency check */
+
+/**
+ * Every page must name files that are actually in the folder being deployed.
+ *
+ * This is here because the opposite once shipped: an `index.html` referring to
+ * a JavaScript chunk that was not next to it, which is not a broken page but a
+ * blank one — the browser fetches the only script the document has, gets a
+ * 404, and there is nothing left to draw. No error, no message, nothing for a
+ * person to report except "the site is white".
+ *
+ * A build that would produce that should not finish. Failing here costs a
+ * deploy; not failing costs whoever opens the site next.
+ */
+const missing = [];
+for (const route of PUBLIC_ROUTES) {
+  const file =
+    route.path === '/'
+      ? resolve(dist, 'index.html')
+      : resolve(dist, route.path.replace(/^\//, ''), 'index.html');
+  const html = readFileSync(file, 'utf8');
+  for (const ref of new Set(html.match(/\/assets\/[A-Za-z0-9._-]+\.(?:js|css)/g) ?? [])) {
+    if (!existsSync(resolve(dist, ref.replace(/^\//, '')))) missing.push(`${route.path} → ${ref}`);
+  }
+}
+
+if (missing.length) {
+  console.error('\n  Plauvia · сглобяването сочи към файлове, които ги няма:\n');
+  for (const line of missing) console.error(`    ${line}`);
+  console.error('\n  Това би дало бял екран на живо. Спирам, вместо да го пусна.\n');
+  process.exit(1);
 }
 
 console.log(`  Plauvia · sitemap.xml, robots.txt и ${written} страници с готови мета-етикети`);
