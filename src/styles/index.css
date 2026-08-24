@@ -413,6 +413,12 @@ body {
   border-radius: 8px;
 }
 
+/* The public header is sticky and 64px tall; without this a section reached
+   by name arrives underneath it. */
+section[id] {
+  scroll-margin-top: 76px;
+}
+
 /**
  * The first thing keyboard focus lands on, and the only thing that has to be
  * off-screen until it does.

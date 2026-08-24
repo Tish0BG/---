@@ -64,18 +64,89 @@ export function RouteLink({
   );
 }
 
-/** The home page's own sections, reachable from any page in either language. */
-function useSectionHref(): (hash: string) => string {
-  const lang = useLangStore((s) => s.lang);
-  const path = useRoute((s) => s.path);
-  const home = routeByPath(path)?.id === 'home';
-  return (hash) => (home ? `#${hash}` : `${hrefFor('/', lang)}#${hash}`);
-}
-
 const SECTION_LINKS: { hash: string; label: Record<Lang, string> }[] = [
   { hash: 'how', label: { bg: 'Как работи', en: 'How it works' } },
   { hash: 'inside', label: { bg: 'Отвътре', en: 'Inside' } },
 ];
+
+/**
+ * Waits for a section to exist, then puts it under the header — and checks
+ * that it stayed there.
+ *
+ * Two separate problems, which is why this is longer than one line. Coming
+ * from another page the home page's chunk is still being fetched, so the
+ * element genuinely is not there yet and has to be waited for. And once it is
+ * there the page is still mounting underneath it — the product mockups settle
+ * into their final heights a few frames later — so a scroll that lands
+ * correctly can be several hundred pixels off by the time anyone sees it. So
+ * it scrolls, then confirms, a bounded number of times.
+ */
+function scrollToSection(hash: string, smooth: boolean, left = 60): void {
+  const el = document.getElementById(hash);
+  if (!el) {
+    if (left > 0) window.setTimeout(() => scrollToSection(hash, smooth, left - 1), 50);
+    return;
+  }
+
+  el.scrollIntoView({ behavior: smooth ? 'smooth' : 'auto', block: 'start' });
+
+  let checks = 0;
+  const settle = () => {
+    const { top } = el.getBoundingClientRect();
+    // `scroll-margin-top` puts it just under the sticky header; anywhere in
+    // that band means it arrived.
+    if ((top >= 0 && top <= 130) || checks >= 6) return;
+    checks += 1;
+    el.scrollIntoView({ behavior: 'auto', block: 'start' });
+    window.setTimeout(settle, 160);
+  };
+  window.setTimeout(settle, 320);
+}
+
+/**
+ * A link to a section of the home page — "How it works", "Inside".
+ *
+ * These are parts of one page, not pages: they are not in the sitemap and are
+ * not meant to be indexed on their own. So a click scrolls to them and leaves
+ * the address alone. It used to append `#inside`, which was untidy on the home
+ * page and actively wrong once you walked on from there — the fragment
+ * followed you, and the About page ended up announcing itself as
+ * `/about#inside`, a section it does not have.
+ *
+ * The `href` is still the real anchor, because that is what a middle-click,
+ * a "copy link address" and a crawler all read.
+ */
+export function SectionLink({
+  hash,
+  className,
+  children,
+}: {
+  hash: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  const lang = useLangStore((s) => s.lang);
+  const path = useRoute((s) => s.path);
+  const home = routeByPath(path)?.id === 'home';
+  const href = home ? `#${hash}` : `${hrefFor(HOME, lang)}#${hash}`;
+
+  return (
+    <a
+      href={href}
+      className={className}
+      onClick={(e) => {
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+        e.preventDefault();
+        // Already here: animate. Arriving from another page: land on it, and
+        // let the page draw itself around a section that is already in place.
+        if (!home) useRoute.getState().go(HOME);
+        scrollToSection(hash, home);
+      }}
+    >
+      {children}
+    </a>
+  );
+}
 
 /**
  * The language switch.
@@ -161,7 +232,6 @@ function LanguageOffer() {
 
 export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
-  const sectionHref = useSectionHref();
   // Somebody already signed in is reading the privacy policy, not shopping.
   // Offering them "Sign in" twice is the sort of detail that makes a site feel
   // like it was assembled rather than used.
@@ -183,16 +253,13 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
 
           <nav className="ml-8 hidden items-center gap-6 lg:flex" aria-label={lang === 'bg' ? 'Основна' : 'Main'}>
             {SECTION_LINKS.map((link) => (
-              <a
+              <SectionLink
                 key={link.hash}
-                // From a legal page the anchors have to travel home first, or
-                // they scroll to nothing — and home means home *in this
-                // language*, not the Bulgarian one.
-                href={sectionHref(link.hash)}
+                hash={link.hash}
                 className="inline-flex min-h-[24px] items-center text-[13.5px] text-muted transition-colors hover:text-ink"
               >
                 {link.label[lang]}
-              </a>
+              </SectionLink>
             ))}
             {[faq, about].map((route) => (
               <RouteLink
@@ -236,7 +303,6 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
 
 export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
-  const sectionHref = useSectionHref();
   const byId = (id: string) => PUBLIC_ROUTES.find((r) => r.id === id)!;
   const signedIn = useAuth((s) => !!s.user);
   const linkClass = 'inline-flex min-h-[24px] items-center text-muted transition-colors hover:text-ink';
@@ -245,12 +311,12 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     {
       title: lang === 'bg' ? 'Продукт' : 'Product',
       items: [
-        <a key="how" href={sectionHref('how')} className={linkClass}>
+        <SectionLink key="how" hash="how" className={linkClass}>
           {lang === 'bg' ? 'Как работи' : 'How it works'}
-        </a>,
-        <a key="inside" href={sectionHref('inside')} className={linkClass}>
+        </SectionLink>,
+        <SectionLink key="inside" hash="inside" className={linkClass}>
           {lang === 'bg' ? 'Отвътре' : 'Inside'}
-        </a>,
+        </SectionLink>,
         <RouteLink key="faq" to={byId('faq').path} className={linkClass}>
           {byId('faq').label[lang]}
         </RouteLink>,

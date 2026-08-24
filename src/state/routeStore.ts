@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Lang } from '@/brand';
 import { applyHead } from '@/seo/head';
-import { entryPath, isAppPath, localePath, normalisePath, parsePath, redirectFor, routeByPath } from '@/seo/routes';
+import { entryPath, localePath, normalisePath, parsePath, redirectFor, routeByPath } from '@/seo/routes';
 import { currentLang, useLangStore } from '@/i18n';
 
 /**
@@ -51,6 +51,18 @@ function resolve(path: string, forced?: Lang): { href: string; lang: Lang | null
   return { href: localePath(route.path, lang), lang };
 }
 
+/**
+ * The part of `location.hash` that is not the page's own business.
+ *
+ * Supabase puts the recovery and confirmation tokens in the fragment, and the
+ * app has to still be holding one after an internal navigation for the
+ * "choose a new password" screen to appear at all.
+ */
+const authFragment = (): string =>
+  /access_token|refresh_token|type=recovery|error_description/.test(window.location.hash)
+    ? window.location.hash
+    : '';
+
 /** The address a link to this page should carry, for `href` attributes. */
 export const hrefFor = (path: string, lang?: Lang): string => resolve(path, lang).href;
 
@@ -69,9 +81,13 @@ export const useRoute = create<RouteStore>((set) => ({
       applyHead(next, currentLang());
       return;
     }
-    // The hash may be carrying a Supabase recovery token; dropping it here
-    // would turn a "set a new password" link into a silent login.
-    const url = `${next}${window.location.hash}`;
+    // The fragment belongs to the page that put it there. Carrying it across
+    // meant walking from `/homepage#inside` to the About page and arriving at
+    // `/about#inside` — an address naming a section that is not on it.
+    //
+    // One fragment does travel: the one a Supabase e-mail link puts there.
+    // Dropping that would turn "set a new password" into a silent login.
+    const url = `${next}${authFragment()}`;
     if (opts?.replace) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
     set({ path: next });
@@ -97,8 +113,7 @@ export function installRouting(): () => void {
    * and the app stores have no business being pulled in behind them.
    */
   const enter = (path: string) => {
-    if (!isAppPath(path)) return;
-    void import('./appAddress').then((m) => m.applyAppPath(path));
+    void import('./appAddress').then((m) => m.applyAddress(path));
   };
 
   /**

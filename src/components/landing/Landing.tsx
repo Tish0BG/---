@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BRAND } from '@/brand';
 import { useLangStore } from '@/i18n';
-import { PublicFooter, PublicHeader, RouteLink } from '../public/PublicChrome';
+import { PublicFooter, PublicHeader, RouteLink, SectionLink } from '../public/PublicChrome';
 import { Icon } from '../Icon';
 import { landingCopy } from './copy';
 import { MiniShot, ProductShot } from './ProductShot';
@@ -22,6 +22,21 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
   useEffect(() => {
     document.documentElement.lang = lang;
   }, [lang]);
+
+  /**
+   * Somebody opened `/homepage#inside` directly — from a middle-click, or a
+   * link they were sent. The browser tried to scroll before any of this
+   * existed, so it is done again once it does.
+   */
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const id = window.setTimeout(
+      () => document.getElementById(hash)?.scrollIntoView({ block: 'start' }),
+      60,
+    );
+    return () => window.clearTimeout(id);
+  }, []);
 
   return (
     <div className="scroll-thin h-full overflow-y-auto" style={{ background: 'var(--c-bg)' }}>
@@ -67,9 +82,9 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
                 {t.hero.primary}
                 <Icon name="arrowRight" size={16} />
               </button>
-              <a href="#how" className="btn btn-outline btn-lg px-5">
+              <SectionLink hash="how" className="btn btn-outline btn-lg px-5">
                 {t.hero.secondary}
-              </a>
+              </SectionLink>
             </div>
 
             <ul

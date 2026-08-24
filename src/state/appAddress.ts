@@ -1,8 +1,9 @@
 import { useEffect } from 'react';
 import { applyHead } from '@/seo/head';
-import { entryPath, normalisePath } from '@/seo/routes';
+import { entryPath, isAppPath, normalisePath } from '@/seo/routes';
 import { currentLang, tr, L } from '@/i18n';
 import { useApp, VIEW_TITLES, resolveView, type AppView } from './appStore';
+import { useAuth } from './authStore';
 import { useRoute } from './routeStore';
 import { useTimer } from './timerStore';
 import { useViewer } from './viewerStore';
@@ -83,7 +84,24 @@ export function appLabel(): string {
 }
 
 /**
- * The way back in: a pasted link, a bookmark, or the Back button.
+ * The way back in, for any address at all.
+ *
+ * Called on every arrival — a pasted link, a bookmark, the Back button — and
+ * it has to answer the negative case as well as the positive one: walking
+ * back out of `/login` to `/homepage` must *shut* the door, or the form stays
+ * on the screen over a page whose address says it is not there.
+ */
+export function applyAddress(path: string): void {
+  if (isAppPath(path)) {
+    applyAppPath(path);
+    return;
+  }
+  const app = useApp.getState();
+  if (app.authOpen && !useAuth.getState().user) app.setAuth(false);
+}
+
+/**
+ * The way back into the app itself.
  *
  * Deliberately tolerant. An address that names a document which has since
  * been deleted, or a subject that no longer exists, opens the screen it
@@ -116,6 +134,12 @@ export function applyAppPath(path: string): void {
   }
   if (head === 'subjects' && id) {
     app.openSubject(id);
+    return;
+  }
+  // The door. `/login` and `/register` are addresses like any other: pasted,
+  // bookmarked, and reached with Back.
+  if (head === 'login' || head === 'register') {
+    app.setAuth(true, head === 'register' ? 'signup' : 'signin');
     return;
   }
   if (head === 'dashboard' || head === '') {
