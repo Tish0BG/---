@@ -25,6 +25,7 @@ import { annotationBounds } from '@/lib/util';
 import { useLibrary } from './libraryStore';
 import { useSettings } from './settingsStore';
 import { clamp, debounce, uid } from '@/lib/util';
+import { tr, L } from '@/i18n';
 
 /**
  * An undoable change. Every edit is expressed as "these went away, those
@@ -300,7 +301,7 @@ export const useViewer = create<ViewerStore>((set, get) => {
 
       try {
         const meta = await repo.getDocument(docId);
-        if (!meta) throw new Error('Документът не е намерен в хранилището.');
+        if (!meta) throw new Error(tr(L('Документът вече не е в библиотеката.', 'This document is no longer in the library.')));
 
         let session: PageSource;
         if (meta.kind === 'board') {

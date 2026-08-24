@@ -39,7 +39,7 @@
     {
       "name": "Табло",
       "short_name": "Табло",
-      "url": "/?go=dashboard",
+      "url": "/app",
       "icons": [
         {
           "src": "/icons/icon-192.png",
@@ -50,7 +50,7 @@
     {
       "name": "Библиотека",
       "short_name": "Библиотека",
-      "url": "/?go=drive",
+      "url": "/app/library",
       "icons": [
         {
           "src": "/icons/icon-192.png",
@@ -61,7 +61,7 @@
     {
       "name": "Флашкарти",
       "short_name": "Карти",
-      "url": "/?go=cards",
+      "url": "/app/cards",
       "icons": [
         {
           "src": "/icons/icon-192.png",

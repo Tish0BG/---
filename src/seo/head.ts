@@ -1,5 +1,13 @@
 import { BRAND, type Lang } from '@/brand';
-import { PUBLIC_ROUTES, normalisePath, routeByPath, type PublicRoute } from './routes';
+import {
+  PUBLIC_ROUTES,
+  isAppPath,
+  isUnknownPath,
+  normalisePath,
+  routeByPath,
+  type PublicRoute,
+  type RouteCopy,
+} from './routes';
 
 /**
  * Everything a page tells a crawler, written from one place.
@@ -36,10 +44,68 @@ function link(rel: string, href: string, hreflang?: string): void {
   tag.href = href;
 }
 
+/**
+ * What an address that is not a page should call itself.
+ *
+ * A mistyped URL used to wear the home page's title and description, and —
+ * worse — the home page's canonical link. That is the textbook soft 404: the
+ * page says "not found" to a person while telling a crawler "this address is
+ * the home page", which invites every junk URL anyone ever links to be folded
+ * into the front door. It says what it is now, and points at itself.
+ */
+const NOT_FOUND: { title: RouteCopy; description: RouteCopy } = {
+  title: {
+    bg: 'Няма такава страница — Plauvia',
+    en: 'Page not found — Plauvia',
+  },
+  description: {
+    bg: 'Тази страница не съществува. Върни се към началото на Plauvia или виж картата на сайта.',
+    en: 'This page does not exist. Go back to the Plauvia home page, or see the site map.',
+  },
+};
+
+/**
+ * What is filling the app window right now — a screen, an open document, a
+ * focus session — as a name for the browser tab.
+ *
+ * It is remembered here rather than passed around because three separate
+ * things write this tab and they were overwriting each other in whatever
+ * order they happened to run: the router on every navigation and language
+ * change, the focus timer on every tick, and the app itself when the screen
+ * changes. They all ask `tabTitle` now, and it gives the same answer to all
+ * three.
+ *
+ * The label is only used while the address is one of the app's own. That is
+ * what makes it self-correcting: walking out to a public page cannot leave a
+ * screen's name behind in the tab, because a public address never consults
+ * it.
+ *
+ * Only the tab. The description, the canonical and the Open Graph tags stay
+ * bound to the address.
+ */
+let windowLabel: string | null = null;
+let lastPath = normalisePath(window.location.pathname);
+let lastLang: Lang = 'bg';
+
+const tabTitle = (path: string, lang: Lang): string =>
+  windowLabel && isAppPath(path) ? `${windowLabel} · ${BRAND.name}` : pageTitle(path, lang);
+
+/**
+ * What the tab should say when nothing is temporarily borrowing it.
+ *
+ * The focus timer borrows it — a countdown in the tab is the point of running
+ * one — and has to know what to put back afterwards. It used to put back the
+ * *address's* title, which meant every tick outside a session quietly undid
+ * the name of the screen you were looking at.
+ */
+export const currentTabTitle = (lang: Lang = lastLang): string => tabTitle(lastPath, lang);
+
 /** The title this address should be wearing, whatever else has borrowed the tab. */
 export function pageTitle(path: string, lang: Lang): string {
   const route = routeByPath(path);
-  return route ? route.title[lang] : `${BRAND.name} — ${BRAND.tagline[lang]}`;
+  if (route) return route.title[lang];
+  if (isUnknownPath(path)) return NOT_FOUND.title[lang];
+  return `${BRAND.name} — ${BRAND.tagline[lang]}`;
 }
 
 export const canonicalFor = (path: string): string => {
@@ -54,13 +120,24 @@ export const canonicalFor = (path: string): string => {
  * app's own screens are reachable by URL and a directive in the page is the
  * only one a crawler is obliged to honour once it has the page.
  */
-export function applyHead(path: string, lang: Lang): void {
+export function applyHead(path: string, lang: Lang, label?: string | null): void {
   const route = routeByPath(path);
+  const missing = isUnknownPath(path);
   const title = pageTitle(path, lang);
-  const description = route ? route.description[lang] : BRAND.meta[lang];
-  const canonical = canonicalFor(route ? route.path : '/');
+  const description = route
+    ? route.description[lang]
+    : missing
+      ? NOT_FOUND.description[lang]
+      : BRAND.meta[lang];
+  // Anything that is not a public page is its own canonical: the two app
+  // addresses because they are real, and a mistyped one because pointing it
+  // at the home page is how a 404 becomes a duplicate of the front door.
+  const canonical = canonicalFor(route ? route.path : path);
 
-  document.title = title;
+  lastPath = normalisePath(path);
+  lastLang = lang;
+  if (label !== undefined) windowLabel = label;
+  document.title = tabTitle(path, lang);
   document.documentElement.lang = lang;
 
   meta('meta[name="description"]', 'name', 'description', description);
