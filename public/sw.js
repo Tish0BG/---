@@ -7,7 +7,7 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'plauvia-v6';
+const VERSION = 'plauvia-v7';
 const SHELL = [
   '/',
   '/index.html',
@@ -48,8 +48,14 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone();
-          void caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+          // Only a real page becomes the offline shell. Without this check a
+          // single 404 — a mistyped address, or a few minutes of a server
+          // answering badly — is written over the copy the app starts from,
+          // and every later start offline serves that instead of the app.
+          if (response.ok) {
+            const copy = response.clone();
+            void caches.open(VERSION).then((cache) => cache.put('/index.html', copy));
+          }
           return response;
         })
         .catch(() => caches.match('/index.html').then((hit) => hit ?? Response.error())),
