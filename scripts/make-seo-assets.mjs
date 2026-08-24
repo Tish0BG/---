@@ -9,6 +9,7 @@
  * tags for that route already correct. The client re-applies them on
  * navigation; this is only about the very first byte.
  */
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -25,11 +26,68 @@ const canonical = (path) => (path === '/' ? `${ORIGIN}/` : `${ORIGIN}${path}`);
 
 const today = new Date().toISOString().slice(0, 10);
 
+/**
+ * When each page last actually changed.
+ *
+ * Every entry used to carry the build date, which meant a deploy that only
+ * touched the timer told crawlers all seven pages had been rewritten. A
+ * `lastmod` that is always "today" is a `lastmod` that gets ignored, and then
+ * a page that genuinely changes is not re-read either. So the date comes from
+ * the last commit that touched the files the page is actually made of.
+ *
+ * Falls back to the build date where there is no git — a tarball, a fresh
+ * checkout with no history — which is the old behaviour and no worse than it.
+ */
+const SOURCES = {
+  home: ['src/components/landing'],
+  about: ['src/components/public/content.ts'],
+  faq: ['src/components/public/content.ts'],
+  contact: ['src/components/public/content.ts', 'src/legal.ts'],
+  privacy: ['src/components/public/legal.ts', 'src/legal.ts'],
+  terms: ['src/components/public/legal.ts', 'src/legal.ts'],
+  cookies: ['src/components/public/legal.ts', 'src/legal.ts'],
+};
+
+const lastModified = (id) => {
+  const paths = SOURCES[id];
+  if (!paths) return today;
+  try {
+    const out = execFileSync('git', ['log', '-1', '--format=%cs', '--', ...paths], {
+      cwd: root,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(out) ? out : today;
+  } catch {
+    return today;
+  }
+};
+
+/**
+ * Both languages live at one address.
+ *
+ * Plauvia is not translated by URL — `/faq` serves Bulgarian or English
+ * depending on the reader's choice, and there is no `/en/faq` to point at. So
+ * every entry declares the same address under both `hreflang` values plus
+ * `x-default`, which is the honest way to say "this page exists in these two
+ * languages, here". Inventing per-language URLs that the app does not serve
+ * would be worse than saying nothing: every one of them would be a 404 on the
+ * first crawl.
+ */
+const alternates = (path) =>
+  ['bg', 'en', 'x-default']
+    .map(
+      (hreflang) =>
+        `    <xhtml:link rel="alternate" hreflang="${hreflang}" href="${canonical(path)}" />`,
+    )
+    .join('\n');
+
 const urls = PUBLIC_ROUTES.filter((r) => r.indexable)
   .map(
     (r) => `  <url>
     <loc>${canonical(r.path)}</loc>
-    <lastmod>${today}</lastmod>
+${alternates(r.path)}
+    <lastmod>${lastModified(r.id)}</lastmod>
     <changefreq>${r.changefreq}</changefreq>
     <priority>${r.priority.toFixed(1)}</priority>
   </url>`,
@@ -39,7 +97,7 @@ const urls = PUBLIC_ROUTES.filter((r) => r.indexable)
 writeFileSync(
   resolve(dist, 'sitemap.xml'),
   `<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9" xmlns:xhtml="http://www.w3.org/1999/xhtml">
 ${urls}
 </urlset>
 `,
@@ -81,6 +139,14 @@ for (const route of PUBLIC_ROUTES) {
   html = setMeta(html, 'name', 'twitter:title', route.title[lang]);
   html = setMeta(html, 'name', 'twitter:description', route.description[lang]);
   html = setMeta(html, 'name', 'robots', route.indexable ? 'index,follow' : 'noindex,follow');
+
+  // The head says the same thing the sitemap does: one address, two
+  // languages. Written after the canonical link so the two sit together.
+  const hreflangs = ['bg', 'en', 'x-default']
+    .map((h) => `    <link rel="alternate" hreflang="${h}" href="${canonical(route.path)}" />`)
+    .join('\n');
+  html = html.replace(/\n\s*<link rel="alternate" hreflang="[^"]*"[^>]*>/g, '');
+  html = html.replace(/(<link rel="canonical" href="[^"]*"\s*\/?>)/i, `$1\n${hreflangs}`);
 
   if (route.path === '/') {
     writeFileSync(resolve(dist, 'index.html'), html);
