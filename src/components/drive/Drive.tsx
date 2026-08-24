@@ -512,7 +512,7 @@ function FolderCard({
     >
       <button className="flex min-w-0 flex-1 cursor-pointer items-center gap-2" onClick={() => setActiveFolder(id)}>
         <span
-          className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]"
+          className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
           style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
         >
           <Icon name="folder" size={16} />
@@ -920,7 +920,7 @@ function DriveEmpty({
 
   return (
     <div
-      className="rounded-[16px] border border-dashed"
+      className="rounded-[12px] border border-dashed"
       style={{ borderColor: 'var(--c-line-strong)' }}
     >
       <KitEmpty

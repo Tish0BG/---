@@ -101,24 +101,19 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
         key={entry.id}
         onClick={() => go(entry)}
         aria-current={active ? 'page' : undefined}
-        className={`group relative flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-[10px] text-[13.5px] transition-all duration-150 ${
+        className={`group relative flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-[8px] text-[13.5px] transition-colors duration-150 ${
           collapsed ? 'justify-center px-0' : 'px-2.5'
-        } ${active ? 'font-semibold' : 'font-medium text-muted hover:bg-surface-2 hover:text-ink'}`}
-        style={
+        } ${
           active
-            ? { background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }
-            : undefined
-        }
+            ? 'bg-surface-3 font-medium text-ink'
+            : 'font-normal text-muted hover:bg-surface-2 hover:text-ink'
+        }`}
       >
-        {active && (
-          <span
-            className="absolute -left-2 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full"
-            style={{ background: 'var(--c-accent)' }}
-            aria-hidden
-          />
-        )}
-        <span className="relative shrink-0">
-          <Icon name={entry.icon} size={17.5} strokeWidth={active ? 2 : 1.75} />
+        <span
+          className="relative shrink-0"
+          style={active ? { color: 'var(--c-accent)' } : undefined}
+        >
+          <Icon name={entry.icon} size={17} strokeWidth={active ? 1.9 : 1.7} />
           {entry.id === 'focus' && running && (
             <span
               className="absolute -right-0.5 -top-0.5 h-1.5 w-1.5 animate-pulse rounded-full"
@@ -129,14 +124,12 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
         {!collapsed && <span className="flex-1 truncate text-left">{label}</span>}
         {!collapsed && !!entry.badge && (
           <span
-            className="t-num shrink-0 rounded-full px-1.5 py-px text-[10.5px] font-semibold"
+            className="t-num shrink-0 rounded-full px-1.5 py-px text-[11px] font-medium"
             style={{
               background: entry.alert
-                ? 'color-mix(in srgb, var(--c-danger) 15%, transparent)'
-                : active
-                  ? 'color-mix(in srgb, var(--c-accent) 18%, transparent)'
-                  : 'var(--c-surface-3)',
-              color: entry.alert ? 'var(--c-danger)' : active ? 'var(--c-accent)' : 'var(--c-muted)',
+                ? 'color-mix(in srgb, var(--c-danger) 13%, transparent)'
+                : 'var(--c-surface-3)',
+              color: entry.alert ? 'var(--c-danger)' : 'var(--c-muted)',
             }}
           >
             {entry.badge}
@@ -158,7 +151,7 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
       aria-label={t(L('Основна навигация', 'Main navigation'))}
       className="flex h-full shrink-0 flex-col border-r border-line"
       style={{
-        width: collapsed ? 68 : 248,
+        width: collapsed ? 68 : 240,
         background: 'var(--c-surface)',
         transition: 'width 0.22s var(--ease)',
       }}
@@ -220,7 +213,7 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
                       useApp.getState().openSubject(subject.id);
                       onNavigate?.();
                     }}
-                    className={`flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-[9px] px-2.5 text-[12.5px] transition-colors ${
+                    className={`flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-[8px] px-2.5 text-[12.5px] transition-colors ${
                       activeSubject === subject.id
                         ? 'bg-surface-3 font-medium text-ink'
                         : 'text-muted hover:bg-surface-2 hover:text-ink'
@@ -240,7 +233,7 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
         {collapsed ? (
           <Tooltip label={`${t(S.level)} ${level.level} · ${streak} 🔥`} side="right" delay={120}>
             <button
-              className="mx-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-xl transition-colors hover:bg-surface-2"
+              className="mx-auto flex h-11 w-11 cursor-pointer items-center justify-center rounded-[10px] transition-colors hover:bg-surface-2"
               onClick={() => {
                 useApp.getState().go('profile');
                 onNavigate?.();
@@ -258,13 +251,13 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
               useApp.getState().go('profile');
               onNavigate?.();
             }}
-            className="flex w-full cursor-pointer items-center gap-2.5 rounded-xl p-2 text-left transition-colors hover:bg-surface-2"
+            className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] p-2 text-left transition-colors hover:bg-surface-2"
           >
             <ProgressRing value={level.progress} size={36} stroke={2.5} color="var(--c-brand)">
               <span className="text-[15px]">{profile.avatar || '🦉'}</span>
             </ProgressRing>
             <span className="min-w-0 flex-1">
-              <span className="block truncate text-[13px] font-semibold">
+              <span className="block truncate text-[13px] font-medium">
                 {profile.name || t(L('Твоят профил', 'Your profile'))}
               </span>
               <span className="mt-0.5 flex items-center gap-1.5 text-[11.5px] text-muted">

@@ -129,29 +129,23 @@ export function NextStep() {
 
   return (
     <section
-      className="animate-rise mt-5 flex flex-col gap-4 rounded-[18px] p-4 sm:flex-row sm:items-center sm:p-5"
-      style={{
-        background: 'var(--c-accent-soft)',
-        border: '1px solid color-mix(in srgb, var(--c-accent) 26%, transparent)',
-      }}
+      className="animate-rise card mt-5 flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5"
       aria-labelledby="next-step-title"
     >
       <span
-        className="grid h-11 w-11 shrink-0 place-items-center rounded-[13px]"
-        style={{ background: 'var(--c-accent)', color: 'var(--c-accent-text)' }}
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
+        style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
       >
-        <Icon name={suggestion.icon} size={20} />
+        <Icon name={suggestion.icon} size={18} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="t-label" style={{ color: 'var(--c-accent)' }}>
-          {t(L('Следваща стъпка', 'Next step'))}
-        </p>
-        <h2 id="next-step-title" className="mt-1 text-[15.5px] font-semibold tracking-[-0.015em]">
+        <p className="t-label">{t(L('Следваща стъпка', 'Next step'))}</p>
+        <h2 id="next-step-title" className="mt-0.5 text-[15px] font-semibold tracking-[-0.012em]">
           {t(suggestion.title)}
         </h2>
         <p className="mt-1 text-[13px] leading-relaxed text-muted">{t(suggestion.body)}</p>
       </div>
-      <button className="btn btn-primary btn-lg shrink-0" onClick={suggestion.run}>
+      <button className="btn btn-outline shrink-0" onClick={suggestion.run}>
         {t(suggestion.action)}
         <Icon name="arrowRight" size={15} />
       </button>

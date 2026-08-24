@@ -252,7 +252,7 @@ export function StatsTab() {
 
       <div>
         <div className="mb-1 flex items-center justify-between text-[11px]">
-          <span className="font-semibold uppercase tracking-wide text-faint">Дневна цел</span>
+          <span className="text-faint">Дневна цел</span>
           <Stepper value={`${goal} мин`} onDown={() => setTimer({ goal: Math.max(15, goal - 15) })} onUp={() => setTimer({ goal: Math.min(720, goal + 15) })} />
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-surface-3">

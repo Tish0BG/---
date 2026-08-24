@@ -89,13 +89,10 @@ export function ProfileScreen() {
     >
       {/* ------------------------------------------------------------ header */}
       <Card className="mb-5 overflow-hidden" flush>
-        <div className="relative h-24" style={{ background: 'var(--grad-accent)' }}>
-          <span
-            aria-hidden
-            className="animate-breathe absolute -right-10 -top-16 h-52 w-52 rounded-full opacity-25 blur-2xl"
-            style={{ background: '#fff' }}
-          />
-        </div>
+        <div
+          className="h-20 border-b"
+          style={{ background: 'var(--c-surface-2)', borderColor: 'var(--c-line)' }}
+        />
 
         <div className="relative px-5 pb-5 sm:px-6">
           <div className="flex flex-wrap items-end gap-4">
@@ -173,7 +170,7 @@ export function ProfileScreen() {
                   <button
                     key={emoji}
                     onClick={() => void useWorkspace.getState().saveProfile({ avatar: emoji })}
-                    className="grid h-9 w-9 cursor-pointer place-items-center rounded-[11px] text-[17px] transition-transform hover:scale-110"
+                    className="grid h-9 w-9 cursor-pointer place-items-center rounded-[10px] text-[17px] transition-transform hover:scale-110"
                     style={{
                       background: profile.avatar === emoji ? 'var(--c-accent-soft)' : 'var(--c-surface-2)',
                       border: `1px solid ${profile.avatar === emoji ? 'var(--c-accent)' : 'var(--c-line)'}`,
@@ -292,7 +289,7 @@ export function ProfileScreen() {
               {achievements.slice(0, 12).map((a) => (
                 <Tooltip key={a.id} label={t(a.title)}>
                   <span
-                    className="grid h-11 w-11 place-items-center rounded-[13px] text-white"
+                    className="grid h-11 w-11 place-items-center rounded-[10px] text-white"
                     style={{
                       background: `linear-gradient(140deg, ${TIER_COLOR[a.tier]}, color-mix(in srgb, ${TIER_COLOR[a.tier]} 60%, #000))`,
                     }}

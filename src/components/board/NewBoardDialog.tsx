@@ -209,7 +209,7 @@ function FlowCard({
   return (
     <button
       onClick={onClick}
-      className="cursor-pointer rounded-xl border p-2.5 text-left transition-colors"
+      className="cursor-pointer rounded-[10px] border p-2.5 text-left transition-colors"
       style={{
         borderColor: active ? 'var(--c-accent)' : 'var(--c-line)',
         background: active ? 'var(--c-accent-soft)' : 'transparent',

@@ -248,7 +248,7 @@ function EventChip({ event, onDragTask }: { event: CalEvent; onDragTask?: (id: s
       draggable={draggable}
       onDragStart={() => onDragTask?.(event.refId)}
       onDragEnd={() => onDragTask?.(null)}
-      className={`flex items-center gap-1.5 truncate rounded-[7px] px-1.5 py-[3px] text-[11px] ${
+      className={`flex items-center gap-1.5 truncate rounded-[6px] px-1.5 py-[3px] text-[11px] ${
         draggable ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
       style={{

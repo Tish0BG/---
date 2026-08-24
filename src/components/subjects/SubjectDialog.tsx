@@ -56,7 +56,7 @@ export function SubjectDialog({
       <div className="space-y-4">
         <div className="flex items-center gap-3">
           <span
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-xl"
+            className="grid h-12 w-12 shrink-0 place-items-center rounded-[10px]"
             style={{ background: `color-mix(in srgb, ${color} 16%, transparent)`, color }}
           >
             <Icon name={icon} size={22} />

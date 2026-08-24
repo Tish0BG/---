@@ -165,7 +165,7 @@ function DeckList({
               </h2>
               {listed.length === 0 && (
                 <button
-                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed border-line-strong py-6 text-[12.5px] text-muted transition-colors hover:bg-surface-2"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-[10px] border border-dashed border-line-strong py-6 text-[12.5px] text-muted transition-colors hover:bg-surface-2"
                   onClick={() => onEdit({ deck: deck ?? DEFAULT_DECK })}
                 >
                   <Icon name="plus" size={15} />
@@ -232,7 +232,7 @@ function DeckCard({
       style={active ? { boxShadow: '0 0 0 2px var(--c-accent)' } : undefined}
     >
       <span
-        className="grid h-9 w-9 shrink-0 place-items-center rounded-xl"
+        className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
         style={{
           background: summary.due ? 'color-mix(in srgb, var(--c-accent) 14%, transparent)' : 'var(--c-surface-3)',
           color: summary.due ? 'var(--c-accent)' : 'var(--c-faint)',
@@ -602,7 +602,7 @@ function CardFace({ card, revealed }: { card: FlashCard; revealed: boolean }) {
     return (
       <div className="w-full max-w-3xl space-y-4">
         {card.front && <p className="text-center text-[14px] text-muted">{card.front}</p>}
-        <div className="relative mx-auto overflow-hidden rounded-xl border border-line bg-white">
+        <div className="relative mx-auto overflow-hidden rounded-[10px] border border-line bg-white">
           <img src={url} alt="" className="block w-full" draggable={false} />
           {(card.masks ?? []).map((m, i) => {
             const active = i === card.maskIndex;
@@ -649,7 +649,7 @@ function CardFace({ card, revealed }: { card: FlashCard; revealed: boolean }) {
   return (
     <div className="w-full max-w-2xl space-y-5 text-center">
       {url && (
-        <img src={url} alt="" className="mx-auto max-h-[38vh] rounded-xl border border-line bg-white object-contain" />
+        <img src={url} alt="" className="mx-auto max-h-[38vh] rounded-[10px] border border-line bg-white object-contain" />
       )}
       {card.front && <p className="text-[19px] leading-snug">{card.front}</p>}
       {revealed ? (

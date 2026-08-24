@@ -28,7 +28,7 @@ export function Toaster() {
         return (
           <div
             key={toast.id}
-            className="animate-rise pointer-events-auto flex w-full max-w-[380px] items-start gap-3 rounded-[14px] p-3"
+            className="animate-rise pointer-events-auto flex w-full max-w-[380px] items-start gap-3 rounded-[12px] p-3"
             style={{
               background: 'var(--c-surface)',
               border: '1px solid var(--c-line)',
@@ -36,7 +36,7 @@ export function Toaster() {
             }}
           >
             <span
-              className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px]"
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px]"
               style={{ background: `color-mix(in srgb, ${tone.color} 14%, transparent)`, color: tone.color }}
             >
               <Icon name={tone.icon} size={15} strokeWidth={2} />

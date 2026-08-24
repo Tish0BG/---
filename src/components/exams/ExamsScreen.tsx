@@ -193,7 +193,7 @@ function ExamCard({ exam, open, onToggle }: { exam: PlannerItem; open: boolean; 
       <button onClick={onToggle} className="flex w-full cursor-pointer items-center gap-4 p-4 text-left">
         {/* countdown */}
         <div
-          className="grid h-[74px] w-[74px] shrink-0 place-items-center rounded-[18px] text-center"
+          className="grid h-[74px] w-[74px] shrink-0 place-items-center rounded-[14px] text-center"
           style={{
             background: exam.done
               ? 'var(--c-success-soft)'

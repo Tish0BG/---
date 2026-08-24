@@ -55,7 +55,7 @@ export function Toolbar() {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-0 z-30 flex justify-center px-3 pb-3">
       <div
-        className="panel animate-rise pointer-events-auto flex max-w-full items-center gap-0.5 rounded-2xl px-1.5 py-1.5"
+        className="panel animate-rise pointer-events-auto flex max-w-full items-center gap-0.5 rounded-[12px] px-1.5 py-1.5"
         style={{
           boxShadow: 'var(--shadow-float)',
           background: 'color-mix(in srgb, var(--c-surface) 88%, transparent)',

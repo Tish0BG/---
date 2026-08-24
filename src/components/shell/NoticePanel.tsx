@@ -111,7 +111,7 @@ export function NoticeBell() {
                     }}
                   >
                     <span
-                      className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[9px]"
+                      className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-[8px]"
                       style={{
                         background: `color-mix(in srgb, ${TONE_COLOR[n.tone]} 14%, transparent)`,
                         color: TONE_COLOR[n.tone],

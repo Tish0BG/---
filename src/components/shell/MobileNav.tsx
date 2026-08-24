@@ -84,8 +84,8 @@ export function MobileNav() {
             onClick={() => useApp.getState().setQuick('task')}
             className="absolute left-1/2 top-0 grid h-[52px] w-[52px] -translate-x-1/2 -translate-y-[16px] cursor-pointer place-items-center rounded-full text-white active:scale-95"
             style={{
-              background: 'var(--grad-accent)',
-              boxShadow: 'var(--glow-brand), 0 0 0 4px var(--c-bg)',
+              background: 'var(--c-accent)',
+              boxShadow: '0 0 0 4px var(--c-bg)',
               transition: 'transform 0.14s var(--ease)',
             }}
             aria-label={t(S.create)}
@@ -119,7 +119,7 @@ export function MobileNav() {
               style={{ transition: 'transform 0.12s var(--ease)' }}
             >
               <span
-                className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px]"
+                className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
                 style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
               >
                 <Icon name={entry.icon} size={17} />
@@ -143,8 +143,8 @@ export function MobileNav() {
             className="card-quiet col-span-2 flex cursor-pointer items-center gap-3 p-3 text-left"
           >
             <span
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] text-white"
-              style={{ background: 'var(--grad-accent)' }}
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px]"
+              style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
             >
               <Icon name="timer" size={17} />
             </span>

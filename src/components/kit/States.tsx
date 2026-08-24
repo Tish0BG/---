@@ -29,7 +29,7 @@ export function EmptyState({
   return (
     <div className={`flex flex-col items-center text-center ${compact ? 'px-4 py-8' : 'px-6 py-14'}`}>
       <span
-        className="relative grid place-items-center rounded-[20px]"
+        className="relative grid place-items-center rounded-[16px]"
         style={{
           width: compact ? 46 : 60,
           height: compact ? 46 : 60,
@@ -38,7 +38,7 @@ export function EmptyState({
         }}
       >
         <span
-          className="animate-breathe absolute inset-0 rounded-[20px]"
+          className="animate-breathe absolute inset-0 rounded-[16px]"
           style={{ background: `color-mix(in srgb, ${tone} 10%, transparent)` }}
           aria-hidden
         />
@@ -87,7 +87,7 @@ export function ErrorState({
   return (
     <div className="flex flex-col items-center px-6 py-12 text-center">
       <span
-        className="grid h-12 w-12 place-items-center rounded-2xl"
+        className="grid h-12 w-12 place-items-center rounded-[12px]"
         style={{ background: 'var(--c-danger-soft)', color: 'var(--c-danger)' }}
       >
         <Icon name="alert" size={22} />

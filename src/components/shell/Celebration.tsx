@@ -35,7 +35,7 @@ export function Celebration() {
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 top-4 z-[95] flex justify-center px-4">
       <div
-        className="animate-pop pointer-events-auto flex w-full max-w-[380px] items-center gap-3 rounded-2xl p-3.5"
+        className="animate-pop pointer-events-auto flex w-full max-w-[380px] items-center gap-3 rounded-[12px] p-3.5"
         style={{
           background: 'var(--c-surface)',
           border: '1px solid var(--c-line)',
@@ -44,12 +44,12 @@ export function Celebration() {
         role="status"
       >
         <span
-          className="relative grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-white"
+          className="relative grid h-12 w-12 shrink-0 place-items-center rounded-[12px] text-white"
           style={{ background: `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 62%, #000))` }}
         >
           <Icon name={isLevel ? 'rocket' : current.achievement.icon} size={22} strokeWidth={2} />
           <span
-            className="animate-breathe absolute -inset-1 -z-10 rounded-[20px]"
+            className="animate-breathe absolute -inset-1 -z-10 rounded-[16px]"
             style={{ background: `color-mix(in srgb, ${color} 32%, transparent)` }}
             aria-hidden
           />

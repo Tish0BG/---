@@ -300,7 +300,10 @@ function QuickAdd({ subjectId }: { subjectId: string | null }) {
 
   return (
     <div className="card flex items-center gap-2 p-2">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px]" style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}>
+      <span
+        className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
+        style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
+      >
         <Icon name="plus" size={16} strokeWidth={2.2} />
       </span>
       <input

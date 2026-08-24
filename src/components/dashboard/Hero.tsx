@@ -23,9 +23,10 @@ const greeting = (hour: number) =>
  * The band the app opens with.
  *
  * It answers three questions before anything is clicked: who this is, what is
- * waiting today, and where the effort so far has got to. The gradient is the
- * one place in the interface where the brand is allowed to be loud — and it is
- * behind the greeting, not behind the data.
+ * waiting today, and where the effort so far has got to. It used to answer
+ * them through two blurred brand lights and a name painted in a gradient;
+ * none of that was information. What is left is the sentence, the two things
+ * you can do about it, and the bar.
  */
 export function Hero() {
   const t = useT();
@@ -57,45 +58,12 @@ export function Hero() {
   }
 
   return (
-    <section
-      className="animate-rise relative overflow-hidden rounded-[20px] p-5 sm:p-7"
-      style={{
-        background: 'var(--c-surface)',
-        border: '1px solid var(--c-line)',
-        boxShadow: 'var(--shadow-panel)',
-      }}
-    >
-      {/* the mesh: two soft brand lights, clipped by the card */}
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -right-24 -top-32 h-72 w-72 rounded-full opacity-[0.22] blur-3xl"
-        style={{ background: 'var(--grad-accent)' }}
-      />
-      <span
-        aria-hidden
-        className="pointer-events-none absolute -bottom-40 left-1/3 h-64 w-64 rounded-full opacity-[0.14] blur-3xl"
-        style={{ background: 'var(--grad-aurora)' }}
-      />
-
-      <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+    <section className="animate-rise">
+      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0">
           <h1 className="t-h1">
             {t(greeting(now.getHours()))}
-            {profile.name ? (
-              <>
-                ,{' '}
-                <span
-                  style={{
-                    background: 'var(--grad-accent)',
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    color: 'transparent',
-                  }}
-                >
-                  {profile.name}
-                </span>
-              </>
-            ) : null}
+            {profile.name ? <>, {profile.name}</> : null}
           </h1>
           <p className="mt-1.5 text-[13.5px] text-muted">
                     <span className="first-letter:uppercase">{longDate(now.getTime(), lang)}</span>
@@ -133,7 +101,7 @@ export function Hero() {
       </div>
 
       {/* --------------------------------------------------------- level */}
-      <div className="relative mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="min-w-[210px] flex-1">
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="text-[12.5px] font-semibold">
@@ -144,12 +112,12 @@ export function Hero() {
               {level.xp - level.floor} / {level.ceiling - level.floor} XP
             </span>
           </div>
-          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
+          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
             <div
               className="h-full rounded-full"
               style={{
                 width: `${Math.max(2, level.progress * 100)}%`,
-                background: 'var(--grad-accent)',
+                background: 'var(--c-accent)',
                 transition: 'width 0.8s var(--ease-out)',
               }}
             />
