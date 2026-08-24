@@ -95,13 +95,45 @@ overridden) and high contrast.
 
 The app's screens are state, not addresses — moving between them must not touch history
 while a document is mid-save. What does need addresses is the public site, so
-`src/state/routeStore.ts` owns exactly those: `/`, `/about`, `/faq`, `/contact`,
-`/privacy`, `/terms`, `/cookies`, plus `/login`, `/signup` and `/app`.
+`src/state/routeStore.ts` owns exactly those.
 
-One table in `src/seo/routes.ts` is read by three things that must never disagree: the
-router, the head-tag writer, and the build step that emits `sitemap.xml` and one
-pre-rendered shell per route — so the first byte a crawler reads already carries the
-right title, description and canonical, without a server.
+**Every public page exists twice, once per language, at an address of its own.**
+Bulgarian is served from the unprefixed path and English from `/en`:
+
+| Bulgarian  | English       |
+| ---------- | ------------- |
+| `/`        | `/en`         |
+| `/about`   | `/en/about`   |
+| `/faq`     | `/en/faq`     |
+| `/contact` | `/en/contact` |
+| `/privacy` | `/en/privacy` |
+| `/terms`   | `/en/terms`   |
+| `/cookies` | `/en/cookies` |
+
+There is deliberately no `/bg/…`: a prefix for the language that already owns the
+unprefixed path is a second address for one page, so `/bg/faq` is a 301 to `/faq`.
+**The address decides the language**, not a cookie and not the browser — `/faq` is the
+Bulgarian page for everybody. Nothing redirects by location or by `Accept-Language`;
+a visitor whose browser asks for English is *offered* `/en` as a link and can ignore it.
+Following a language link is what writes the preference, and that preference is then
+what the app — which has no public addresses — opens in.
+
+One table in `src/seo/routes.ts` is read by five things that must never disagree: the
+router, the head-tag writer, the language switch, the JSON-LD builder in
+`src/seo/schema.ts`, and the build step in `scripts/make-seo-assets.mjs`. That step
+emits `sitemap.xml`, `robots.txt` and **a real file per address per language** — so
+`/en/about` is answered from the filesystem with its own title, description, canonical,
+`hreflang` set and structured data in the first byte, without a server and without a
+catch-all rewrite. Adding a public page means adding a row to the table; nothing else.
+
+`/login`, `/signup` and `/app` get shells of their own carrying `noindex`, and
+`/app/*` is the single rewrite in `vercel.json` because a screen's address can carry an
+id. They are *not* disallowed in `robots.txt`: a crawler has to be allowed to fetch a
+page in order to read the `noindex` in it.
+
+Anything that is not one of those files is a real **404** — `dist/404.html`, branded,
+`noindex`, with no canonical. The soft-404 alternative (rewriting everything to
+`index.html`) would have quietly folded every mistyped URL into the home page.
 
 The operator's own details (registered name, address, the three e-mail addresses) live
 in `src/legal.ts`. Until they are filled in, every legal page shows a banner saying it

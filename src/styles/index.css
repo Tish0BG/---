@@ -413,6 +413,35 @@ body {
   border-radius: 8px;
 }
 
+/**
+ * The first thing keyboard focus lands on, and the only thing that has to be
+ * off-screen until it does.
+ *
+ * A sticky header with a nav in it is otherwise a dozen tab stops between the
+ * top of the page and its content, on every page. Hidden with a position
+ * rather than with `display: none`, because a link that is not rendered is a
+ * link that cannot be focused.
+ */
+.skip-link {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 60;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  background: var(--c-surface);
+  border: 1px solid var(--c-line);
+  color: var(--c-text);
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: var(--shadow-md, 0 6px 24px rgb(14 17 22 / 14%));
+  transform: translateY(-200%);
+  transition: transform var(--dur-fast) var(--ease);
+}
+.skip-link:focus-visible {
+  transform: translateY(0);
+}
+
 /* ------------------------------------------------------------ typography */
 
 @layer components {
@@ -741,7 +770,10 @@ h3 {
     background: var(--c-surface-2);
     border: 1px solid var(--c-line);
   }
-  .segmented > button {
+  /* Anchors as well as buttons: the language switch is two real links to two
+     real addresses, and it has to sit in the same track as every other
+     segmented control in the product. */
+  .segmented > :is(button, a) {
     @apply flex-1 cursor-pointer whitespace-nowrap font-medium;
     height: 28px;
     padding: 0 10px;
@@ -753,11 +785,15 @@ h3 {
       color var(--dur-fast) var(--ease),
       box-shadow var(--dur-fast) var(--ease);
   }
-  .segmented > button:hover {
+  .segmented > :is(button, a) {
+    @apply inline-flex items-center justify-center;
+  }
+  .segmented > :is(button, a):hover {
     color: var(--c-text);
   }
-  .segmented > button[aria-pressed='true'],
-  .segmented > button[aria-selected='true'] {
+  .segmented > :is(button, a)[aria-pressed='true'],
+  .segmented > :is(button, a)[aria-current='true'],
+  .segmented > :is(button, a)[aria-selected='true'] {
     background: var(--c-surface);
     color: var(--c-text);
     box-shadow: 0 1px 2px rgb(14 17 22 / 6%);

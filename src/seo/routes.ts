@@ -1,16 +1,45 @@
+import type { Lang } from '@/brand';
+
 /**
- * Every address the public web is allowed to see.
+ * Every address the public web is allowed to see, in every language it is
+ * allowed to see it in.
  *
- * One table, read by three things that must never disagree: the router, the
- * head-tag writer, and the build script that emits `sitemap.xml` and a
- * pre-rendered shell per route. A page that exists in the app but not here
- * gets no metadata and no sitemap entry; a page listed here but not built
- * would 404 on the first crawl. Keeping them in one list is what stops that.
+ * One table, read by four things that must never disagree: the router, the
+ * head-tag writer, the language switch, and the build script that emits
+ * `sitemap.xml`, `robots.txt` and a pre-rendered shell per route per
+ * language. A page that exists in the app but not here gets no metadata and
+ * no sitemap entry; a page listed here but not built would 404 on the first
+ * crawl. Keeping them in one list is what stops that.
  *
  * `indexable: false` is not a security control. Anything that must not be
  * read by a stranger is behind authentication and row-level security, not
  * behind a line in robots.txt.
+ *
+ * Imported by a Node script as well as by the app, so it stays free of every
+ * runtime import: no store, no `window`, nothing but data and pure functions.
  */
+
+/* ------------------------------------------------------------- languages */
+
+export const LANGS = ['bg', 'en'] as const;
+
+/**
+ * The language served from the unprefixed addresses.
+ *
+ * Bulgarian, because that is who the product is for and what the site has
+ * been answering `/` with since it went up — moving it now would change the
+ * meaning of the one URL anybody has already linked to. English lives one
+ * level down, at `/en`, and each version says so in its own `hreflang`.
+ *
+ * The consequence worth stating out loud: there is no `/bg/…`. A prefix that
+ * repeats the default language is a second address for a page that already
+ * has one, which is the duplicate this file exists to prevent. `/bg/faq`
+ * permanently redirects to `/faq` instead of answering beside it.
+ */
+export const DEFAULT_LANG: Lang = 'bg';
+
+/** What Open Graph wants where the rest of the page says `bg` or `en`. */
+export const OG_LOCALE: Record<Lang, string> = { bg: 'bg_BG', en: 'en_US' };
 
 export interface RouteCopy {
   bg: string;
@@ -21,6 +50,7 @@ export type PublicRouteId = 'home' | 'about' | 'faq' | 'contact' | 'privacy' | '
 
 export interface PublicRoute {
   id: PublicRouteId;
+  /** The language-neutral address. `/en` is prepended for English. */
   path: string;
   /** listed in sitemap.xml and left crawlable */
   indexable: boolean;
@@ -31,6 +61,8 @@ export interface PublicRoute {
   description: RouteCopy;
   /** shown in the footer and in the breadcrumb trail */
   label: RouteCopy;
+  /** the page's own `h1`, for the fallback a crawler reads without scripts */
+  heading: RouteCopy;
 }
 
 export const PUBLIC_ROUTES: PublicRoute[] = [
@@ -41,6 +73,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 1,
     changefreq: 'weekly',
     label: { bg: 'Начало', en: 'Home' },
+    heading: { bg: 'От план към резултат.', en: 'From plan to progress.' },
     title: {
       bg: 'Plauvia — От план към резултат.',
       en: 'Plauvia — From plan to progress.',
@@ -57,6 +90,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.6,
     changefreq: 'monthly',
     label: { bg: 'За Plauvia', en: 'About' },
+    heading: { bg: 'За Plauvia', en: 'About Plauvia' },
     title: {
       bg: 'За Plauvia — какво е и за кого е',
       en: 'About Plauvia — what it is and who it is for',
@@ -73,6 +107,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.7,
     changefreq: 'monthly',
     label: { bg: 'Въпроси', en: 'FAQ' },
+    heading: { bg: 'Въпроси и отговори', en: 'Questions and answers' },
     title: {
       bg: 'Въпроси и отговори — Plauvia',
       en: 'Questions and answers — Plauvia',
@@ -89,6 +124,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.5,
     changefreq: 'yearly',
     label: { bg: 'Контакт', en: 'Contact' },
+    heading: { bg: 'Контакт', en: 'Contact' },
     title: {
       bg: 'Контакт — Plauvia',
       en: 'Contact — Plauvia',
@@ -105,6 +141,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.4,
     changefreq: 'yearly',
     label: { bg: 'Поверителност', en: 'Privacy' },
+    heading: { bg: 'Политика за поверителност', en: 'Privacy Policy' },
     title: {
       bg: 'Политика за поверителност — Plauvia',
       en: 'Privacy Policy — Plauvia',
@@ -121,6 +158,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.4,
     changefreq: 'yearly',
     label: { bg: 'Условия', en: 'Terms' },
+    heading: { bg: 'Общи условия', en: 'Terms of Service' },
     title: {
       bg: 'Общи условия — Plauvia',
       en: 'Terms of Service — Plauvia',
@@ -137,6 +175,7 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
     priority: 0.3,
     changefreq: 'yearly',
     label: { bg: 'Бисквитки', en: 'Cookies' },
+    heading: { bg: 'Бисквитки и локално съхранение', en: 'Cookies and local storage' },
     title: {
       bg: 'Бисквитки и локално съхранение — Plauvia',
       en: 'Cookies and local storage — Plauvia',
@@ -151,16 +190,54 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
 /**
  * Addresses that belong to the app rather than to the web.
  *
- * Real links people paste and bookmark — every screen has one now, so a
- * calendar can be sent to somebody the same way a page of the site can — but
- * nothing a search engine should hold on to. A crawler is not signed in, so
- * each of these would serve it the same door; they are `noindex` in the head
- * and disallowed in robots.txt, and none of them is in `sitemap.xml`.
+ * Real links people paste and bookmark — every screen has one, so a calendar
+ * can be sent to somebody the same way a page of the site can — but nothing a
+ * search engine should hold on to. A crawler is not signed in, so each of
+ * these would serve it the same door; they are `noindex` in the head and
+ * disallowed in robots.txt, and none of them is in `sitemap.xml`.
  *
- * Kept here as plain strings on purpose. This file is read by the build
- * script under Node, so it must not drag a single store in behind it.
+ * They carry no language prefix. The app's language is a preference of the
+ * person signed in, not a property of the address, and `/en/app` is therefore
+ * not an address at all — it answers 404 like any other invention.
  */
-export const APP_PATHS = ['/login', '/signup', '/app'] as const;
+export interface AppPage {
+  path: string;
+  title: RouteCopy;
+  description: RouteCopy;
+}
+
+export const APP_PAGES: AppPage[] = [
+  {
+    path: '/login',
+    title: { bg: 'Вход — Plauvia', en: 'Sign in — Plauvia' },
+    description: { bg: 'Влез в профила си в Plauvia.', en: 'Sign in to your Plauvia account.' },
+  },
+  {
+    path: '/signup',
+    title: { bg: 'Регистрация — Plauvia', en: 'Create an account — Plauvia' },
+    description: { bg: 'Създай профил в Plauvia.', en: 'Create your Plauvia account.' },
+  },
+  {
+    path: '/app',
+    title: { bg: 'Plauvia', en: 'Plauvia' },
+    description: { bg: 'Работното място на Plauvia.', en: 'The Plauvia workspace.' },
+  },
+];
+
+export const APP_PATHS = APP_PAGES.map((p) => p.path);
+
+/**
+ * The app page an address belongs to — `/app/calendar` and `/app/d/xyz` both
+ * answer `/app`, because they are the same shell with the same metadata.
+ *
+ * Its only job is to keep the tab and the description honest while the app is
+ * still starting; once a screen is on the page it names itself.
+ */
+export const appPageByPath = (path: string): AppPage | undefined => {
+  const { path: clean, prefixed } = parsePath(path);
+  if (prefixed) return undefined;
+  return APP_PAGES.find((p) => clean === p.path || clean.startsWith(`${p.path}/`));
+};
 
 /** One per screen. The slug after `/app/` is what the app calls the view. */
 export const APP_SCREEN_PATHS = [
@@ -185,8 +262,7 @@ export const APP_SCREEN_PATHS = [
  */
 const APP_DEEP_PATH = /^\/app\/(d|subjects|settings)\/[a-z0-9_-]+$/;
 
-export const routeByPath = (path: string): PublicRoute | undefined =>
-  PUBLIC_ROUTES.find((r) => r.path === normalisePath(path));
+/* ------------------------------------------------------------ addressing */
 
 /** Trailing slashes are the classic way to end up with two URLs for one page. */
 export function normalisePath(path: string): string {
@@ -194,10 +270,48 @@ export function normalisePath(path: string): string {
   return clean === '' ? '/' : clean.toLowerCase();
 }
 
+export interface Address {
+  /** the language the address asks for, defaulting to the unprefixed one */
+  lang: Lang;
+  /** the language-neutral path: `/en/about` and `/about` both give `/about` */
+  path: string;
+  /** whether the address actually carried a prefix */
+  prefixed: boolean;
+}
+
+/**
+ * Splits an address into "which language" and "which page".
+ *
+ * Everything downstream — the router, the head, the switch — works in terms
+ * of the language-neutral path plus a language, so nothing else in the code
+ * has to know how the prefix is spelled or where it sits.
+ */
+export function parsePath(raw: string): Address {
+  const clean = normalisePath(raw);
+  const head = clean.split('/')[1] ?? '';
+  if ((LANGS as readonly string[]).includes(head)) {
+    return { lang: head as Lang, path: normalisePath(clean.slice(head.length + 1) || '/'), prefixed: true };
+  }
+  return { lang: DEFAULT_LANG, path: clean, prefixed: false };
+}
+
+/** Where one page lives in one language. The only place a prefix is written. */
+export function localePath(path: string, lang: Lang): string {
+  const clean = parsePath(path).path;
+  if (lang === DEFAULT_LANG) return clean;
+  return clean === '/' ? `/${lang}` : `/${lang}${clean}`;
+}
+
+export const routeByPath = (path: string): PublicRoute | undefined => {
+  const { path: clean } = parsePath(path);
+  return PUBLIC_ROUTES.find((r) => r.path === clean);
+};
+
 export const isAppPath = (path: string): boolean => {
-  const clean = normalisePath(path);
+  const { path: clean, prefixed } = parsePath(path);
+  if (prefixed) return false;
   return (
-    (APP_PATHS as readonly string[]).includes(clean) ||
+    APP_PATHS.includes(clean) ||
     (APP_SCREEN_PATHS as readonly string[]).includes(clean) ||
     APP_DEEP_PATH.test(clean)
   );
@@ -205,3 +319,17 @@ export const isAppPath = (path: string): boolean => {
 
 /** True for anything that is neither a public page nor one of the app's own links. */
 export const isUnknownPath = (path: string): boolean => !routeByPath(path) && !isAppPath(path);
+
+/**
+ * The address this one should have been, or `null` when it already is.
+ *
+ * Only one case exists today: `/bg/…`, the prefix for the language that has
+ * no prefix. The server answers those with a 301, so a crawler never reaches
+ * this; it is here for the browser, which can arrive at one from the cache,
+ * from an offline start, or from a link somebody wrote by hand.
+ */
+export function redirectFor(path: string): string | null {
+  const { lang, path: clean, prefixed } = parsePath(path);
+  if (prefixed && lang === DEFAULT_LANG) return clean;
+  return null;
+}

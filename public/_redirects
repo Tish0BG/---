@@ -1,1 +1,19 @@
-/*  /index.html  200
+# Netlify's equivalent of the rules in vercel.json, kept in step by hand.
+#
+# Vercel is what serves plauvia.com and reads vercel.json instead of this file;
+# this exists so that a deploy to Netlify behaves the same way rather than
+# quietly turning every mistyped address into a copy of the home page, which is
+# what the single catch-all rule that used to be here did.
+
+/bg              /              301!
+/bg/*            /:splat        301!
+/home            /              301!
+/homepage        /              301!
+/en/home         /en            301!
+/en/homepage     /en            301!
+
+# The only addresses that need the shell without having a file of their own.
+/app/*           /app/index.html   200
+
+# Everything else that does not exist is a real 404, answered by the branded page.
+/*               /404.html      404

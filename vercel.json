@@ -5,12 +5,16 @@
   "framework": "vite",
   "cleanUrls": true,
   "trailingSlash": false,
-  "rewrites": [
-    {
-      "source": "/(.*)",
-      "destination": "/index.html"
-    }
+  "redirects": [
+    { "source": "/bg", "destination": "/", "permanent": true },
+    { "source": "/bg/:path*", "destination": "/:path*", "permanent": true },
+    { "source": "/home", "destination": "/", "permanent": true },
+    { "source": "/homepage", "destination": "/", "permanent": true },
+    { "source": "/en/home", "destination": "/en", "permanent": true },
+    { "source": "/en/homepage", "destination": "/en", "permanent": true },
+    { "source": "/sitemap", "destination": "/sitemap.xml", "permanent": true }
   ],
+  "rewrites": [{ "source": "/app/:path*", "destination": "/app/index.html" }],
   "headers": [
     {
       "source": "/(.*)",

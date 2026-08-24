@@ -39,11 +39,30 @@ export const BRAND = {
 
 export type Lang = 'en' | 'bg';
 
-/** The visitor's language, guessed once from the browser. */
+/**
+ * What the browser itself asks for, ignoring anything remembered.
+ *
+ * Used for one thing only: offering the other language as a link. It never
+ * redirects and never changes what an address serves — `/` is Bulgarian for
+ * everybody, `/en` is English for everybody, and a page that rearranges
+ * itself according to a header is a page a search engine cannot index twice.
+ */
+export function browserLang(): Lang {
+  return navigator.languages?.some((l) => l.toLowerCase().startsWith('bg')) ? 'bg' : 'en';
+}
+
+/**
+ * The language the *app* opens in — the part of the product that has no
+ * public addresses and so nothing to read a language off.
+ *
+ * Public pages do not use this: there the address decides, and following one
+ * writes the choice back here, so the app opens in whatever the site was last
+ * being read in.
+ */
 export function guessLang(): Lang {
   const stored = localStorage.getItem('plauvia.lang');
   if (stored === 'en' || stored === 'bg') return stored;
-  return navigator.languages?.some((l) => l.toLowerCase().startsWith('bg')) ? 'bg' : 'en';
+  return browserLang();
 }
 
 export function rememberLang(lang: Lang): void {

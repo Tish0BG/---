@@ -4,7 +4,6 @@ import { LEGAL, legalIncomplete, oneInbox } from '@/legal';
 import { applyFaqSchema } from '@/seo/head';
 import { PUBLIC_ROUTES, type PublicRouteId } from '@/seo/routes';
 import { BRAND } from '@/brand';
-import { useRoute } from '@/state/routeStore';
 import { Icon } from '../Icon';
 import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { PublicPage, RouteLink } from './PublicChrome';
@@ -237,7 +236,6 @@ function StartStrip({ onStart }: { onStart: () => void }) {
  */
 export function NotFoundPage({ onStart }: { onStart: () => void }) {
   const lang = useLangStore((s) => s.lang);
-  const go = useRoute((s) => s.go);
 
   return (
     <div className="grid h-full place-items-center px-5 py-12" style={{ background: 'var(--c-bg)' }}>
@@ -254,9 +252,9 @@ export function NotFoundPage({ onStart }: { onStart: () => void }) {
             : 'The link is wrong, or the page no longer exists. The rest of Plauvia is where you left it.'}
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
-          <button className="btn btn-primary btn-lg" onClick={() => go('/')}>
+          <RouteLink to="/" className="btn btn-primary btn-lg">
             {lang === 'bg' ? 'Към началото' : 'Go to the home page'}
-          </button>
+          </RouteLink>
           <button className="btn btn-outline btn-lg" onClick={onStart}>
             {lang === 'bg' ? 'Влез в профила си' : 'Sign in'}
           </button>

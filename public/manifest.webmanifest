@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Plauvia — From plan to progress.",
+  "name": "Plauvia — От план към резултат.",
   "short_name": "Plauvia",
-  "description": "Plan, study, focus and track. Textbooks, whiteboards, flashcards and your study time in one place — works offline.",
+  "description": "Планирай, учи, фокусирай се и следи напредъка. Учебници, дъски, флашкарти и учебно време на едно място — и офлайн.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

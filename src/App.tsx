@@ -253,9 +253,26 @@ export default function App() {
 
   /* --------------------------------------------------------------- views */
 
+  /**
+   * The public web, which is not the same thing as "logged out".
+   *
+   * Someone reading the privacy policy may well be signed in; someone
+   * following a link to the FAQ should get the FAQ, not the dashboard. So the
+   * public pages are answered by address, before the account gate, and only
+   * the home page falls through to the marketing-page-or-app decision below.
+   */
+  const publicRoute = routeByPath(path);
+  const article = (publicRoute && publicRoute.id !== 'home') || isUnknownPath(path);
+
   // Waiting for the session check too, otherwise someone who is already
   // signed in sees the front door flash past on every reload.
-  if (!libraryLoaded || !workspaceLoaded || !authReady) return <Splash />;
+  //
+  // A page of the site is exempt. It is made of nothing but text that is
+  // already in the bundle — it does not read the library, the workspace or
+  // the session — so making somebody who followed a link to the privacy
+  // policy watch a splash screen while IndexedDB opens and a token is
+  // refreshed is a wait that buys them nothing.
+  if (!article && (!libraryLoaded || !workspaceLoaded || !authReady)) return <Splash />;
 
   // Arrived from a "reset your password" e-mail: ask for the new one before
   // anything else, or the link just logs them in with the old password.
@@ -275,15 +292,6 @@ export default function App() {
       </Suspense>
     );
 
-  /**
-   * The public web, which is not the same thing as "logged out".
-   *
-   * Someone reading the privacy policy may well be signed in; someone
-   * following a link to the FAQ should get the FAQ, not the dashboard. So the
-   * public pages are answered by address, before the account gate, and only
-   * the home page falls through to the marketing-page-or-app decision below.
-   */
-  const publicRoute = routeByPath(path);
   const openAuth = (mode: 'signin' | 'signup' = 'signin') => useApp.getState().setAuth(true, mode);
   const openSignUp = () => openAuth('signup');
   const openSignIn = () => openAuth('signin');

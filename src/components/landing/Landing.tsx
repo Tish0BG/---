@@ -27,6 +27,7 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
     <div className="scroll-thin h-full overflow-y-auto" style={{ background: 'var(--c-bg)' }}>
       <PublicHeader onStart={onStart} onSignIn={onSignIn} />
 
+      <main id="content">
       {/* ------------------------------------------------------------ hero */}
       <section className="relative overflow-hidden">
         <Glow />
@@ -115,10 +116,13 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
               >
                 <Icon name={p.icon} size={20} />
               </span>
-              <h3 className="mt-4 flex items-baseline gap-2 text-[16.5px] font-semibold tracking-[-0.018em]">
+              {/* h2, not h3: these four are the top-level claim of the page and
+                  they sit directly under the h1 with nothing between. A level
+                  skipped is a screen reader's outline with a hole in it. */}
+              <h2 className="mt-4 flex items-baseline gap-2 text-[16.5px] font-semibold tracking-[-0.018em]">
                 {p.title}
                 <span className="t-num text-[11px] font-normal text-faint">0{i + 1}</span>
-              </h3>
+              </h2>
               <p className="mt-1.5 text-[13.5px] leading-relaxed text-muted">{p.body}</p>
             </article>
           ))}
@@ -291,6 +295,8 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
           </div>
         </div>
       </section>
+
+      </main>
 
       <PublicFooter onSignIn={onSignIn} />
     </div>
