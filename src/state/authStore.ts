@@ -22,6 +22,17 @@ import {
 } from '@/services/cloud/syncService';
 import { blockedMessage, clearAttempts, recordAttempt } from '@/services/cloud/throttle';
 import { logEvent, needsChallenge } from '@/services/cloud/mfa';
+import { AUTH_STORAGE_KEY } from '@/services/cloud/client';
+// Aliased on the way in: the store has methods of the same names, and a bare
+// `trustDevice` inside one of them resolving to the import rather than to the
+// method is exactly the kind of thing that reads as a bug for years.
+import {
+  applyRemembered,
+  forgetDevice as forgetThisDevice,
+  isRemembered,
+  trustDevice as trustThisDevice,
+  trustedUntil as trustExpiry,
+} from '@/services/cloud/session';
 import { useLibrary } from './libraryStore';
 import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
@@ -113,6 +124,18 @@ interface AuthStore {
   /** re-checks whether this session still owes a second factor */
   refreshMfa(): Promise<void>;
   clearMfaPending(): void;
+  /**
+   * Whether the session survives closing the browser.
+   *
+   * Read from this device, not from the account: the same person may want to
+   * be remembered on their laptop and not on the one in the school library.
+   */
+  remember: boolean;
+  setRemember(remember: boolean): void;
+  /** When this device may stop asking for the code — `null` if it may not. */
+  trustedUntil: number | null;
+  trustDevice(): void;
+  forgetDevice(): void;
   signUp(email: string, password: string, name: string): Promise<string | null>;
   resendConfirmation(email: string): Promise<string | null>;
   resetPassword(email: string): Promise<string | null>;
@@ -158,6 +181,8 @@ export const useAuth = create<AuthStore>((set, get) => ({
   recovery: false,
   awaitingConfirm: null,
   mfaPending: false,
+  remember: isRemembered(),
+  trustedUntil: null,
   codeSentTo: null,
   emailTaken: false,
 
@@ -460,13 +485,44 @@ export const useAuth = create<AuthStore>((set, get) => ({
   },
 
   async refreshMfa() {
-    if (!get().user) return set({ mfaPending: false });
+    const user = get().user;
+    if (!user) return set({ mfaPending: false, trustedUntil: null });
+    const until = trustExpiry(user.id);
+    set({ trustedUntil: until });
     try {
-      set({ mfaPending: await needsChallenge() });
+      // A device this person has chosen to trust does not ask for the code
+      // again until the trust runs out. It still asks for the password —
+      // trusting a machine is not the same as leaving the door open.
+      set({ mfaPending: (await needsChallenge()) && until === null });
     } catch {
       // Never let a failed check lock somebody out of their own account.
       set({ mfaPending: false });
     }
+  },
+
+  setRemember(remember) {
+    applyRemembered(remember, AUTH_STORAGE_KEY);
+    // "Do not remember me here" and "stop asking me for the code here" are
+    // contradictory answers about the same machine. The narrower one wins.
+    if (!remember) {
+      const user = get().user;
+      if (user) forgetThisDevice(user.id);
+      set({ trustedUntil: null });
+    }
+    set({ remember });
+  },
+
+  trustDevice() {
+    const user = get().user;
+    if (!user) return;
+    trustThisDevice(user.id);
+    set({ trustedUntil: trustExpiry(user.id) });
+  },
+
+  forgetDevice() {
+    const user = get().user;
+    if (user) forgetThisDevice(user.id);
+    set({ trustedUntil: null });
   },
 
   clearMfaPending() {
@@ -498,6 +554,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
       notice: null,
       awaitingConfirm: null,
       mfaPending: false,
+      // The record of this device stays: signing out and back in is exactly
+      // the case trusting it was for. Forgetting it is its own button.
+      trustedUntil: null,
       codeSentTo: null,
     });
   },

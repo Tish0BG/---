@@ -302,17 +302,27 @@ export default function App() {
    * the home page falls through to the marketing-page-or-app decision below.
    */
   const publicRoute = routeByPath(path);
-  const article = (publicRoute && publicRoute.id !== 'home') || isUnknownPath(path);
+  const home = publicRoute?.id === 'home';
+  const article = (publicRoute && !home) || isUnknownPath(path);
 
-  // Waiting for the session check too, otherwise someone who is already
-  // signed in sees the front door flash past on every reload.
-  //
-  // A page of the site is exempt. It is made of nothing but text that is
-  // already in the bundle — it does not read the library, the workspace or
-  // the session — so making somebody who followed a link to the privacy
-  // policy watch a splash screen while IndexedDB opens and a token is
-  // refreshed is a wait that buys them nothing.
-  if (!article && (!libraryLoaded || !workspaceLoaded || !authReady)) return <Splash />;
+  /**
+   * What has to have loaded before anything can be drawn, which is different
+   * for each of the three kinds of address.
+   *
+   * A page of the site is made of nothing but text that is already in the
+   * bundle: making somebody who followed a link to the privacy policy watch a
+   * splash screen while IndexedDB opens is a wait that buys them nothing.
+   *
+   * The home page waits for exactly one thing — whether there is a session —
+   * because that decides whether its button says "Get started" or "Open
+   * Plauvia", and a button that changes under the reader's cursor is worse
+   * than a moment of nothing.
+   *
+   * The app waits for all of it, including the session check, or somebody who
+   * is already signed in sees the front door flash past on every reload.
+   */
+  const waiting = article ? false : home ? !authReady : !libraryLoaded || !workspaceLoaded || !authReady;
+  if (waiting) return <Splash />;
 
   // Arrived from a "reset your password" e-mail: ask for the new one before
   // anything else, or the link just logs them in with the old password.
@@ -336,10 +346,27 @@ export default function App() {
   const openSignUp = () => openAuth('signup');
   const openSignIn = () => openAuth('signin');
 
-  if (publicRoute && publicRoute.id !== 'home') {
+  if (publicRoute && !home) {
     return (
       <Suspense fallback={<Splash />}>
         <PublicPageView id={publicRoute.id} onStart={openSignUp} onSignIn={openSignIn} />
+      </Suspense>
+    );
+  }
+
+  /**
+   * The home page is the home page, signed in or not.
+   *
+   * It used to be swept past: an account meant `/homepage` answered with the
+   * dashboard, so somebody who followed a link to the site — from a friend, or
+   * from their own bookmarks — never saw it, and there was nowhere for a
+   * button into the app to live. Now it is a page like the others, and the
+   * button in its header says "Open Plauvia" instead of "Sign in".
+   */
+  if (home && !authOpen) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <Landing onStart={openSignUp} onSignIn={openSignIn} />
       </Suspense>
     );
   }
@@ -363,13 +390,6 @@ export default function App() {
   // with the marketing page would lose it; the form is the honest answer, and
   // the address is left alone so it is still there once the door opens.
   if (cloudConfigured && !signedIn) {
-    if (!authOpen && !isAppPath(path)) {
-      return (
-        <Suspense fallback={<Splash />}>
-          <Landing onStart={openSignUp} onSignIn={openSignIn} />
-        </Suspense>
-      );
-    }
     return (
       <Suspense fallback={<Splash />}>
         <AuthScreen

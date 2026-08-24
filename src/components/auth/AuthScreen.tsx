@@ -83,6 +83,7 @@ function Forms({ onClose }: { onClose: () => void }) {
   const user = useAuth((s) => s.user);
   const mfaPending = useAuth((s) => s.mfaPending);
   const emailTaken = useAuth((s) => s.emailTaken);
+  const remember = useAuth((s) => s.remember);
 
   // Signing in is the whole point of this screen; once it happens, leave —
   // unless a second factor is still owed, in which case its own screen takes
@@ -288,6 +289,40 @@ function Forms({ onClose }: { onClose: () => void }) {
                 </p>
               )}
             </div>
+          )}
+
+          {/* Whether the sign-in survives closing the browser.
+              On by default, because the great majority are on their own
+              device — and off is the answer that matters on the computer in a
+              school library, which is why it is a visible choice and not a
+              setting three menus deep. */}
+          {!codeSent && tab === 'signin' && (
+            <label className="flex cursor-pointer items-start gap-2.5 text-[13px]">
+              <input
+                type="checkbox"
+                checked={remember}
+                onChange={(e) => useAuth.getState().setRemember(e.target.checked)}
+                className="mt-[3px] h-[15px] w-[15px] shrink-0 cursor-pointer accent-[var(--c-accent)]"
+              />
+              <span>
+                {t(L('Запомни ме на това устройство', 'Remember me on this device'))}
+                <span className="block text-[12px] text-muted">
+                  {remember
+                    ? t(
+                        L(
+                          'Оставаш в профила си, докато не излезеш сам.',
+                          'You stay signed in until you sign out yourself.',
+                        ),
+                      )
+                    : t(
+                        L(
+                          'Излизаш от профила, щом затвориш браузъра.',
+                          'You are signed out as soon as you close the browser.',
+                        ),
+                      )}
+                </span>
+              </span>
+            </label>
           )}
 
           {error && <Banner tone="danger" text={error} />}

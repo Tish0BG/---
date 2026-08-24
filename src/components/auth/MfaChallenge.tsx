@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { submitChallenge, useBackupCode } from '@/services/cloud/mfa';
+import { TRUST_DAYS } from '@/services/cloud/session';
 import { L, useT } from '@/i18n';
 import { AuthLayout, AuthNote, AuthPanel, AuthTitle } from './Shell';
 import { Icon } from '../Icon';
@@ -23,6 +24,7 @@ export function MfaChallenge() {
   const email = useAuth((s) => s.user?.email);
   const [code, setCode] = useState('');
   const [backup, setBackup] = useState(false);
+  const [trust, setTrust] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
@@ -50,6 +52,8 @@ export function MfaChallenge() {
       setCode('');
       return;
     }
+    // Only a code that was accepted earns the device any trust.
+    if (trust) useAuth.getState().trustDevice();
     useAuth.getState().clearMfaPending();
   };
 
@@ -105,6 +109,30 @@ export function MfaChallenge() {
             <div className="mt-3">
               <AuthNote text={error} />
             </div>
+          )}
+
+          {/* Offered on the code path only. A backup code takes the second
+              factor off altogether, so there is nothing left to remember. */}
+          {!backup && (
+            <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13px]">
+              <input
+                type="checkbox"
+                checked={trust}
+                onChange={(e) => setTrust(e.target.checked)}
+                className="mt-[3px] h-[15px] w-[15px] shrink-0 cursor-pointer accent-[var(--c-accent)]"
+              />
+              <span>
+                {t(L('Запомни това устройство', 'Remember this device'))}
+                <span className="block text-[12px] text-muted">
+                  {t(
+                    L(
+                      `Няма да питам за код на този браузър ${TRUST_DAYS} дни. Паролата остава задължителна.`,
+                      `No code will be asked for in this browser for ${TRUST_DAYS} days. The password is still required.`,
+                    ),
+                  )}
+                </span>
+              </span>
+            </label>
           )}
 
           <button className="btn btn-primary btn-lg mt-4 w-full" disabled={!ready || busy} type="submit">

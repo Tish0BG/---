@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BRAND } from '@/brand';
 import { useLangStore } from '@/i18n';
+import { useAuth } from '@/state/authStore';
 import { PublicFooter, PublicHeader, RouteLink, SectionLink } from '../public/PublicChrome';
 import { Icon } from '../Icon';
 import { landingCopy } from './copy';
@@ -17,6 +18,7 @@ import { MiniShot, ProductShot } from './ProductShot';
  */
 export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
+  const signedIn = useAuth((s) => !!s.user);
   const t = landingCopy(lang);
 
   useEffect(() => {
@@ -78,10 +80,19 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
               className="animate-rise mt-9 flex flex-wrap items-center justify-center gap-2.5"
               style={{ animationDelay: '0.15s' }}
             >
-              <button className="btn btn-primary btn-lg px-6" onClick={onStart}>
-                {t.hero.primary}
-                <Icon name="arrowRight" size={16} />
-              </button>
+              {/* Somebody with an account has already been sold to. The first
+                  button on the page is the way in, not the way to sign up. */}
+              {signedIn ? (
+                <RouteLink to="/dashboard" className="btn btn-primary btn-lg px-6">
+                  {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
+                  <Icon name="arrowRight" size={16} />
+                </RouteLink>
+              ) : (
+                <button className="btn btn-primary btn-lg px-6" onClick={onStart}>
+                  {t.hero.primary}
+                  <Icon name="arrowRight" size={16} />
+                </button>
+              )}
               <SectionLink hash="how" className="btn btn-outline btn-lg px-5">
                 {t.hero.secondary}
               </SectionLink>
@@ -296,16 +307,31 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
             <p className="mx-auto mt-4 max-w-md text-[15px] leading-relaxed" style={{ opacity: 0.88 }}>
               {t.cta.body}
             </p>
-            <button
-              className="btn btn-lg mt-8 px-7 font-semibold"
-              style={{ background: '#fff', color: 'var(--c-brand-deep)' }}
-              onClick={onStart}
-            >
-              {t.cta.button}
-              <Icon name="arrowRight" size={16} />
-            </button>
+            {signedIn ? (
+              <RouteLink
+                to="/dashboard"
+                className="btn btn-lg mt-8 px-7 font-semibold"
+                style={{ background: '#fff', color: 'var(--c-brand-deep)' }}
+              >
+                {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
+                <Icon name="arrowRight" size={16} />
+              </RouteLink>
+            ) : (
+              <button
+                className="btn btn-lg mt-8 px-7 font-semibold"
+                style={{ background: '#fff', color: 'var(--c-brand-deep)' }}
+                onClick={onStart}
+              >
+                {t.cta.button}
+                <Icon name="arrowRight" size={16} />
+              </button>
+            )}
             <p className="mt-4 text-[12px]" style={{ opacity: 0.78 }}>
-              {t.cta.note}
+              {signedIn
+                ? lang === 'bg'
+                  ? 'Вече си влязъл в профила си.'
+                  : 'You are already signed in.'
+                : t.cta.note}
             </p>
           </div>
         </div>

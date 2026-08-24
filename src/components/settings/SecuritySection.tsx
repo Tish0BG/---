@@ -14,7 +14,7 @@ import {
 import { downloadBlob } from '@/lib/util';
 import { PasswordField } from '../auth/PasswordField';
 import { useConfirm } from '../ui';
-import { L, useLang, useT, formatDate, type Msg } from '@/i18n';
+import { L, useLang, useLocale, useT, formatDate, type Msg } from '@/i18n';
 import { Icon } from '../Icon';
 import { Button } from '../kit';
 
@@ -57,7 +57,10 @@ const EVENT_ICON: Record<string, string> = {
 export function SecuritySection() {
   const t = useT();
   const lang = useLang();
+  const locale = useLocale();
   const user = useAuth((s) => s.user);
+  const remember = useAuth((s) => s.remember);
+  const trustedUntil = useAuth((s) => s.trustedUntil);
 
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [codesLeft, setCodesLeft] = useState(0);
@@ -221,6 +224,43 @@ export function SecuritySection() {
         >
           {t(L('Излез от другите устройства', 'Sign out other devices'))}
         </Button>
+
+        {/* Two choices about *this* browser, both made elsewhere — at sign-in
+            and at the code screen — and both undoable only from here. A
+            setting you can turn on and not off is a trap. */}
+        <label className="mt-4 flex cursor-pointer items-start gap-2.5 text-[13px]">
+          <input
+            type="checkbox"
+            checked={remember}
+            onChange={(e) => useAuth.getState().setRemember(e.target.checked)}
+            className="mt-[3px] h-[15px] w-[15px] shrink-0 cursor-pointer accent-[var(--c-accent)]"
+          />
+          <span>
+            {t(L('Запомни ме на това устройство', 'Remember me on this device'))}
+            <span className="block text-[12px] text-muted">
+              {remember
+                ? t(L('Оставаш в профила, докато не излезеш сам.', 'You stay signed in until you sign out yourself.'))
+                : t(L('Излизаш, щом затвориш браузъра.', 'You are signed out when you close the browser.'))}
+            </span>
+          </span>
+        </label>
+
+        {trustedUntil !== null && (
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+            <p className="text-[13px] text-muted">
+              {t(
+                L(
+                  'Този браузър не пита за код до {date}.',
+                  'This browser is not asked for a code until {date}.',
+                ),
+                { date: new Date(trustedUntil).toLocaleDateString(locale) },
+              )}
+            </p>
+            <Button icon="shield" onClick={() => useAuth.getState().forgetDevice()}>
+              {t(L('Забрави устройството', 'Forget this device'))}
+            </Button>
+          </div>
+        )}
       </section>
 
       {/* ------------------------------------------------ second factor */}

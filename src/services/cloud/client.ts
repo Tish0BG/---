@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cloudConfig } from './config';
+import { sessionStore } from './session';
 import { L, tr, type Msg } from '@/i18n';
 
 /**
@@ -11,6 +12,9 @@ import { L, tr, type Msg } from '@/i18n';
  * why this is an async import rather than a plain one at the top of the file.
  */
 let cached: { key: string; client: Promise<SupabaseClient> } | null = null;
+
+/** The one name the session is stored under, everywhere it is touched. */
+export const AUTH_STORAGE_KEY = 'studypdf.auth';
 
 export const RECORDS_TABLE = 'records';
 export const FILES_BUCKET = 'library';
@@ -32,7 +36,12 @@ export function getClient(): Promise<SupabaseClient | null> {
             detectSessionInUrl: true,
             // Deliberately unchanged: renaming the storage key would sign
             // every existing user out and orphan their local library.
-            storageKey: 'studypdf.auth',
+            storageKey: AUTH_STORAGE_KEY,
+            // Where the token is written is the person's choice, made at
+            // sign-in: it survives closing the browser, or it does not. The
+            // adapter reads that choice on every call rather than at creation,
+            // because the client is made once and the choice comes later.
+            storage: sessionStore,
           },
           global: { headers: { 'x-application-name': 'plauvia' } },
         }),
