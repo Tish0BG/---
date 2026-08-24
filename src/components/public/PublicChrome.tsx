@@ -60,7 +60,7 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
   // Somebody already signed in is reading the privacy policy, not shopping.
   // Offering them "Sign in" twice is the sort of detail that makes a site feel
   // like it was assembled rather than used.
-  const signedIn = useAuth((s) => !!s.user || s.skipped);
+  const signedIn = useAuth((s) => !!s.user);
   const faq = PUBLIC_ROUTES.find((r) => r.id === 'faq')!;
   const about = PUBLIC_ROUTES.find((r) => r.id === 'about')!;
 
@@ -127,7 +127,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
   const lang = useLangStore((s) => s.lang);
   const byId = (id: string) => PUBLIC_ROUTES.find((r) => r.id === id)!;
   const home = useRoute((s) => s.path) === '/';
-  const signedIn = useAuth((s) => !!s.user || s.skipped);
+  const signedIn = useAuth((s) => !!s.user);
 
   const columns: { title: string; items: ReactNode[] }[] = [
     {

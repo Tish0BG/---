@@ -110,7 +110,7 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
           {t.pillars.map((p, i) => (
             <article key={p.key} className="card card-hover p-5">
               <span
-                className="grid h-11 w-11 place-items-center rounded-[13px]"
+                className="grid h-11 w-11 place-items-center rounded-[10px]"
                 style={{ background: 'var(--c-accent-soft)', color: 'var(--c-brand)' }}
               >
                 <Icon name={p.icon} size={20} />
@@ -160,51 +160,48 @@ export function Landing({ onStart, onSignIn }: { onStart: () => void; onSignIn: 
         </div>
       </section>
 
-      {/* -------------------------------------------------------- showcase */}
-      <section id="inside" className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
-        <div className="max-w-[620px]">
-          <h2 className="text-[clamp(26px,3.6vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
-            {t.showcase.title}
-          </h2>
-          <p className="mt-4 text-[15px] leading-relaxed text-muted">{t.showcase.lead}</p>
-        </div>
+      {/* ---------------------------------------------------------- inside */}
+      {/*
+        The gallery — "Inside", and the only section with that name.
 
-        <div className="mt-14 space-y-16 sm:space-y-24">
-          {t.showcase.blocks.map((block, i) => (
-            <div
-              key={block.title}
-              className={`grid items-center gap-8 lg:grid-cols-2 lg:gap-14 ${i % 2 ? 'lg:[&>*:first-child]:order-2' : ''}`}
-            >
-              <div>
-                <span
-                  className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.06em]"
-                  style={{ background: 'var(--c-accent-soft)', color: 'var(--c-brand)' }}
-                >
-                  <Icon name={block.icon} size={12} />
-                  {block.eyebrow}
-                </span>
-                <h3 className="mt-4 text-[clamp(21px,2.6vw,30px)] font-semibold leading-[1.15] tracking-[-0.025em]">
-                  {block.title}
-                </h3>
-                <p className="mt-3.5 text-[14.5px] leading-relaxed text-muted">{block.body}</p>
-                <ul className="mt-5 space-y-2.5">
-                  {block.bullets.map((bullet) => (
-                    <li key={bullet} className="flex items-start gap-2.5 text-[13.5px]">
-                      <Icon
-                        name="check"
-                        size={14}
-                        strokeWidth={2.6}
-                        className="mt-[3px] shrink-0"
-                        style={{ color: 'var(--c-aurora)' }}
-                      />
-                      {bullet}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <MiniShot kind={(['calendar', 'focus', 'page'] as const)[i] ?? 'calendar'} lang={lang} />
-            </div>
-          ))}
+        There used to be two: three prose blocks with a mockup beside each,
+        and then this. Both were answering the same question with the same
+        pictures, one of them at four times the length, and a visitor who
+        scrolled past the first had no reason to read the second. Nine screens
+        with a line each is the shorter answer, and the shorter answer is the
+        one that gets read.
+
+        Each shot is drawn from the app's own components rather than
+        screenshotted, so they follow the reader's theme, stay sharp at any
+        size, and cannot drift away from the product the way a folder of PNGs
+        does the first time a padding changes.
+      */}
+      <section id="inside" className="mx-auto max-w-[1180px] px-5 py-16 sm:px-8 sm:py-24">
+        <div>
+          <div className="max-w-[640px]">
+            <h2 className="text-[clamp(26px,3.6vw,40px)] font-semibold leading-[1.1] tracking-[-0.03em]">
+              {t.screens.title}
+            </h2>
+            <p className="mt-4 text-[15px] leading-relaxed text-muted">{t.screens.lead}</p>
+          </div>
+
+          <div className="mt-12 grid gap-x-5 gap-y-9 sm:grid-cols-2 lg:grid-cols-3">
+            {t.screens.items.map((item) => (
+              <figure key={item.kind}>
+                {/* One height for every shot, so the captions under them read
+                    as a row of labels rather than a ragged edge. */}
+                <div className="flex h-[224px] items-center [&>*]:w-full">
+                  <MiniShot kind={item.kind} lang={lang} />
+                </div>
+                <figcaption className="mt-3.5">
+                  <span className="flex items-baseline gap-2 text-[14px] font-semibold tracking-[-0.012em]">
+                    {item.label}
+                  </span>
+                  <p className="mt-1 text-[13px] leading-relaxed text-muted">{item.body}</p>
+                </figcaption>
+              </figure>
+            ))}
+          </div>
         </div>
       </section>
 

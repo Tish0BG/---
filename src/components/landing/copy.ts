@@ -1,4 +1,5 @@
 import type { Lang } from '@/brand';
+import type { ShotKind } from './ProductShot';
 
 /**
  * Every word on the public page, in both languages.
@@ -20,10 +21,11 @@ export interface LandingCopy {
   metrics: { value: string; label: string }[];
   pillars: { key: string; title: string; body: string; icon: string }[];
   how: { title: string; lead: string; steps: { title: string; body: string; icon: string }[] };
-  showcase: {
+  /** The gallery: one picture of each screen, drawn from the app's own parts. */
+  screens: {
     title: string;
     lead: string;
-    blocks: { eyebrow: string; title: string; body: string; bullets: string[]; icon: string }[];
+    items: { kind: ShotKind; label: string; body: string }[];
   };
   featuresTitle: string;
   features: { title: string; body: string; icon: string }[];
@@ -48,7 +50,7 @@ const EN: LandingCopy = {
     lead: 'Plauvia keeps your textbooks, tasks, flashcards and study time in one place — so the work you plan is the work that actually gets done.',
     primary: 'Get started',
     secondary: 'See how it works',
-    trust: ['Works offline', 'No ads, no tracking', 'An account is optional'],
+    trust: ['Works offline', 'No ads, no tracking', 'Your data stays yours'],
   },
   metrics: [
     { value: '11', label: 'screens, one product' },
@@ -108,30 +110,54 @@ const EN: LandingCopy = {
       },
     ],
   },
-  showcase: {
-    title: 'One workspace, from the plan to the page',
-    lead: 'Every part of it reads the same records, so nothing has to be kept in sync by hand.',
-    blocks: [
+  screens: {
+    title: 'Every screen, before you sign up',
+    lead: 'Nine views of the same records. No stock photography and no invented dashboards — each of these is drawn from the components the app itself is built from.',
+    items: [
       {
-        eyebrow: 'Dashboard & calendar',
-        title: 'What matters today, before you decide anything',
-        body: 'Timetable, deadlines and finished sessions in one timeline. Drag a task onto another day and it is rescheduled.',
-        bullets: ['Month, week and day views', 'Overdue work is never quietly hidden', 'Exam countdowns with real readiness'],
-        icon: 'dashboard',
+        kind: 'tasks',
+        label: 'Tasks',
+        body: 'Today, overdue, upcoming and someday. Add one in a line; reschedule it without opening it.',
       },
       {
-        eyebrow: 'Focus & goals',
-        title: 'Hours that become progress by themselves',
-        body: 'Start a session and the whole screen becomes the session. When it ends, the minutes are already banked against your goals.',
-        bullets: ['Pomodoro, school hour or a deep block', 'Goals measured in minutes, tasks, cards or chapters', 'Streaks, levels and achievements from real work'],
-        icon: 'timer',
+        kind: 'calendar',
+        label: 'Calendar',
+        body: 'Month, week, day and the timetable. Drag a deadline onto another day and it is moved.',
       },
       {
-        eyebrow: 'Textbooks & flashcards',
-        title: 'Solve on the page, cut the problem into a card',
-        body: 'Open a PDF or start on blank paper. Frame anything on the page and it becomes a flashcard with spaced repetition behind it.',
-        bullets: ['Pressure-sensitive ink, palm rejection, shape snapping', 'Ruler, protractor, set square and compass', 'Calculator and periodic table docked beside the page'],
-        icon: 'book',
+        kind: 'library',
+        label: 'Library',
+        body: 'PDFs and whiteboards in folders, with how far through each one you actually are.',
+      },
+      {
+        kind: 'page',
+        label: 'The page',
+        body: 'Solve on the textbook itself, with a ruler, a calculator and the periodic table docked beside it.',
+      },
+      {
+        kind: 'cards',
+        label: 'Flashcards',
+        body: 'Cut a problem out of a page and it becomes a card, with spaced repetition behind it.',
+      },
+      {
+        kind: 'focus',
+        label: 'Focus',
+        body: 'A full-screen session tied to the task you are on. The minutes count themselves afterwards.',
+      },
+      {
+        kind: 'exams',
+        label: 'Exams',
+        body: 'A countdown and a readiness figure worked out from tasks, cards and hours actually logged.',
+      },
+      {
+        kind: 'goals',
+        label: 'Goals',
+        body: 'Measured in minutes, tasks, cards or pages — and told plainly when you are behind the pace.',
+      },
+      {
+        kind: 'stats',
+        label: 'Statistics',
+        body: 'Where the hours went, by day and by subject. Nothing here is typed in by hand.',
       },
     ],
   },
@@ -173,7 +199,7 @@ const EN: LandingCopy = {
     items: [
       {
         title: 'Your device holds the original',
-        body: 'Everything is written to your browser first and works with no account at all. Sync is something you switch on, not something you are signed up for.',
+        body: 'Everything is written to your browser first and opens with no network at all. Sync is something you switch on, not something you are signed up for.',
         icon: 'shield',
       },
       {
@@ -237,7 +263,7 @@ const BG: LandingCopy = {
     lead: 'Plauvia държи учебниците, задачите, картите и учебното време на едно място — така че планираното наистина да се случва.',
     primary: 'Започни',
     secondary: 'Виж как работи',
-    trust: ['Работи офлайн', 'Без реклами и проследяване', 'Профилът е по избор'],
+    trust: ['Работи офлайн', 'Без реклами и проследяване', 'Данните остават твои'],
   },
   metrics: [
     { value: '11', label: 'екрана, един продукт' },
@@ -297,30 +323,54 @@ const BG: LandingCopy = {
       },
     ],
   },
-  showcase: {
-    title: 'Едно работно място — от плана до страницата',
-    lead: 'Всяка част чете едни и същи записи, така че нищо не се поддържа синхронно на ръка.',
-    blocks: [
+  screens: {
+    title: 'Всеки екран, преди да си създал профил',
+    lead: 'Девет изгледа към едни и същи записи. Без стокови снимки и без измислени табла — всяко от тези е нарисувано от частите, от които е направено и самото приложение.',
+    items: [
       {
-        eyebrow: 'Табло и календар',
-        title: 'Кое е важното днес, преди да решиш каквото и да е',
-        body: 'Програма, срокове и завършени сесии в една линия на времето. Влачиш задача върху друг ден и тя е пренасрочена.',
-        bullets: ['Месец, седмица и ден', 'Просроченото никога не се крие тихо', 'Обратно броене до изпита с реална готовност'],
-        icon: 'dashboard',
+        kind: 'tasks',
+        label: 'Задачи',
+        body: 'Днес, просрочени, предстоящи и някой ден. Добавяш на един ред; пренасрочваш, без да отваряш.',
       },
       {
-        eyebrow: 'Фокус и цели',
-        title: 'Часове, които сами стават напредък',
-        body: 'Пускаш сесия и целият екран става сесията. Щом свърши, минутите вече са отчетени към целите ти.',
-        bullets: ['Помодоро, учебен час или дълъг блок', 'Цели в минути, задачи, карти или глави', 'Серии, нива и постижения от истинска работа'],
-        icon: 'timer',
+        kind: 'calendar',
+        label: 'Календар',
+        body: 'Месец, седмица, ден и програмата. Влачиш срок върху друг ден и той е преместен.',
       },
       {
-        eyebrow: 'Учебници и карти',
-        title: 'Решаваш върху страницата, изрязваш задачата в карта',
-        body: 'Отваряш PDF или започваш на празна хартия. Очертаваш каквото и да е и то става флашкарта с интервално повторение зад нея.',
-        bullets: ['Мастило според натиска, защита от длан, изправяне на фигури', 'Линийка, транспортир, триъгълник и пергел', 'Калкулатор и периодична таблица до самата страница'],
-        icon: 'book',
+        kind: 'library',
+        label: 'Библиотека',
+        body: 'PDF-и и дъски в папки, заедно с това докъде наистина си стигнал във всяко.',
+      },
+      {
+        kind: 'page',
+        label: 'Страницата',
+        body: 'Решаваш върху самия учебник, с линийка, калкулатор и периодична таблица до него.',
+      },
+      {
+        kind: 'cards',
+        label: 'Флашкарти',
+        body: 'Изрязваш задача от страницата и тя става карта, с интервално повторение зад нея.',
+      },
+      {
+        kind: 'focus',
+        label: 'Фокус',
+        body: 'Сесия на цял екран, вързана за задачата, по която си. Минутите после се броят сами.',
+      },
+      {
+        kind: 'exams',
+        label: 'Изпити',
+        body: 'Обратно броене и готовност, сметната от задачите, картите и часовете, които наистина си направил.',
+      },
+      {
+        kind: 'goals',
+        label: 'Цели',
+        body: 'В минути, задачи, карти или страници — и казано направо, когато изоставаш от темпото.',
+      },
+      {
+        kind: 'stats',
+        label: 'Статистика',
+        body: 'Къде отидоха часовете, по дни и по предмети. Нищо тук не се въвежда на ръка.',
       },
     ],
   },
@@ -362,7 +412,7 @@ const BG: LandingCopy = {
     items: [
       {
         title: 'Оригиналът е на твоето устройство',
-        body: 'Всичко се записва първо в браузъра ти и работи напълно без профил. Синхронизацията е нещо, което включваш, а не нещо, в което те записват.',
+        body: 'Всичко се записва първо в браузъра ти и се отваря дори без мрежа. Синхронизацията е нещо, което включваш, а не нещо, в което те записват.',
         icon: 'shield',
       },
       {
