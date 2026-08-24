@@ -56,13 +56,19 @@ export function appAddress(): string {
   if (doc) return `/document/${doc}`;
 
   const app = useApp.getState();
-  // The settings are one window; which room you are standing in is internal,
-  // like a scroll position. A room only reaches the address when something
-  // asked for it by name — `/app/settings/sync` is a link worth sending, and
-  // clicking through the list afterwards is not worth a history entry each.
-  if (app.settingsOpen) {
-    return app.settingsSection ? `/settings/${app.settingsSection}` : '/settings';
-  }
+  /**
+   * The settings are one window, and the address says so: `/settings`,
+   * whichever room you are standing in.
+   *
+   * Which room that is stays internal, like a scroll position. It used to
+   * reach the address, which meant the thing read `/settings/security` and
+   * then `/settings/backup` as somebody clicked down the list — a different
+   * address for every glance at the same window.
+   *
+   * `/settings/sync` still *opens* the sync section when somebody follows a
+   * link to it. It just does not stay in the address afterwards.
+   */
+  if (app.settingsOpen) return '/settings';
   if (useTimer.getState().view === 'full') return '/focus';
   if (app.subjectId) return `/subjects/${app.subjectId}`;
   return VIEW_PATHS[app.view];
@@ -166,7 +172,15 @@ function sync(): void {
   const label = appLabel();
   const here = normalisePath(window.location.pathname);
 
-  if (next !== here) history.pushState(null, '', `${next}${window.location.hash}`);
+  if (next !== here) {
+    // Collapsing `/settings/sync` to `/settings` is the address correcting
+    // itself, not a move. Pushing would leave a Back button that walks
+    // straight back into the same correction.
+    const correcting = here.startsWith('/settings/') && next === '/settings';
+    const url = `${next}${window.location.hash}`;
+    if (correcting) history.replaceState(null, '', url);
+    else history.pushState(null, '', url);
+  }
   if (useRoute.getState().path !== next) useRoute.setState({ path: next });
 
   applyHead(next, currentLang(), label);

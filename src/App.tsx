@@ -15,6 +15,7 @@ import { installProgressEffects } from '@/services/progressBus';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
+import { applyAppPath } from '@/state/appAddress';
 import { HOME, entryPath, isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
@@ -254,7 +255,11 @@ export default function App() {
     doorFrom.current = null;
     if (!back || !(route.path === '/login' || route.path === '/register')) return;
     route.go(back);
-    if (signedIn && isAppPath(back)) void import('@/state/appAddress').then((m) => m.applyAppPath(back));
+    // In the same tick, not behind a dynamic import: the shell mounts the
+    // moment this render lands and starts writing the address from the app's
+    // state, so a screen that arrives a microtask later has already been
+    // overwritten by the dashboard.
+    if (signedIn && isAppPath(back)) applyAppPath(back);
   }, [authOpen, signedIn, cloudConfigured, authMode, path]);
 
   const openSearch = useCallback(() => {
