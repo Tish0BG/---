@@ -50,7 +50,7 @@ export function SyncSection() {
             ),
           )}
         </p>
-        <Button variant="primary" onClick={() => useApp.getState().setAuth(true)}>
+        <Button variant="primary" onClick={() => useApp.getState().setAuth(true, 'signin')}>
           {t(L('Влез в профил', 'Sign in'))}
         </Button>
       </div>
@@ -161,7 +161,7 @@ export function SyncSection() {
 
 function Metric({ value, label }: { value: string; label: string }) {
   return (
-    <div className="rounded-xl py-2 text-center" style={{ background: 'var(--c-surface-2)' }}>
+    <div className="rounded-[10px] py-2 text-center" style={{ background: 'var(--c-surface-2)' }}>
       <div className="t-num text-[15px] font-medium leading-none">{value}</div>
       <div className="mt-1 text-[10.5px] text-muted">{label}</div>
     </div>

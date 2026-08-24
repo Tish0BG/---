@@ -30,7 +30,14 @@ import { useTimer } from './timerStore';
 import { tr, L } from '@/i18n';
 
 const AUTO_KEY = 'studypdf.autosync';
-/** Remembers "I'll use this without an account", so the door is only held open once. */
+/**
+ * The key that used to remember "I'll use this without an account".
+ *
+ * There is no such door any more — the app is behind the account, and the
+ * marketing page is what a visitor sees instead. The key is still named here
+ * only so that anybody who set it before can be let out of a state the
+ * product no longer has; see `init`.
+ */
 const SKIP_KEY = 'studypdf.skipauth';
 /** Quiet background sync interval while the app is open. */
 const AUTO_EVERY = 5 * 60 * 1000;
@@ -56,12 +63,6 @@ interface AuthStore {
   sync: SyncState;
   autoSync: boolean;
   pendingFiles: number;
-  /**
-   * True once the person has said they want to use the app without an
-   * account. The sign-in page is the front door of the site, but a door that
-   * cannot be walked past is a wall.
-   */
-  skipped: boolean;
   /** last message from a sign-up / reset flow */
   notice: string | null;
   /**
@@ -95,8 +96,6 @@ interface AuthStore {
   init(): Promise<void>;
   configure(url: string, anonKey: string): Promise<string | null>;
   disconnect(): void;
-  /** continue without signing in, and stop asking */
-  skip(): void;
   /** leaves the recovery screen once the password is changed or abandoned */
   endRecovery(): void;
 
@@ -155,7 +154,6 @@ export const useAuth = create<AuthStore>((set, get) => ({
   sync: EMPTY_SYNC,
   autoSync: localStorage.getItem(AUTO_KEY) !== 'off',
   pendingFiles: 0,
-  skipped: localStorage.getItem(SKIP_KEY) === 'yes',
   notice: null,
   recovery: false,
   awaitingConfirm: null,
@@ -164,6 +162,10 @@ export const useAuth = create<AuthStore>((set, get) => ({
   emailTaken: false,
 
   async init() {
+    // Anybody who once chose "use it without an account" is let out of that
+    // state here: the app no longer has one, and a stale flag would otherwise
+    // sit in their browser forever meaning nothing.
+    localStorage.removeItem(SKIP_KEY);
     // The site may carry its own cloud.json; it has to be read before we can
     // say whether this install has a backend at all.
     await loadRuntimeConfig();
@@ -221,11 +223,6 @@ export const useAuth = create<AuthStore>((set, get) => ({
     return null;
   },
 
-  skip() {
-    localStorage.setItem(SKIP_KEY, 'yes');
-    set({ skipped: true });
-  },
-
   endRecovery() {
     // The token lives in the fragment; leaving it there would put the app
     // back into recovery on the next reload.
@@ -249,8 +246,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     const { data, error } = await client.auth.signInWithPassword({ email: email.trim(), password });
     if (error) return humanError(error);
     clearAttempts('signin');
-    localStorage.removeItem(SKIP_KEY);
-    set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null, skipped: false });
+    set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null });
     // Syncing before the second factor is answered would pull the library down
     // for a session that has not finished proving who it belongs to.
     await get().refreshMfa();
@@ -304,8 +300,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
       set({ awaitingConfirm: email.trim(), notice: null });
       return null;
     }
-    localStorage.removeItem(SKIP_KEY);
-    set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null, skipped: false });
+    set({ session: data.session, user: data.user, notice: null, awaitingConfirm: null });
     if (name) {
       const profile = useWorkspace.getState().profile;
       if (!profile.name) await useWorkspace.getState().saveProfile({ name });
@@ -387,7 +382,6 @@ export const useAuth = create<AuthStore>((set, get) => ({
       },
     });
     if (error) return humanError(error);
-    localStorage.removeItem(SKIP_KEY);
     return null;
   },
 
@@ -450,13 +444,11 @@ export const useAuth = create<AuthStore>((set, get) => ({
     }
 
     clearAttempts('signin');
-    localStorage.removeItem(SKIP_KEY);
     set({
       session: data.session,
       user: data.user,
       notice: null,
       awaitingConfirm: null,
-      skipped: false,
       codeSentTo: null,
       // A recovery code lands on the "choose a new password" screen; a sign-in
       // code goes straight into the app.
@@ -499,14 +491,12 @@ export const useAuth = create<AuthStore>((set, get) => ({
     await (await getClient())?.auth.signOut();
     // The watermarks belong to the account, not to the browser.
     await resetSyncState();
-    localStorage.removeItem(SKIP_KEY);
     set({
       user: null,
       session: null,
       sync: EMPTY_SYNC,
       notice: null,
       awaitingConfirm: null,
-      skipped: false,
       mfaPending: false,
       codeSentTo: null,
     });
@@ -585,8 +575,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   async removeAccount() {
     try {
       await deleteAccount();
-      localStorage.removeItem(SKIP_KEY);
-      set({ user: null, session: null, sync: EMPTY_SYNC, notice: null, skipped: false });
+      set({ user: null, session: null, sync: EMPTY_SYNC, notice: null });
       notify.ok(tr(L('Профилът е изтрит', 'Account deleted')), tr(L('Данните на това устройство остават непокътнати.', 'The data on this device is untouched.')));
       return null;
     } catch (err) {

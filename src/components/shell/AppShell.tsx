@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useAppAddress } from '@/state/appAddress';
 import { ConnectionBar } from '../system/ConnectionBar';
 import { useIsCompact, useIsPhone } from '../kit';
 import { Sidebar, SidebarScrim } from './Sidebar';
@@ -17,6 +18,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const compact = useIsCompact();
   const phone = useIsPhone();
   const [drawer, setDrawer] = useState(false);
+
+  // While the shell is on screen, the address bar and the tab follow it.
+  useAppAddress();
 
   useEffect(() => {
     if (!compact) setDrawer(false);

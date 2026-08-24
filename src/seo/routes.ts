@@ -149,10 +149,41 @@ export const PUBLIC_ROUTES: PublicRoute[] = [
 ];
 
 /**
- * Addresses that belong to the app rather than to the web: real links people
- * paste and bookmark, but nothing a search engine should hold on to.
+ * Addresses that belong to the app rather than to the web.
+ *
+ * Real links people paste and bookmark — every screen has one now, so a
+ * calendar can be sent to somebody the same way a page of the site can — but
+ * nothing a search engine should hold on to. A crawler is not signed in, so
+ * each of these would serve it the same door; they are `noindex` in the head
+ * and disallowed in robots.txt, and none of them is in `sitemap.xml`.
+ *
+ * Kept here as plain strings on purpose. This file is read by the build
+ * script under Node, so it must not drag a single store in behind it.
  */
 export const APP_PATHS = ['/login', '/signup', '/app'] as const;
+
+/** One per screen. The slug after `/app/` is what the app calls the view. */
+export const APP_SCREEN_PATHS = [
+  '/app/tasks',
+  '/app/calendar',
+  '/app/goals',
+  '/app/exams',
+  '/app/library',
+  '/app/cards',
+  '/app/focus',
+  '/app/stats',
+  '/app/achievements',
+  '/app/subjects',
+  '/app/profile',
+  '/app/settings',
+] as const;
+
+/**
+ * The addresses that carry an id: an open document, one subject's page, one
+ * room of the settings. Ids are base-36 and lower-case, which is why
+ * `normalisePath` lower-casing the address does no harm here.
+ */
+const APP_DEEP_PATH = /^\/app\/(d|subjects|settings)\/[a-z0-9_-]+$/;
 
 export const routeByPath = (path: string): PublicRoute | undefined =>
   PUBLIC_ROUTES.find((r) => r.path === normalisePath(path));
@@ -163,5 +194,14 @@ export function normalisePath(path: string): string {
   return clean === '' ? '/' : clean.toLowerCase();
 }
 
-export const isAppPath = (path: string): boolean =>
-  (APP_PATHS as readonly string[]).includes(normalisePath(path));
+export const isAppPath = (path: string): boolean => {
+  const clean = normalisePath(path);
+  return (
+    (APP_PATHS as readonly string[]).includes(clean) ||
+    (APP_SCREEN_PATHS as readonly string[]).includes(clean) ||
+    APP_DEEP_PATH.test(clean)
+  );
+};
+
+/** True for anything that is neither a public page nor one of the app's own links. */
+export const isUnknownPath = (path: string): boolean => !routeByPath(path) && !isAppPath(path);

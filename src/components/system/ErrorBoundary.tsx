@@ -1,5 +1,4 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
-import { BRAND } from '@/brand';
 import { currentLang } from '@/i18n';
 import { Icon } from '../Icon';
 
@@ -16,8 +15,6 @@ interface Props {
 
 interface State {
   error: Error | null;
-  stack: string;
-  copied: boolean;
 }
 
 /**
@@ -26,11 +23,23 @@ interface State {
  * A React crash unmounts the whole tree and leaves a white page — which, in
  * an app that holds someone's entire notebook, reads as "my work is gone".
  * It is not: everything lives in IndexedDB and was written long before the
- * render failed. Saying so is most of what this screen is for; the other part
- * is a copyable report, because "it broke" is not a bug report.
+ * render failed. Saying so is the whole job of this screen.
+ *
+ * It used to do more, and the more was a mistake. There was a "copy the
+ * details" button that put the stack trace, the component tree and the user
+ * agent on the clipboard, and a panel that printed the same thing on the
+ * page. That is a debugging tool wearing the clothes of a support feature: it
+ * hands a stranger the internal shape of the application — file paths, module
+ * names, the route that failed — which is exactly the reconnaissance an
+ * attacker would otherwise have to work for. A person who has just lost their
+ * screen needs one sentence and one button, not an incident report they
+ * cannot read and should not be holding.
+ *
+ * The error still goes to `console.error`, where a developer with the
+ * device in front of them can read it and nobody else is shown anything.
  */
 export class ErrorBoundary extends Component<Props, State> {
-  state: State = { error: null, stack: '', copied: false };
+  state: State = { error: null };
 
   static getDerivedStateFromError(error: Error): Partial<State> {
     return { error };
@@ -38,89 +47,45 @@ export class ErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
     console.error('Plauvia · unexpected error', error, info);
-    this.setState({ stack: `${error.stack ?? error.message}\n\n${info.componentStack ?? ''}`.trim() });
-  }
-
-  private report(): string {
-    return [
-      `${BRAND.name} · ${new Date().toISOString()}`,
-      navigator.userAgent,
-      `screen: ${window.innerWidth}×${window.innerHeight}`,
-      '',
-      this.state.stack || String(this.state.error),
-    ].join('\n');
   }
 
   render(): ReactNode {
-    const { error } = this.state;
-    if (!error) return this.props.children;
+    if (!this.state.error) return this.props.children;
 
     return (
       <div className="grid h-full place-items-center overflow-y-auto px-5 py-10" style={{ background: 'var(--c-bg)' }}>
-        <div className="w-full max-w-[460px]">
+        <div className="w-full max-w-[420px] text-center">
           <span
-            className="grid h-12 w-12 place-items-center rounded-2xl"
-            style={{ background: 'color-mix(in srgb, var(--c-danger) 12%, transparent)', color: 'var(--c-danger)' }}
+            className="mx-auto grid h-11 w-11 place-items-center rounded-[12px]"
+            style={{ background: 'var(--c-surface-3)', color: 'var(--c-muted)' }}
           >
-            <Icon name="alert" size={22} />
+            <Icon name="refresh" size={20} />
           </span>
 
-          <h1
-            className="mt-4 font-semibold leading-[1.12]"
-            style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-          >
-            {say('Нещо се обърка', 'Something went wrong')}
-          </h1>
-          <p className="mt-2 text-[13px] leading-relaxed text-muted">
-            {say('Приложението спря неочаквано. ', 'The app stopped unexpectedly. ')}
-            <b className="text-ink">
-              {say('Записките ти са непокътнати', 'Your notes are untouched')}
-            </b>
+          <h1 className="t-h2 mt-4">{say('Екранът не се зареди', 'This screen did not load')}</h1>
+          <p className="mt-2.5 text-[13.5px] leading-relaxed text-muted">
+            <b className="font-medium text-ink">
+              {say('Записките ти са непокътнати.', 'Your notes are untouched.')}
+            </b>{' '}
             {say(
-              ' — те се пазят в браузъра много преди екранът да се начертае, а не в него.',
-              ' — they are kept in the browser long before the screen is drawn, not in it.',
+              'Всичко се пази в браузъра много преди екранът да се начертае, а не в него. Презареждането обикновено е достатъчно.',
+              'Everything is kept in the browser long before the screen is drawn, not in it. Reloading is usually enough.',
             )}
           </p>
 
-          <div className="mt-4 flex flex-wrap gap-2">
-            <button className="btn btn-primary h-10" onClick={() => window.location.reload()}>
-              <Icon name="refresh" size={15} />
+          <div className="mt-6 flex flex-wrap justify-center gap-2">
+            <button className="btn btn-primary btn-lg" onClick={() => window.location.reload()}>
               {say('Презареди', 'Reload')}
             </button>
-            <button
-              className="btn btn-outline h-10"
-              onClick={() =>
-                void navigator.clipboard.writeText(this.report()).then(() => this.setState({ copied: true }))
-              }
-            >
-              <Icon name={this.state.copied ? 'check' : 'copy'} size={15} />
-              {this.state.copied
-                ? say('Копирано', 'Copied')
-                : say('Копирай подробностите', 'Copy the details')}
-            </button>
+            <a className="btn btn-outline btn-lg" href="/">
+              {say('Към началото', 'Go to the home page')}
+            </a>
           </div>
 
-          {/* Only in development. In production the report is still one click
-              away on the clipboard, but internal paths and component stacks do
-              not get printed onto a stranger's screen. */}
-          {import.meta.env.DEV && (
-            <details className="mt-4">
-              <summary className="cursor-pointer text-[12px] text-muted">
-                {say('Технически подробности', 'Technical details')}
-              </summary>
-              <pre
-                className="scroll-thin mt-2 max-h-52 overflow-auto rounded-xl p-3 font-mono text-[11px] leading-relaxed"
-                style={{ background: 'var(--c-surface-2)', color: 'var(--c-muted)' }}
-              >
-                {this.state.stack || String(error)}
-              </pre>
-            </details>
-          )}
-
-          <p className="mt-4 text-[11.5px] leading-relaxed text-faint">
+          <p className="mt-6 text-[12px] leading-relaxed text-faint">
             {say(
-              'Ако се повтаря: направи резервно копие от Настройки → Резервно копие, преди да чистиш данните на браузъра.',
-              'If it keeps happening: take a backup from Settings → Backup before clearing your browser data.',
+              'Ако се повтаря, направи резервно копие от Настройки → Данни и офлайн, преди да чистиш данните на браузъра.',
+              'If it keeps happening, take a backup from Settings → Data & offline before clearing your browser data.',
             )}
           </p>
         </div>

@@ -98,9 +98,9 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               onClick={() => setSection(s.id)}
               className="flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-[12.5px] font-medium"
               style={{
-                borderColor: section === s.id ? 'transparent' : 'var(--c-line)',
-                background: section === s.id ? 'var(--c-accent-soft)' : 'var(--c-surface)',
-                color: section === s.id ? 'var(--c-accent)' : 'var(--c-muted)',
+                borderColor: 'var(--c-line)',
+                background: section === s.id ? 'var(--c-surface-3)' : 'var(--c-surface)',
+                color: section === s.id ? 'var(--c-text)' : 'var(--c-muted)',
               }}
             >
               <Icon name={s.icon} size={13} />
@@ -125,7 +125,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         role="dialog"
         aria-modal="true"
         aria-label={t(S.settings)}
-        className="animate-scale flex w-full max-w-[860px] overflow-hidden rounded-[18px]"
+        className="animate-scale flex w-full max-w-[860px] overflow-hidden rounded-[14px]"
         style={{
           height: 'min(660px, 88vh)',
           background: 'var(--c-surface)',
@@ -143,10 +143,11 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
               key={s.id}
               onClick={() => setSection(s.id)}
               aria-current={section === s.id ? 'page' : undefined}
-              className={`mb-0.5 flex h-9 cursor-pointer items-center gap-2.5 rounded-[10px] px-2.5 text-[13px] transition-colors ${
-                section === s.id ? 'font-semibold' : 'text-muted hover:bg-surface-3 hover:text-ink'
+              className={`mb-0.5 flex h-9 cursor-pointer items-center gap-2.5 rounded-[8px] px-2.5 text-[13px] transition-colors ${
+                section === s.id
+                  ? 'bg-surface-3 font-medium text-ink'
+                  : 'text-muted hover:bg-surface-3 hover:text-ink'
               }`}
-              style={section === s.id ? { background: 'var(--c-accent-soft)', color: 'var(--c-accent)' } : undefined}
             >
               <Icon name={s.icon} size={15.5} />
               <span className="truncate">{t(s.label)}</span>
@@ -244,7 +245,7 @@ function AppearanceSection() {
               }}
             >
               <span
-                className="grid h-8 w-8 shrink-0 place-items-center rounded-[9px] text-[11px] font-semibold"
+                className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px] text-[11px] font-semibold"
                 style={{
                   background: lang === option.id ? 'var(--c-accent)' : 'var(--c-surface-3)',
                   color: lang === option.id ? '#fff' : 'var(--c-muted)',
@@ -883,8 +884,8 @@ function AboutSection() {
     <div className="space-y-6">
       <div className="card-quiet flex items-center gap-3 p-4">
         <span
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px] text-white"
-          style={{ background: 'var(--grad-accent)' }}
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px]"
+          style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
         >
           <Icon name="book" size={21} />
         </span>
@@ -976,7 +977,7 @@ function ProfileSection() {
 
       <div className="flex items-center gap-3">
         <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl text-[26px]"
+          className="grid h-14 w-14 shrink-0 place-items-center rounded-[12px] text-[26px]"
           style={{ background: `color-mix(in srgb, ${profile.color} 18%, transparent)` }}
         >
           {profile.avatar}

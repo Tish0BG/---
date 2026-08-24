@@ -1,9 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { submitChallenge, useBackupCode } from '@/services/cloud/mfa';
-import { BRAND } from '@/brand';
 import { L, useT } from '@/i18n';
-import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
+import { AuthLayout, AuthNote, AuthPanel, AuthTitle } from './Shell';
 import { Icon } from '../Icon';
 
 /**
@@ -57,38 +56,32 @@ export function MfaChallenge() {
   const ready = backup ? code.replace(/\s|-/g, '').length >= 10 : code.replace(/\s/g, '').length === 6;
 
   return (
-    <div className="grid h-full place-items-center overflow-y-auto px-5 py-10" style={{ background: 'var(--c-bg)' }}>
-      <div className="w-full max-w-[380px]">
-        <span className="flex items-center gap-2.5">
-          <PlauviaTile size={34} title={BRAND.name} />
-          <PlauviaWordmark size={17} />
-        </span>
-
-        <h1
-          className="mt-7 font-semibold leading-[1.12]"
-          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-        >
-          {t(backup ? L('Резервен код', 'Backup code') : L('Още една стъпка', 'One more step'))}
-        </h1>
-        <p className="mt-2 text-[13.5px] leading-relaxed text-muted">
-          {backup
-            ? t(
-                L(
-                  'Въведи един от кодовете, които записа при настройката. Всеки работи по веднъж и сваля двуфакторната защита, за да можеш да я настроиш наново.',
-                  'Enter one of the codes you saved during setup. Each works once, and it switches the second factor off so you can set it up again.',
-                ),
-              )
-            : t(
-                L(
-                  'Отвори приложението за кодове и въведи шестте цифри за Plauvia.',
-                  'Open your authenticator app and enter the six digits for Plauvia.',
-                ),
-              )}
-        </p>
-        {email && <p className="mt-1 text-[12.5px] text-faint">{email}</p>}
+    <AuthLayout>
+      <AuthPanel>
+        <AuthTitle
+          icon={backup ? 'key' : 'shield'}
+          title={t(backup ? L('Резервен код', 'Backup code') : L('Още една стъпка', 'One more step'))}
+          hint={
+            <>
+              {backup
+                ? t(
+                    L(
+                      'Въведи един от кодовете, които записа при настройката. Всеки работи по веднъж и сваля двуфакторната защита, за да можеш да я настроиш наново.',
+                      'Enter one of the codes you saved during setup. Each works once, and it switches the second factor off so you can set it up again.',
+                    ),
+                  )
+                : t(
+                    L(
+                      'Отвори приложението за кодове и въведи шестте цифри за Plauvia.',
+                      'Open your authenticator app and enter the six digits for Plauvia.',
+                    ),
+                  )}
+              {email && <span className="mt-1 block text-faint">{email}</span>}
+            </>
+          }
+        />
 
         <form
-          className="mt-6"
           onSubmit={(e) => {
             e.preventDefault();
             if (ready && !busy) void submit();
@@ -109,10 +102,9 @@ export function MfaChallenge() {
           />
 
           {error && (
-            <p className="mt-3 flex items-start gap-1.5 text-[12.5px] leading-snug" style={{ color: 'var(--c-danger)' }}>
-              <Icon name="alert" size={13} className="mt-px shrink-0" />
-              {error}
-            </p>
+            <div className="mt-3">
+              <AuthNote text={error} />
+            </div>
           )}
 
           <button className="btn btn-primary btn-lg mt-4 w-full" disabled={!ready || busy} type="submit">
@@ -121,25 +113,26 @@ export function MfaChallenge() {
           </button>
         </form>
 
-        <div className="mt-5 flex items-center justify-between text-[12.5px]">
+        <div className="mt-5 flex items-center justify-between gap-3 text-[12.5px]">
           <button
-            className="cursor-pointer text-muted underline-offset-2 hover:underline"
+            className="link-quiet"
             onClick={() => {
               setBackup(!backup);
               setCode('');
               setError(null);
             }}
           >
-            {t(backup ? L('← Обратно към приложението', '← Back to the app code') : L('Нямам телефона си', "I do not have my phone"))}
+            {t(
+              backup
+                ? L('← Обратно към приложението', '← Back to the app code')
+                : L('Нямам телефона си', 'I do not have my phone'),
+            )}
           </button>
-          <button
-            className="cursor-pointer text-muted underline-offset-2 hover:underline"
-            onClick={() => void useAuth.getState().signOut()}
-          >
+          <button className="link-quiet" onClick={() => void useAuth.getState().signOut()}>
             {t(L('Излез', 'Sign out'))}
           </button>
         </div>
-      </div>
-    </div>
+      </AuthPanel>
+    </AuthLayout>
   );
 }

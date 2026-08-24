@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useWorkspace, SUBJECT_COLORS } from '@/state/workspaceStore';
+import { useWorkspace, SUBJECT_COLORS, SUGGESTED_SUBJECTS } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
 import { useGoals } from '@/state/goalStore';
 import { useAuth } from '@/state/authStore';
@@ -28,19 +28,6 @@ import { Button, ProgressCells } from '../kit';
  */
 
 const DRAFT_KEY = 'plauvia.onboarding.draft.v1';
-
-const SUGGESTIONS: { icon: string; bg: string; en: string }[] = [
-  { icon: 'sigma', bg: 'Математика', en: 'Mathematics' },
-  { icon: 'book', bg: 'Български език и литература', en: 'Literature' },
-  { icon: 'globe', bg: 'Английски език', en: 'English' },
-  { icon: 'atom', bg: 'Физика', en: 'Physics' },
-  { icon: 'flask', bg: 'Химия', en: 'Chemistry' },
-  { icon: 'leaf', bg: 'Биология', en: 'Biology' },
-  { icon: 'target', bg: 'История', en: 'History' },
-  { icon: 'globe', bg: 'География', en: 'Geography' },
-  { icon: 'code', bg: 'Информатика', en: 'Computer science' },
-  { icon: 'palette', bg: 'Изкуство', en: 'Art' },
-];
 
 const AVATARS = ['🦉', '🦊', '🐨', '🐼', '🦅', '🐙', '🌿', '🔭', '🎯', '⚡️', '🚀', '📐'];
 
@@ -133,7 +120,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [wantGoal, setWantGoal] = useState(saved.wantGoal ?? true);
   const [saving, setSaving] = useState(false);
 
-  const names = useMemo(() => SUGGESTIONS.map((s) => (lang === 'bg' ? s.bg : s.en)), [lang]);
+  const names = useMemo(() => SUGGESTED_SUBJECTS.map((s) => s[lang]), [lang]);
   const usernameProblem = username.trim() ? validateUsername(username) : null;
 
   /** Written on every change, so a refresh resumes rather than restarts. */
@@ -174,8 +161,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
       sessionMinutes: session,
     });
 
+    // Only what was ticked, named exactly as it was read. Nothing is created
+    // for somebody who picked nothing — an empty subject list is a legitimate
+    // answer to "what are you studying", and inventing nine subjects for a
+    // person who did not choose them is the app deciding on their behalf.
     for (const label of picked) {
-      const suggestion = SUGGESTIONS.find((s) => (lang === 'bg' ? s.bg : s.en) === label);
+      const suggestion = SUGGESTED_SUBJECTS.find((s) => s[lang] === label);
       await workspace.createSubject({ name: label, icon: suggestion?.icon ?? 'book' });
     }
 
@@ -301,7 +292,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     key={code}
                     onClick={() => setLang(code)}
                     aria-pressed={lang === code}
-                    className="flex cursor-pointer items-center justify-between rounded-[14px] border p-4 text-left transition-all"
+                    className="flex cursor-pointer items-center justify-between rounded-[12px] border p-4 text-left transition-all"
                     style={{
                       borderColor: lang === code ? 'var(--c-accent)' : 'var(--c-line)',
                       background: lang === code ? 'var(--c-accent-soft)' : 'var(--c-surface)',
@@ -415,7 +406,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     onClick={() => setAvatar(emoji)}
                     aria-pressed={avatar === emoji}
                     aria-label={emoji}
-                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-[13px] text-[20px] transition-all"
+                    className="grid h-11 w-11 cursor-pointer place-items-center rounded-[10px] text-[20px] transition-all"
                     style={{
                       background: avatar === emoji ? 'var(--c-accent-soft)' : 'var(--c-surface)',
                       border: `1px solid ${avatar === emoji ? 'var(--c-accent)' : 'var(--c-line)'}`,
@@ -476,7 +467,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                         color: active ? tint : 'var(--c-muted)',
                       }}
                     >
-                      <Icon name={SUGGESTIONS[i].icon} size={14} />
+                      <Icon name={SUGGESTED_SUBJECTS[i].icon} size={14} />
                       {label}
                       {active && <Icon name="check" size={13} strokeWidth={2.6} />}
                     </button>
@@ -532,7 +523,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     key={option.id}
                     onClick={() => setLevel(option.id)}
                     aria-pressed={level === option.id}
-                    className="flex cursor-pointer items-center gap-3 rounded-[14px] border p-3.5 text-left transition-all"
+                    className="flex cursor-pointer items-center gap-3 rounded-[12px] border p-3.5 text-left transition-all"
                     style={{
                       borderColor: level === option.id ? 'var(--c-accent)' : 'var(--c-line)',
                       background: level === option.id ? 'var(--c-accent-soft)' : 'var(--c-surface)',
@@ -630,7 +621,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     key={option.m}
                     onClick={() => setSession(option.m)}
                     aria-pressed={session === option.m}
-                    className="cursor-pointer rounded-[14px] border p-3 text-left transition-all"
+                    className="cursor-pointer rounded-[12px] border p-3 text-left transition-all"
                     style={{
                       borderColor: session === option.m ? 'var(--c-accent)' : 'var(--c-line)',
                       background: session === option.m ? 'var(--c-accent-soft)' : 'var(--c-surface)',
@@ -649,7 +640,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     key={m}
                     onClick={() => setDaily(m)}
                     aria-pressed={daily === m}
-                    className="cursor-pointer rounded-[14px] border p-3 text-center transition-all"
+                    className="cursor-pointer rounded-[12px] border p-3 text-center transition-all"
                     style={{
                       borderColor: daily === m ? 'var(--c-accent)' : 'var(--c-line)',
                       background: daily === m ? 'var(--c-accent-soft)' : 'var(--c-surface)',
@@ -663,7 +654,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
               </div>
 
               <label
-                className="mt-6 flex cursor-pointer items-start gap-3 rounded-[14px] border border-line p-3.5"
+                className="mt-6 flex cursor-pointer items-start gap-3 rounded-[12px] border border-line p-3.5"
                 style={{ background: 'var(--c-surface)' }}
               >
                 <input
@@ -715,7 +706,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                     key={id}
                     onClick={() => useSettings.getState().set('theme', id)}
                     aria-pressed={theme === id}
-                    className="cursor-pointer rounded-[14px] border p-2.5 text-left transition-all"
+                    className="cursor-pointer rounded-[12px] border p-2.5 text-left transition-all"
                     style={{
                       borderColor: theme === id ? 'var(--c-accent)' : 'var(--c-line)',
                       background: theme === id ? 'var(--c-accent-soft)' : 'var(--c-surface)',
@@ -723,7 +714,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   >
                     <span
                       aria-hidden
-                      className="mb-2 grid h-12 w-full place-items-center rounded-[9px] border"
+                      className="mb-2 grid h-12 w-full place-items-center rounded-[8px] border"
                       style={{ background: bg, borderColor: 'var(--c-line)', color: fg }}
                     >
                       <span className="text-[15px] font-semibold">Aa</span>
@@ -767,8 +758,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           {step === 6 && (
             <section className="animate-rise text-center">
               <span
-                className="animate-pop mx-auto grid h-20 w-20 place-items-center rounded-[26px] text-white"
-                style={{ background: 'var(--grad-accent)', boxShadow: 'var(--glow-brand)' }}
+                className="animate-pop mx-auto grid h-20 w-20 place-items-center rounded-[16px]"
+                style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
               >
                 <Icon name="rocket" size={34} strokeWidth={1.7} />
               </span>

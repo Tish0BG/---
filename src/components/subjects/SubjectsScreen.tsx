@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import type { Subject } from '@/types';
 import { useApp } from '@/state/appStore';
-import { useWorkspace, SUGGESTED_SUBJECTS, SUBJECT_COLORS } from '@/state/workspaceStore';
+import { useWorkspace, suggestedSubjects, SUBJECT_COLORS } from '@/state/workspaceStore';
 import { useLibrary } from '@/state/libraryStore';
 import { usePlanner, averageFor, openItems } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
@@ -39,7 +39,8 @@ export function SubjectsScreen() {
 
   const addSuggested = async () => {
     const existing = new Set(subjects.map((s) => s.name));
-    for (const [i, s] of SUGGESTED_SUBJECTS.entries()) {
+    // Named in the language being read, not in the one the list was typed in.
+    for (const [i, s] of suggestedSubjects().entries()) {
       if (existing.has(s.name)) continue;
       await useWorkspace.getState().createSubject({
         name: s.name,
@@ -113,7 +114,7 @@ export function SubjectsScreen() {
                   >
                     <span className="flex items-center gap-2.5">
                       <span
-                        className="grid h-10 w-10 shrink-0 place-items-center rounded-xl"
+                        className="grid h-10 w-10 shrink-0 place-items-center rounded-[10px]"
                         style={{ background: `color-mix(in srgb, ${s.color} 14%, transparent)`, color: s.color }}
                       >
                         <Icon name={s.icon} size={19} />

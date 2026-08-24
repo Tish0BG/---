@@ -131,7 +131,7 @@ export function StatCard({
         <span className="t-label">{label}</span>
         {icon && (
           <span
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-[9px]"
+            className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px]"
             style={{ background: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}
           >
             <Icon name={icon} size={15} strokeWidth={1.9} />

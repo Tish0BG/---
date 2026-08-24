@@ -58,16 +58,10 @@ export function AchievementsScreen() {
       {/* ------------------------------------------------------------ level */}
       <Card className="mb-5 overflow-hidden" flush>
         <div className="relative flex flex-wrap items-center gap-6 p-5 sm:p-6">
-          <span
-            aria-hidden
-            className="pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-[0.18] blur-3xl"
-            style={{ background: 'var(--grad-accent)' }}
-          />
-
           <ProgressRing value={level.progress} size={116} stroke={9} color="var(--c-brand)" colorTo="var(--c-aurora)">
             <div>
               <div className="t-num text-[30px] font-semibold leading-none tracking-[-0.03em]">{level.level}</div>
-              <div className="mt-1 text-[10.5px] uppercase tracking-[0.08em] text-muted">
+              <div className="mt-1 text-[11.5px] text-muted">
                 {t(S.level)}
               </div>
             </div>
@@ -169,21 +163,11 @@ function AchievementCard({ achievement }: { achievement: AchievementState }) {
       className="card relative overflow-hidden p-4"
       style={earned ? { borderColor: `color-mix(in srgb, ${color} 35%, var(--c-line))` } : { opacity: 0.86 }}
     >
-      {earned && (
-        <span
-          aria-hidden
-          className="pointer-events-none absolute -right-10 -top-12 h-32 w-32 rounded-full opacity-[0.14] blur-2xl"
-          style={{ background: color }}
-        />
-      )}
-
       <div className="relative flex items-start gap-3">
         <span
-          className="grid h-12 w-12 shrink-0 place-items-center rounded-[14px]"
+          className="grid h-12 w-12 shrink-0 place-items-center rounded-[12px]"
           style={{
-            background: earned
-              ? `linear-gradient(140deg, ${color}, color-mix(in srgb, ${color} 60%, #000))`
-              : 'var(--c-surface-3)',
+            background: earned ? color : 'var(--c-surface-3)',
             color: earned ? '#fff' : 'var(--c-faint)',
           }}
         >

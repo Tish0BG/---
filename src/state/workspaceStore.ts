@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import type { LearningProfile, PrivacySettings, Profile, Subject } from '@/types';
 import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
+import { currentLang, tr, L, type Lang } from '@/i18n';
 
 const PROFILE_KEY = 'profile';
 const LEARNING_KEY = 'learning';
@@ -34,18 +35,34 @@ export const SUBJECT_ICONS = [
   'target',
 ];
 
-/** Offered on the welcome screen so setup is two clicks, not twenty. */
-export const SUGGESTED_SUBJECTS: { name: string; icon: string }[] = [
-  { name: 'Математика', icon: 'sigma' },
-  { name: 'Български език и литература', icon: 'book' },
-  { name: 'Английски език', icon: 'globe' },
-  { name: 'История', icon: 'target' },
-  { name: 'География', icon: 'globe' },
-  { name: 'Биология', icon: 'leaf' },
-  { name: 'Химия', icon: 'flask' },
-  { name: 'Физика', icon: 'atom' },
-  { name: 'Информатика', icon: 'code' },
+/**
+ * The subjects offered during setup, so it is two clicks rather than twenty.
+ *
+ * In both languages, and in one place. There used to be two lists — this one
+ * in Bulgarian, and a second inside the setup screen with English beside it —
+ * which meant an English visitor picked "Chemistry" in setup and then got a
+ * subject called "Химия" from the button on the subjects screen. A list that
+ * exists twice will disagree with itself eventually; this one exists once.
+ *
+ * Nothing here is created on its own. These are names on buttons: a subject
+ * appears when somebody taps one, and never before.
+ */
+export const SUGGESTED_SUBJECTS: { icon: string; bg: string; en: string }[] = [
+  { icon: 'sigma', bg: 'Математика', en: 'Mathematics' },
+  { icon: 'book', bg: 'Български език и литература', en: 'Literature' },
+  { icon: 'globe', bg: 'Английски език', en: 'English' },
+  { icon: 'atom', bg: 'Физика', en: 'Physics' },
+  { icon: 'flask', bg: 'Химия', en: 'Chemistry' },
+  { icon: 'leaf', bg: 'Биология', en: 'Biology' },
+  { icon: 'target', bg: 'История', en: 'History' },
+  { icon: 'globe', bg: 'География', en: 'Geography' },
+  { icon: 'code', bg: 'Информатика', en: 'Computer science' },
+  { icon: 'palette', bg: 'Изкуство', en: 'Art' },
 ];
+
+/** The same list, resolved to the names a person is actually being shown. */
+export const suggestedSubjects = (lang: Lang = currentLang()): { name: string; icon: string }[] =>
+  SUGGESTED_SUBJECTS.map((s) => ({ name: s[lang], icon: s.icon }));
 
 export const EMPTY_PROFILE: Profile = {
   name: '',
@@ -184,7 +201,9 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
   async createSubjects(names) {
     for (const name of names) {
       if (get().subjects.some((s) => s.name === name)) continue;
-      const suggestion = SUGGESTED_SUBJECTS.find((s) => s.name === name);
+      // Matched in either language: the name arrives in whichever one the
+      // person was reading, and the icon should follow it either way.
+      const suggestion = SUGGESTED_SUBJECTS.find((s) => s.bg === name || s.en === name);
       await get().createSubject({ name, icon: suggestion?.icon ?? 'book' });
     }
   },
@@ -193,7 +212,7 @@ export const useWorkspace = create<WorkspaceStore>((set, get) => ({
     const list = get().subjects;
     const subject: Subject = {
       id: uid('sb_'),
-      name: 'Нов предмет',
+      name: tr(L('Нов предмет', 'New subject')),
       color: SUBJECT_COLORS[list.length % SUBJECT_COLORS.length],
       icon: 'book',
       teacher: '',

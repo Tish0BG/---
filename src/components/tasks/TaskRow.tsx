@@ -67,7 +67,7 @@ export function TaskRow({
         onClick={toggle}
         aria-pressed={item.done}
         aria-label={t(item.done ? L('Върни като незавършена', 'Mark as not done') : L('Отметни', 'Mark done'))}
-        className="relative grid h-[19px] w-[19px] shrink-0 cursor-pointer place-items-center rounded-[7px] border transition-all duration-150 active:scale-90"
+        className="relative grid h-[19px] w-[19px] shrink-0 cursor-pointer place-items-center rounded-[6px] border transition-all duration-150 active:scale-90"
         style={{
           borderColor: item.done ? 'var(--c-success)' : 'var(--c-line-strong)',
           background: item.done ? 'var(--c-success)' : 'transparent',

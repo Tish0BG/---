@@ -81,7 +81,7 @@ export function SubjectDetail({ id }: { id: string }) {
 
         <header className="mb-5 flex flex-wrap items-center gap-3">
           <span
-            className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl"
+            className="grid h-14 w-14 shrink-0 place-items-center rounded-[12px]"
             style={{ background: `color-mix(in srgb, ${subject.color} 15%, transparent)`, color: subject.color }}
           >
             <Icon name={subject.icon} size={26} />

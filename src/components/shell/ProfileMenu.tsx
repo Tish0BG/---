@@ -120,7 +120,7 @@ export function ProfileMenu() {
               icon="logIn"
               label={t(L('Влез в профил', 'Sign in'))}
               onClick={() => {
-                useApp.getState().setAuth(true);
+                useApp.getState().setAuth(true, 'signin');
                 close();
               }}
             />

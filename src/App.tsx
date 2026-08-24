@@ -15,7 +15,7 @@ import { installProgressEffects } from '@/services/progressBus';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
-import { isAppPath, routeByPath } from '@/seo/routes';
+import { isAppPath, normalisePath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { CommandPalette } from '@/components/shell/CommandPalette';
@@ -96,7 +96,6 @@ export default function App() {
   const authReady = useAuth((s) => s.ready);
   const cloudConfigured = useAuth((s) => s.configured);
   const signedIn = useAuth((s) => !!s.user);
-  const skippedAuth = useAuth((s) => s.skipped);
   const recovery = useAuth((s) => s.recovery);
   const mfaPending = useAuth((s) => s.mfaPending);
   const syncPhase = useAuth((s) => s.sync.phase);
@@ -148,6 +147,11 @@ export default function App() {
       .getState()
       .init()
       .then(() => {
+        // "Open what you had open" is for somebody arriving at the front
+        // door. An address that names a screen or a document has said where
+        // to go, and it outranks what this device happens to remember.
+        const here = normalisePath(window.location.pathname);
+        if (here === '/app' || here.startsWith('/app/')) return;
         const last = useSettings.getState().lastDocId;
         const exists = useLibrary.getState().documents.some((d) => d.id === last && !d.deletedAt);
         if (last && exists) void useViewer.getState().openDocument(last);
@@ -196,15 +200,21 @@ export default function App() {
   }, [uploadTick]);
 
   /**
-   * The installed app's long-press shortcuts open `?go=drive` and friends.
+   * `?go=drive` and friends: the shape the installed app's shortcuts used
+   * before the screens had addresses of their own. Kept working because it is
+   * in manifests already on people's home screens, and in links they sent.
    * Honoured once, then wiped from the address bar so a reload does not keep
    * yanking the person back to the same screen.
    */
   useEffect(() => {
-    // /login, /signup and /app are real links people paste and bookmark. The
-    // address is left alone — rewriting it to "/" mid-flight loses the page
-    // someone deliberately shared.
-    if (isAppPath(window.location.pathname)) useApp.getState().setAuth(true);
+    // /login and /signup are the door itself: somebody who pasted one has
+    // asked for the form, so it opens over whatever else would have shown.
+    // The screens under /app are not the door — they are the destination, and
+    // the render below decides whether the person can be let in yet.
+    const here = normalisePath(window.location.pathname);
+    if (here === '/login' || here === '/signup') {
+      useApp.getState().setAuth(true, here === '/signup' ? 'signup' : 'signin');
+    }
     const go = new URLSearchParams(window.location.search).get('go');
     if (!go) return;
     const target = resolveView(go);
@@ -274,12 +284,14 @@ export default function App() {
    * the home page falls through to the marketing-page-or-app decision below.
    */
   const publicRoute = routeByPath(path);
-  const openAuth = () => useApp.getState().setAuth(true);
+  const openAuth = (mode: 'signin' | 'signup' = 'signin') => useApp.getState().setAuth(true, mode);
+  const openSignUp = () => openAuth('signup');
+  const openSignIn = () => openAuth('signin');
 
   if (publicRoute && publicRoute.id !== 'home') {
     return (
       <Suspense fallback={<Splash />}>
-        <PublicPageView id={publicRoute.id} onStart={openAuth} onSignIn={openAuth} />
+        <PublicPageView id={publicRoute.id} onStart={openSignUp} onSignIn={openSignIn} />
       </Suspense>
     );
   }
@@ -287,7 +299,7 @@ export default function App() {
   if (isUnknownPath(path)) {
     return (
       <Suspense fallback={<Splash />}>
-        <NotFoundPage onStart={openAuth} />
+        <NotFoundPage onStart={openSignUp} />
       </Suspense>
     );
   }
@@ -299,11 +311,14 @@ export default function App() {
    * them nothing about what they would be logging into. "Get started" opens
    * the door, and everything past it is the app itself.
    */
-  if (cloudConfigured && !signedIn && !skippedAuth) {
-    if (!authOpen) {
+  // An address under /app is a request for a particular screen. Answering it
+  // with the marketing page would lose it; the form is the honest answer, and
+  // the address is left alone so it is still there once the door opens.
+  if (cloudConfigured && !signedIn) {
+    if (!authOpen && !isAppPath(path)) {
       return (
         <Suspense fallback={<Splash />}>
-          <Landing onStart={openAuth} onSignIn={openAuth} />
+          <Landing onStart={openSignUp} onSignIn={openSignIn} />
         </Suspense>
       );
     }
@@ -417,7 +432,7 @@ function Splash({ label }: { label?: string }) {
 function ScreenSkeleton() {
   return (
     <div className="mx-auto max-w-[1220px] px-4 py-5 sm:px-7 sm:py-7">
-      <div className="skeleton h-8 w-56 rounded-xl" />
+      <div className="skeleton h-8 w-56 rounded-[10px]" />
       <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[0, 1, 2, 3].map((i) => (
           <SkeletonCard key={i} lines={2} />

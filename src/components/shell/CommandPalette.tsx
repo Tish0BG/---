@@ -246,7 +246,7 @@ export function CommandPalette() {
       }}
     >
       <div
-        className="animate-scale w-full max-w-xl overflow-hidden rounded-[18px]"
+        className="animate-scale w-full max-w-xl overflow-hidden rounded-[14px]"
         style={{
           background: 'var(--c-surface)',
           border: '1px solid var(--c-line)',

@@ -42,7 +42,7 @@ export function SelectionBar() {
 
   return (
     <div
-      className="panel pointer-events-auto absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-xl px-1.5 py-1.5"
+      className="panel pointer-events-auto absolute left-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-1 rounded-[10px] px-1.5 py-1.5"
       style={{ boxShadow: 'var(--shadow-float)' }}
     >
       <span className="px-1.5 text-[12px] text-muted">{t(L(`${items.length} избрани`, `${items.length} selected`))}</span>

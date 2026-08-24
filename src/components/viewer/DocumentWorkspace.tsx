@@ -12,6 +12,7 @@ import { ExportDialog } from '../ExportDialog';
 import { ConnectionBar } from '../system/ConnectionBar';
 import { Icon } from '../Icon';
 import { Button, useIsCompact } from '../kit';
+import { useAppAddress } from '@/state/appAddress';
 
 /**
  * The reading and writing surface, with everything that only exists while a
@@ -42,6 +43,7 @@ export function DocumentWorkspace({
 }) {
   const t = useT();
   const compact = useIsCompact();
+  useAppAddress();
   const loadState = useViewer((s) => s.loadState);
   const loadLabel = useViewer((s) => s.loadLabel);
   const error = useViewer((s) => s.error);

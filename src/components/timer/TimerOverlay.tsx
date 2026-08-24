@@ -267,7 +267,7 @@ function FullScreen() {
         style={{
           width: ring * 2.6,
           height: ring * 2.6,
-          background: `radial-gradient(circle, color-mix(in srgb, ${accent} ${running ? 26 : 14}%, transparent) 0%, transparent 68%)`,
+          background: `radial-gradient(circle, color-mix(in srgb, ${accent} ${running ? 12 : 7}%, transparent) 0%, transparent 68%)`,
         }}
       />
 
@@ -334,7 +334,7 @@ function FullScreen() {
           <button
             onClick={() => store().toggleRun()}
             className="grid h-[86px] w-[86px] cursor-pointer place-items-center rounded-full text-white transition-transform active:scale-95"
-            style={{ background: accent, boxShadow: `0 12px 40px -12px ${accent}` }}
+            style={{ background: accent }}
             aria-label={t(running ? L('Пауза', 'Pause') : L('Старт', 'Start'))}
           >
             <Icon name={running ? 'pause' : 'play'} size={32} fill={!running} />
@@ -407,14 +407,14 @@ function SessionComplete({ minutes, accent }: { minutes: number; accent: string 
         aria-hidden
         className="animate-breathe pointer-events-none absolute left-1/2 top-1/2 h-[620px] w-[620px] -translate-x-1/2 -translate-y-1/2 rounded-full"
         style={{
-          background: `radial-gradient(circle, color-mix(in srgb, ${accent} 24%, transparent) 0%, transparent 66%)`,
+          background: `radial-gradient(circle, color-mix(in srgb, ${accent} 11%, transparent) 0%, transparent 66%)`,
         }}
       />
 
       <div className="animate-rise relative w-full max-w-[420px] text-center">
         <span
           className="animate-pop mx-auto grid h-[88px] w-[88px] place-items-center rounded-full text-white"
-          style={{ background: accent, boxShadow: `0 16px 50px -16px ${accent}` }}
+          style={{ background: accent }}
         >
           <Icon name="check" size={40} strokeWidth={2.6} />
         </span>

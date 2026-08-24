@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { applyHead } from '@/seo/head';
-import { isAppPath, normalisePath, routeByPath } from '@/seo/routes';
+import { isAppPath, normalisePath } from '@/seo/routes';
 import { currentLang, useLangStore } from '@/i18n';
 
 /**
@@ -38,25 +38,42 @@ export const useRoute = create<RouteStore>((set) => ({
   },
 }));
 
-/** True for anything that is neither a public page nor one of the app's own links. */
-export const isUnknownPath = (path: string): boolean =>
-  !routeByPath(path) && !isAppPath(path);
+/** Re-exported so the app keeps asking the router, and the router asks the table. */
+export { isUnknownPath } from '@/seo/routes';
 
 /**
  * Keeps the store, the address bar and the head in step. Installed once, from
  * App, alongside the other startup effects.
  */
 export function installRouting(): () => void {
+  /**
+   * Back and forward move between the app's screens as well as the site's
+   * pages now, so a pop has to put the app where the address says it is —
+   * `appAddress` will see the state already matches and push nothing back.
+   *
+   * Imported lazily: this module is loaded by the head writer and the timer,
+   * and the app stores have no business being pulled in behind them.
+   */
+  const enter = (path: string) => {
+    if (!isAppPath(path)) return;
+    void import('./appAddress').then((m) => m.applyAppPath(path));
+  };
+
   const onPop = () => {
     const path = normalisePath(window.location.pathname);
     useRoute.setState({ path });
     applyHead(path, currentLang());
+    enter(path);
   };
   window.addEventListener('popstate', onPop);
 
   // The head follows the interface language too: a Bulgarian visitor who
   // switches to English should not leave a Bulgarian title behind in the tab.
   const stopLang = useLangStore.subscribe((s) => applyHead(useRoute.getState().path, s.lang));
+
+  // A pasted link or a bookmark: `/app/calendar` should open the calendar,
+  // not the screen somebody last had open on this device.
+  enter(useRoute.getState().path);
 
   applyHead(useRoute.getState().path, currentLang());
 

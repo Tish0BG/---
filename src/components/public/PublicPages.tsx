@@ -223,21 +223,21 @@ function StartStrip({ onStart }: { onStart: () => void }) {
  * A dead end on a marketing site is usually a mistyped or an old link, so the
  * page spends its space on where to go next rather than on the number.
  */
+/**
+ * The page for an address that is not one.
+ *
+ * The head is already correct by the time this renders — `applyHead` gives an
+ * unknown path its own title, its own description, a `noindex` and a
+ * canonical pointing at itself rather than at the home page. So this is only
+ * the part a person reads: what happened, and the three ways out.
+ *
+ * It says nothing about what went wrong technically, and there is nothing
+ * here to copy. A stranger who mistyped a URL is owed a door, not a diagnosis
+ * of the building.
+ */
 export function NotFoundPage({ onStart }: { onStart: () => void }) {
   const lang = useLangStore((s) => s.lang);
   const go = useRoute((s) => s.go);
-
-  useEffect(() => {
-    // A soft 404 is a page that says "not found" while telling crawlers it is
-    // fine. The static host cannot send a 404 status for an SPA route, so at
-    // least keep the page out of the index.
-    const tag = document.querySelector<HTMLMetaElement>('meta[name="robots"]');
-    const previous = tag?.content;
-    if (tag) tag.content = 'noindex,follow';
-    return () => {
-      if (tag && previous) tag.content = previous;
-    };
-  }, []);
 
   return (
     <div className="grid h-full place-items-center px-5 py-12" style={{ background: 'var(--c-bg)' }}>
