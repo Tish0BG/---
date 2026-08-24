@@ -291,9 +291,8 @@ const written = [];
 for (const route of PUBLIC_ROUTES) {
   for (const lang of LANGS) {
     const path = localePath(route.path, lang);
-    const file = path === '/' ? 'index.html' : `${path.replace(/^\//, '')}/index.html`;
     written.push(
-      emit(file, {
+      emit(`${path.replace(/^\//, '')}/index.html`, {
         lang,
         seo: head({
           lang,
@@ -307,6 +306,35 @@ for (const route of PUBLIC_ROUTES) {
       }),
     );
   }
+}
+
+/**
+ * The root, which is a doorway rather than a page.
+ *
+ * `/` permanently redirects to `/homepage`, so on the live site this file is
+ * never served — but a redirect is a rule of the host, and the host is not the
+ * only thing that ever opens this folder. `npm run preview` opens it, the
+ * service worker starts from it offline, and somebody dragging `dist` onto a
+ * static server opens it. All three get the home page, with its canonical
+ * pointing at the name the page actually has, and the client moves the address
+ * across the moment it boots.
+ */
+{
+  const home = PUBLIC_ROUTES.find((r) => r.id === 'home');
+  written.push(
+    emit('index.html', {
+      lang: DEFAULT_LANG,
+      seo: head({
+        lang: DEFAULT_LANG,
+        route: home,
+        title: home.title[DEFAULT_LANG],
+        description: home.description[DEFAULT_LANG],
+        canonical: url(home.path, DEFAULT_LANG),
+        robots: 'index,follow',
+      }),
+      body: fallback(home, DEFAULT_LANG),
+    }),
+  );
 }
 
 /**
@@ -390,7 +418,7 @@ for (const file of written) {
 const sitemap = readFileSync(resolve(dist, 'sitemap.xml'), 'utf8');
 for (const loc of sitemap.match(/<loc>([^<]+)<\/loc>/g) ?? []) {
   const path = loc.replace(/<\/?loc>/g, '').slice(ORIGIN.length);
-  const file = path === '/' ? 'index.html' : `${path.replace(/^\//, '')}/index.html`;
+  const file = `${path.replace(/^\//, '')}/index.html`;
   if (!existsSync(resolve(dist, file))) missing.push(`sitemap.xml → ${path} (няма такъв файл)`);
 }
 

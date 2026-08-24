@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { create } from 'zustand';
 import { guessLang, rememberLang, type Lang } from '@/brand';
-import { parsePath, routeByPath } from '@/seo/routes';
+import { entryPath, parsePath, routeByPath } from '@/seo/routes';
 
 export type { Lang };
 
@@ -45,7 +45,7 @@ interface LangStore {
  * remembered preference decide.
  */
 function initialLang(): Lang {
-  const here = window.location.pathname;
+  const here = entryPath(window.location.pathname);
   if (!routeByPath(here)) return guessLang();
   const lang = parsePath(here).lang;
   rememberLang(lang);

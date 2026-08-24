@@ -93,51 +93,72 @@ overridden) and high contrast.
 
 ## The public web
 
-The app's screens are state, not addresses — moving between them must not touch history
-while a document is mid-save. What does need addresses is the public site, so
-`src/state/routeStore.ts` owns exactly those.
+**Every page and every screen has an address, and the address is its name.** No
+`/app/` in front of anything, no state that hides behind `/`:
 
-**Every public page exists twice, once per language, at an address of its own.**
-Bulgarian is served from the unprefixed path and English from `/en`:
+| Address                   | What it is                             |
+| ------------------------- | -------------------------------------- |
+| `/homepage`               | the marketing page (`/` is a 301 to it) |
+| `/about` `/faq` `/contact`| public pages                            |
+| `/privacy` `/terms` `/cookies` | the legal texts                    |
+| `/login` `/register`      | the door                                |
+| `/dashboard`              | the app's front screen                  |
+| `/tasks` `/calendar` `/goals` `/exams` `/library` `/cards` `/focus` `/stats` `/achievements` `/subjects` `/profile` `/settings` | one per screen |
+| `/document/:id` `/subjects/:id` `/settings/:section` | the addresses that carry an id |
 
-| Bulgarian  | English       |
-| ---------- | ------------- |
-| `/`        | `/en`         |
-| `/about`   | `/en/about`   |
-| `/faq`     | `/en/faq`     |
-| `/contact` | `/en/contact` |
-| `/privacy` | `/en/privacy` |
-| `/terms`   | `/en/terms`   |
-| `/cookies` | `/en/cookies` |
+`#how` and `#inside` are sections of `/homepage`, not pages — they are anchors, they
+are not in the sitemap, and they are not meant to be indexed separately. `/about` and
+`/faq` are pages, and they are.
 
-There is deliberately no `/bg/…`: a prefix for the language that already owns the
-unprefixed path is a second address for one page, so `/bg/faq` is a 301 to `/faq`.
-**The address decides the language**, not a cookie and not the browser — `/faq` is the
-Bulgarian page for everybody. Nothing redirects by location or by `Accept-Language`;
-a visitor whose browser asks for English is *offered* `/en` as a link and can ignore it.
-Following a language link is what writes the preference, and that preference is then
-what the app — which has no public addresses — opens in.
+Every public page exists twice, once per language. Bulgarian is served from the
+unprefixed path and English from `/en`: `/homepage` and `/en/homepage`, `/faq` and
+`/en/faq`, and so on. There is deliberately no `/bg/…` — a prefix for the language that
+already owns the unprefixed path is a second address for one page, so `/bg/faq` is a 301
+to `/faq`. **The address decides the language**, not a cookie and not the browser.
+Nothing redirects by location or by `Accept-Language`; a visitor whose browser asks for
+English is *offered* `/en` as a link and can ignore it.
 
-One table in `src/seo/routes.ts` is read by five things that must never disagree: the
-router, the head-tag writer, the language switch, the JSON-LD builder in
-`src/seo/schema.ts`, and the build step in `scripts/make-seo-assets.mjs`. That step
+The app's screens carry no language prefix — the app has no public addresses, so there
+is nothing for a search engine to index twice — and they all answer `noindex`.
+
+Old links keep working. `/`, `/home`, `/index` → `/homepage`; `/signup` → `/register`;
+`/app` → `/dashboard`; `/app/tasks` → `/tasks`; `/app/d/:id` → `/document/:id`. The list
+is in `redirectFor` in `src/seo/routes.ts` and mirrored into `vercel.json`, and both the
+host and the browser apply it.
+
+One table in `src/seo/routes.ts` is read by six things that must never disagree: the
+router, the head-tag writer, the language switch, the redirect list, the JSON-LD builder
+in `src/seo/schema.ts`, and the build step in `scripts/make-seo-assets.mjs`. That step
 emits `sitemap.xml`, `robots.txt` and **a real file per address per language** — so
 `/en/about` is answered from the filesystem with its own title, description, canonical,
-`hreflang` set and structured data in the first byte, without a server and without a
-catch-all rewrite. Adding a public page means adding a row to the table; nothing else.
-
-`/login`, `/signup` and `/app` get shells of their own carrying `noindex`, and
-`/app/*` is the single rewrite in `vercel.json` because a screen's address can carry an
-id. They are *not* disallowed in `robots.txt`: a crawler has to be allowed to fetch a
-page in order to read the `noindex` in it.
+`hreflang` set and structured data in the first byte, without a server. Adding a page
+means adding a row to the table; nothing else.
 
 Anything that is not one of those files is a real **404** — `dist/404.html`, branded,
 `noindex`, with no canonical. The soft-404 alternative (rewriting everything to
-`index.html`) would have quietly folded every mistyped URL into the home page.
+`index.html`) would have folded every mistyped URL into the home page.
 
 The operator's own details (registered name, address, the three e-mail addresses) live
 in `src/legal.ts`. Until they are filled in, every legal page shows a banner saying it
 is a draft, rather than presenting an invented address as real.
+
+## The white screen
+
+Two things exist only to stop one failure: a cached `index.html` that names a
+JavaScript bundle no longer next to it. The browser fetches the only script the document
+has, gets a 404, and draws nothing — no error, no message, nothing to report but "the
+site is white".
+
+`scripts/make-seo-assets.mjs` refuses to finish a build that would produce one, and
+`public/recover.js` cleans up after the builds that already did: if `#root` is still
+empty six seconds after load, it deletes every cache, unregisters every service worker
+and reloads — once, guarded by `sessionStorage`, so a genuinely broken deploy cannot
+become a reload loop.
+
+The service worker is also **never registered on localhost**. `npm run preview` reuses
+its port between builds, and a worker left by one build answering navigations for the
+next is precisely how a white screen appears on a developer's machine while the live
+site is fine. Any worker a previous preview left behind is unregistered on load.
 
 ## Security
 

@@ -4,7 +4,7 @@ import { BRAND, browserLang, type Lang } from '@/brand';
 import { useLangStore } from '@/i18n';
 import { useAuth } from '@/state/authStore';
 import { hrefFor, useRoute } from '@/state/routeStore';
-import { LANGS, PUBLIC_ROUTES, routeByPath } from '@/seo/routes';
+import { HOME, LANGS, PUBLIC_ROUTES, routeByPath } from '@/seo/routes';
 import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
 
@@ -176,7 +176,7 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
       </a>
       <header className="glass sticky top-0 z-30 border-b border-line">
         <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-5 sm:px-8">
-          <RouteLink to="/" className="flex items-center gap-2.5" aria-label={BRAND.name}>
+          <RouteLink to={HOME} className="flex items-center gap-2.5" aria-label={BRAND.name}>
             <PlauviaTile size={30} title={BRAND.name} />
             <PlauviaWordmark size={17} />
           </RouteLink>
@@ -213,7 +213,7 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
               // `/app`, not `/`: the home page is the marketing page, and
               // sending somebody who already has an account there means one
               // more redirect before they reach the thing they came for.
-              <RouteLink to="/app" className="btn btn-primary">
+              <RouteLink to="/dashboard" className="btn btn-primary">
                 {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
               </RouteLink>
             ) : (
@@ -279,7 +279,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
       title: lang === 'bg' ? 'Профил' : 'Account',
       items: [
         signedIn ? (
-          <RouteLink key="open" to="/app" className={linkClass}>
+          <RouteLink key="open" to="/dashboard" className={linkClass}>
             {lang === 'bg' ? 'Отвори Plauvia' : 'Open Plauvia'}
           </RouteLink>
         ) : (
@@ -299,7 +299,7 @@ export function PublicFooter({ onSignIn }: { onSignIn: () => void }) {
     <footer className="border-t border-line" style={{ background: 'var(--c-surface)' }}>
       <div className="mx-auto flex max-w-[1180px] flex-col gap-10 px-5 py-12 sm:px-8 lg:flex-row">
         <div className="min-w-0 lg:max-w-[300px] lg:flex-1">
-          <RouteLink to="/" className="flex w-fit items-center gap-2.5" aria-label={BRAND.name}>
+          <RouteLink to={HOME} className="flex w-fit items-center gap-2.5" aria-label={BRAND.name}>
             <PlauviaTile size={28} title={BRAND.name} />
             <PlauviaWordmark size={16} />
           </RouteLink>
@@ -356,7 +356,7 @@ export function PublicPage({
 
       <main id="content" className="mx-auto w-full max-w-[1180px] px-5 py-12 sm:px-8 sm:py-16">
         <nav aria-label={lang === 'bg' ? 'Пътека' : 'Breadcrumb'} className="mb-6 text-[12.5px] text-faint">
-          <RouteLink to="/" className="inline-flex min-h-[24px] items-center transition-colors hover:text-ink">
+          <RouteLink to={HOME} className="inline-flex min-h-[24px] items-center transition-colors hover:text-ink">
             {lang === 'bg' ? 'Начало' : 'Home'}
           </RouteLink>
           <Icon name="chevronRight" size={12} className="mx-1.5 inline align-[-1px]" />

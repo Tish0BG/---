@@ -1,19 +1,38 @@
 # Netlify's equivalent of the rules in vercel.json, kept in step by hand.
 #
 # Vercel is what serves plauvia.com and reads vercel.json instead of this file;
-# this exists so that a deploy to Netlify behaves the same way rather than
-# quietly turning every mistyped address into a copy of the home page, which is
-# what the single catch-all rule that used to be here did.
+# this exists so a deploy to Netlify behaves the same way rather than quietly
+# turning every mistyped address into a copy of the home page, which is what the
+# single catch-all rule that used to be here did.
 
-/bg              /              301!
-/bg/*            /:splat        301!
-/home            /              301!
-/homepage        /              301!
-/en/home         /en            301!
-/en/homepage     /en            301!
+/                /homepage         301!
+/en              /en/homepage      301!
+/home            /homepage         301!
+/index           /homepage         301!
+/en/home         /en/homepage      301!
+/signup          /register         301!
+/bg              /homepage         301!
+/bg/*            /:splat           301!
+/app             /dashboard        301!
+/app/d/:id       /document/:id     301!
+/app/*           /:splat           301!
 
-# The only addresses that need the shell without having a file of their own.
-/app/*           /app/index.html   200
+# One shell answers every screen; each carries noindex in its own head.
+/document/*      /dashboard/index.html   200
+/subjects/*      /dashboard/index.html   200
+/settings/*      /dashboard/index.html   200
+/tasks           /dashboard/index.html   200
+/calendar        /dashboard/index.html   200
+/goals           /dashboard/index.html   200
+/exams           /dashboard/index.html   200
+/library         /dashboard/index.html   200
+/cards           /dashboard/index.html   200
+/focus           /dashboard/index.html   200
+/stats           /dashboard/index.html   200
+/achievements    /dashboard/index.html   200
+/subjects        /dashboard/index.html   200
+/profile         /dashboard/index.html   200
+/settings        /dashboard/index.html   200
 
 # Everything else that does not exist is a real 404, answered by the branded page.
-/*               /404.html      404
+/*               /404.html         404

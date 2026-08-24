@@ -68,7 +68,7 @@ export interface PublicRoute {
 export const PUBLIC_ROUTES: PublicRoute[] = [
   {
     id: 'home',
-    path: '/',
+    path: '/homepage',
     indexable: true,
     priority: 1,
     changefreq: 'weekly',
@@ -213,13 +213,13 @@ export const APP_PAGES: AppPage[] = [
     description: { bg: 'Влез в профила си в Plauvia.', en: 'Sign in to your Plauvia account.' },
   },
   {
-    path: '/signup',
+    path: '/register',
     title: { bg: 'Регистрация — Plauvia', en: 'Create an account — Plauvia' },
     description: { bg: 'Създай профил в Plauvia.', en: 'Create your Plauvia account.' },
   },
   {
-    path: '/app',
-    title: { bg: 'Plauvia', en: 'Plauvia' },
+    path: '/dashboard',
+    title: { bg: 'Табло — Plauvia', en: 'Dashboard — Plauvia' },
     description: { bg: 'Работното място на Plauvia.', en: 'The Plauvia workspace.' },
   },
 ];
@@ -227,8 +227,8 @@ export const APP_PAGES: AppPage[] = [
 export const APP_PATHS = APP_PAGES.map((p) => p.path);
 
 /**
- * The app page an address belongs to — `/app/calendar` and `/app/d/xyz` both
- * answer `/app`, because they are the same shell with the same metadata.
+ * The app page an address belongs to — every screen answers `/dashboard`,
+ * because they are the same shell with the same metadata.
  *
  * Its only job is to keep the tab and the description honest while the app is
  * still starting; once a screen is on the page it names itself.
@@ -236,23 +236,33 @@ export const APP_PATHS = APP_PAGES.map((p) => p.path);
 export const appPageByPath = (path: string): AppPage | undefined => {
   const { path: clean, prefixed } = parsePath(path);
   if (prefixed) return undefined;
-  return APP_PAGES.find((p) => clean === p.path || clean.startsWith(`${p.path}/`));
+  if (APP_PATHS.includes(clean)) return APP_PAGES.find((p) => p.path === clean);
+  return isAppPath(clean) ? APP_PAGES.find((p) => p.path === '/dashboard') : undefined;
 };
 
-/** One per screen. The slug after `/app/` is what the app calls the view. */
+/**
+ * One address per screen, and the address is the screen's name.
+ *
+ * Flat, one word, no `/app/` in front of it: an address is read by a person
+ * before it is read by anything else, and `/calendar` says what `/app/calendar`
+ * says with a level of filing removed. They share the namespace with the public
+ * pages, which is safe for exactly one reason — every name in the product is in
+ * this file, so a collision is a merge conflict rather than a bug in
+ * production.
+ */
 export const APP_SCREEN_PATHS = [
-  '/app/tasks',
-  '/app/calendar',
-  '/app/goals',
-  '/app/exams',
-  '/app/library',
-  '/app/cards',
-  '/app/focus',
-  '/app/stats',
-  '/app/achievements',
-  '/app/subjects',
-  '/app/profile',
-  '/app/settings',
+  '/tasks',
+  '/calendar',
+  '/goals',
+  '/exams',
+  '/library',
+  '/cards',
+  '/focus',
+  '/stats',
+  '/achievements',
+  '/subjects',
+  '/profile',
+  '/settings',
 ] as const;
 
 /**
@@ -260,7 +270,7 @@ export const APP_SCREEN_PATHS = [
  * room of the settings. Ids are base-36 and lower-case, which is why
  * `normalisePath` lower-casing the address does no harm here.
  */
-const APP_DEEP_PATH = /^\/app\/(d|subjects|settings)\/[a-z0-9_-]+$/;
+const APP_DEEP_PATH = /^\/(document|subjects|settings)\/[a-z0-9_-]+$/;
 
 /* ------------------------------------------------------------ addressing */
 
@@ -323,13 +333,48 @@ export const isUnknownPath = (path: string): boolean => !routeByPath(path) && !i
 /**
  * The address this one should have been, or `null` when it already is.
  *
- * Only one case exists today: `/bg/…`, the prefix for the language that has
- * no prefix. The server answers those with a 301, so a crawler never reaches
- * this; it is here for the browser, which can arrive at one from the cache,
- * from an offline start, or from a link somebody wrote by hand.
+ * Four kinds of thing end up here, and all four are answered with a 301 by
+ * the host and straightened out in place by the browser:
+ *
+ *   · `/` — the front door has a name, `/homepage`, and one address per page
+ *     means the root is a doorway to it rather than a second copy of it.
+ *   · `/bg/…` — a prefix for the language that already owns the unprefixed
+ *     path.
+ *   · `/app/…` — the old filing, before every screen got a one-word address.
+ *   · `/signup`, `/home`, `/index` — earlier spellings of pages that are
+ *     still here.
+ *
+ * Old links keep working. That is the whole point of writing them down rather
+ * than deleting them.
  */
-export function redirectFor(path: string): string | null {
-  const { lang, path: clean, prefixed } = parsePath(path);
-  if (prefixed && lang === DEFAULT_LANG) return clean;
+export const HOME = '/homepage';
+
+function legacyTarget(bare: string): string | null {
+  if (bare === '/' || bare === '/home' || bare === '/index') return HOME;
+  if (bare === '/signup') return '/register';
+  if (bare === '/app') return '/dashboard';
+  const doc = /^\/app\/d\/([a-z0-9_-]+)$/.exec(bare);
+  if (doc) return `/document/${doc[1]}`;
+  if (bare.startsWith('/app/')) return bare.slice(4);
   return null;
 }
+
+export function redirectFor(path: string): string | null {
+  const { lang, path: bare, prefixed } = parsePath(path);
+  if (prefixed && lang === DEFAULT_LANG) return legacyTarget(bare) ?? bare;
+  const target = legacyTarget(bare);
+  if (!target) return null;
+  // A language prefix survives the correction: `/en` is the English home page
+  // under its old name, not the Bulgarian one.
+  return prefixed ? localePath(target, lang) : target;
+}
+
+/**
+ * The address to start from, with every correction already applied.
+ *
+ * Used wherever a raw address first enters the app — the router's initial
+ * state, the language store, a link somebody wrote by hand — so that no part
+ * of the app ever holds an address that is about to change. Without it the
+ * first render of `/` is a 404 page, for the one frame before the redirect.
+ */
+export const entryPath = (raw: string): string => redirectFor(raw) ?? normalisePath(raw);

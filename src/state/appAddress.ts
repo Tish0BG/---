@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { applyHead } from '@/seo/head';
-import { normalisePath } from '@/seo/routes';
+import { entryPath, normalisePath } from '@/seo/routes';
 import { currentLang, tr, L } from '@/i18n';
 import { useApp, VIEW_TITLES, resolveView, type AppView } from './appStore';
 import { useRoute } from './routeStore';
@@ -30,17 +30,17 @@ import { useWorkspace } from './workspaceStore';
 
 /** The address of each screen. The slug is the name the app already uses. */
 export const VIEW_PATHS: Record<AppView, string> = {
-  dashboard: '/app',
-  tasks: '/app/tasks',
-  calendar: '/app/calendar',
-  goals: '/app/goals',
-  exams: '/app/exams',
-  drive: '/app/library',
-  cards: '/app/cards',
-  subjects: '/app/subjects',
-  stats: '/app/stats',
-  achievements: '/app/achievements',
-  profile: '/app/profile',
+  dashboard: '/dashboard',
+  tasks: '/tasks',
+  calendar: '/calendar',
+  goals: '/goals',
+  exams: '/exams',
+  drive: '/library',
+  cards: '/cards',
+  subjects: '/subjects',
+  stats: '/stats',
+  achievements: '/achievements',
+  profile: '/profile',
 };
 
 /**
@@ -52,7 +52,7 @@ export const VIEW_PATHS: Record<AppView, string> = {
  */
 export function appAddress(): string {
   const doc = useViewer.getState().docId;
-  if (doc) return `/app/d/${doc}`;
+  if (doc) return `/document/${doc}`;
 
   const app = useApp.getState();
   // The settings are one window; which room you are standing in is internal,
@@ -60,10 +60,10 @@ export function appAddress(): string {
   // asked for it by name — `/app/settings/sync` is a link worth sending, and
   // clicking through the list afterwards is not worth a history entry each.
   if (app.settingsOpen) {
-    return app.settingsSection ? `/app/settings/${app.settingsSection}` : '/app/settings';
+    return app.settingsSection ? `/settings/${app.settingsSection}` : '/settings';
   }
-  if (useTimer.getState().view === 'full') return '/app/focus';
-  if (app.subjectId) return `/app/subjects/${app.subjectId}`;
+  if (useTimer.getState().view === 'full') return '/focus';
+  if (app.subjectId) return `/subjects/${app.subjectId}`;
   return VIEW_PATHS[app.view];
 }
 
@@ -91,9 +91,8 @@ export function appLabel(): string {
  * have, not a fault to report.
  */
 export function applyAppPath(path: string): void {
-  const clean = normalisePath(path);
-  const rest = clean.startsWith('/app/') ? clean.slice(5) : '';
-  const [head, id] = rest.split('/');
+  const clean = entryPath(path);
+  const [, head = '', id = ''] = clean.split('/');
   const app = useApp.getState();
 
   // An address says what is open *and* what is not. Pressing Back out of the
@@ -101,9 +100,9 @@ export function applyAppPath(path: string): void {
   // address says it should not be there.
   if (head !== 'settings' && app.settingsOpen) app.setSettings(false);
   if (head !== 'focus' && useTimer.getState().view === 'full') useTimer.getState().setView('mini');
-  if (head !== 'd' && useViewer.getState().docId) void useViewer.getState().closeDocument();
+  if (head !== 'document' && useViewer.getState().docId) void useViewer.getState().closeDocument();
 
-  if (head === 'd' && id) {
+  if (head === 'document' && id) {
     void useViewer.getState().openDocument(id);
     return;
   }
@@ -119,7 +118,7 @@ export function applyAppPath(path: string): void {
     app.openSubject(id);
     return;
   }
-  if (clean === '/app' || head === '') {
+  if (head === 'dashboard' || head === '') {
     app.go('dashboard');
     return;
   }

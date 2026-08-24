@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { Lang } from '@/brand';
 import { applyHead } from '@/seo/head';
-import { isAppPath, localePath, normalisePath, parsePath, redirectFor, routeByPath } from '@/seo/routes';
+import { entryPath, isAppPath, localePath, normalisePath, parsePath, redirectFor, routeByPath } from '@/seo/routes';
 import { currentLang, useLangStore } from '@/i18n';
 
 /**
@@ -41,9 +41,12 @@ interface RouteStore {
  * reader is currently in. Nothing else in the app spells out a prefix.
  */
 function resolve(path: string, forced?: Lang): { href: string; lang: Lang | null } {
-  const route = routeByPath(path);
-  if (!route) return { href: parsePath(path).path, lang: null };
-  const addr = parsePath(path);
+  // Corrections first, so a link written as `/` or `/app/tasks` anywhere in
+  // the product still lands on `/homepage` and `/tasks` — one hop, not two.
+  const fixed = entryPath(path);
+  const route = routeByPath(fixed);
+  if (!route) return { href: parsePath(fixed).path, lang: null };
+  const addr = parsePath(fixed);
   const lang = forced ?? (addr.prefixed ? addr.lang : currentLang());
   return { href: localePath(route.path, lang), lang };
 }
@@ -52,7 +55,7 @@ function resolve(path: string, forced?: Lang): { href: string; lang: Lang | null
 export const hrefFor = (path: string, lang?: Lang): string => resolve(path, lang).href;
 
 export const useRoute = create<RouteStore>((set) => ({
-  path: normalisePath(window.location.pathname),
+  path: entryPath(window.location.pathname),
 
   go(path, opts) {
     const { href: next, lang } = resolve(path, opts?.lang);

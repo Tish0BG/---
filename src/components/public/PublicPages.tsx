@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useLangStore } from '@/i18n';
 import { LEGAL, legalIncomplete, oneInbox } from '@/legal';
 import { applyFaqSchema } from '@/seo/head';
-import { PUBLIC_ROUTES, type PublicRouteId } from '@/seo/routes';
+import { HOME, PUBLIC_ROUTES, type PublicRouteId } from '@/seo/routes';
 import { BRAND } from '@/brand';
 import { Icon } from '../Icon';
 import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
@@ -209,7 +209,7 @@ function StartStrip({ onStart }: { onStart: () => void }) {
         {lang === 'bg' ? 'Започни' : 'Get started'}
         <Icon name="arrowRight" size={16} />
       </button>
-      <RouteLink to="/" className="btn btn-outline btn-lg">
+      <RouteLink to={HOME} className="btn btn-outline btn-lg">
         {lang === 'bg' ? 'Обратно към началото' : 'Back to the home page'}
       </RouteLink>
     </div>
@@ -252,7 +252,7 @@ export function NotFoundPage({ onStart }: { onStart: () => void }) {
             : 'The link is wrong, or the page no longer exists. The rest of Plauvia is where you left it.'}
         </p>
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2.5">
-          <RouteLink to="/" className="btn btn-primary btn-lg">
+          <RouteLink to={HOME} className="btn btn-primary btn-lg">
             {lang === 'bg' ? 'Към началото' : 'Go to the home page'}
           </RouteLink>
           <button className="btn btn-outline btn-lg" onClick={onStart}>

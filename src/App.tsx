@@ -15,7 +15,7 @@ import { installProgressEffects } from '@/services/progressBus';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
-import { isAppPath, normalisePath, routeByPath } from '@/seo/routes';
+import { entryPath, isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
 import { CommandPalette } from '@/components/shell/CommandPalette';
@@ -150,8 +150,7 @@ export default function App() {
         // "Open what you had open" is for somebody arriving at the front
         // door. An address that names a screen or a document has said where
         // to go, and it outranks what this device happens to remember.
-        const here = normalisePath(window.location.pathname);
-        if (here === '/app' || here.startsWith('/app/')) return;
+        if (isAppPath(entryPath(window.location.pathname))) return;
         const last = useSettings.getState().lastDocId;
         const exists = useLibrary.getState().documents.some((d) => d.id === last && !d.deletedAt);
         if (last && exists) void useViewer.getState().openDocument(last);
@@ -207,13 +206,13 @@ export default function App() {
    * yanking the person back to the same screen.
    */
   useEffect(() => {
-    // /login and /signup are the door itself: somebody who pasted one has
+    // /login and /register are the door itself: somebody who pasted one has
     // asked for the form, so it opens over whatever else would have shown.
-    // The screens under /app are not the door — they are the destination, and
-    // the render below decides whether the person can be let in yet.
-    const here = normalisePath(window.location.pathname);
-    if (here === '/login' || here === '/signup') {
-      useApp.getState().setAuth(true, here === '/signup' ? 'signup' : 'signin');
+    // A screen is not the door — it is the destination, and the render below
+    // decides whether the person can be let in yet.
+    const here = entryPath(window.location.pathname);
+    if (here === '/login' || here === '/register') {
+      useApp.getState().setAuth(true, here === '/register' ? 'signup' : 'signin');
     }
     const go = new URLSearchParams(window.location.search).get('go');
     if (!go) return;

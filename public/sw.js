@@ -7,10 +7,12 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'plauvia-v8';
+const VERSION = 'plauvia-v9';
 const SHELL = [
-  '/',
+  // `/` is a redirect now, and `cache.addAll` refuses a redirected response —
+  // asking for it would throw away the whole shell, silently, on install.
   '/index.html',
+  '/homepage',
   '/manifest.webmanifest',
   '/icons/icon-192.png',
   '/icons/icon-512.png',
@@ -64,7 +66,7 @@ self.addEventListener('fetch', (event) => {
               void cache.put(request, copy);
               // The app's own addresses share one shell; the home page is what
               // a cold offline start falls back to.
-              if (url.pathname === '/') void cache.put('/index.html', response.clone());
+              if (url.pathname === '/homepage') void cache.put('/index.html', response.clone());
             });
           }
           return response;
