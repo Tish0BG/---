@@ -56,6 +56,15 @@ interface AppStore {
   settingsSection: string | null;
   /** account / cloud-sync dialog */
   authOpen: boolean;
+  /**
+   * Which half of the door to open on.
+   *
+   * "Create an account" and "Sign in" are two different intentions and the
+   * screen should already be on the right one — a person who pressed the
+   * first and lands on a password field has been told the app was not
+   * listening.
+   */
+  authMode: 'signin' | 'signup';
   /** the create sheet, opened from the top bar, ⌘N or the mobile plus */
   quick: QuickKind;
   /** filters the dashboard, library and tasks down to one subject */
@@ -65,7 +74,7 @@ interface AppStore {
   openSubject(id: string | null): void;
   setPalette(open: boolean): void;
   setSettings(open: boolean, section?: string): void;
-  setAuth(open: boolean): void;
+  setAuth(open: boolean, mode?: 'signin' | 'signup'): void;
   setQuick(kind: QuickKind): void;
   setFilter(subjectId: string | null): void;
   clearFocus(): void;
@@ -83,6 +92,7 @@ export const useApp = create<AppStore>((set) => ({
   settingsOpen: false,
   settingsSection: null,
   authOpen: false,
+  authMode: 'signin',
   quick: null,
   filterSubjectId: null,
 
@@ -98,8 +108,8 @@ export const useApp = create<AppStore>((set) => ({
   setSettings(open, section) {
     set({ settingsOpen: open, settingsSection: open ? (section ?? null) : null });
   },
-  setAuth(open) {
-    set({ authOpen: open });
+  setAuth(open, mode) {
+    set({ authOpen: open, ...(mode ? { authMode: mode } : {}) });
   },
   setQuick(kind) {
     set({ quick: kind });

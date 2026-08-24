@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
-import { BRAND } from '@/brand';
-import { PlauviaMark, PlauviaTile, PlauviaWordmark } from '../brand/Logo';
+import { useApp } from '@/state/appStore';
+import { AuthLayout, AuthNote as Banner, AuthPanel as Panel, AuthTitle, AuthTitle as Title } from './Shell';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
 import { useT, useLang, L } from '@/i18n';
@@ -28,94 +28,30 @@ const emailCodeLooksComplete = (raw: string): boolean => {
 };
 
 /**
- * The sign-in page.
+ * ─────────────────────────────────────────────────────────────── the door ──
  *
- * A full screen rather than a dialog on purpose: this is the moment the app
- * stops being "a tab" and becomes "my account", and a modal floating over a
- * half-visible dashboard does not read that way. It is also the place where
- * setup goes wrong, so the diagnostics live one click away instead of buried
- * in settings.
+ * One column, down the middle, on the page's own colour.
+ *
+ * It used to be a split screen: a tall panel of brand gradient on the left
+ * carrying four selling points, and the form squeezed into the right. That
+ * layout sells to somebody who has already decided — nobody arrives at a
+ * sign-in form needing to be convinced the product is good, they arrive
+ * needing to type two things and leave. So the argument is gone and what is
+ * left is the form, given the middle of the screen and room to breathe.
+ *
+ * It is still a whole page rather than a dialog: this is the moment the app
+ * stops being "a tab" and becomes "my account". It is also where setup goes
+ * wrong, so the database instructions live here rather than buried in
+ * settings.
  */
 export function AuthScreen({ onClose }: { onClose: () => void }) {
-  const t = useT();
   const configured = useAuth((s) => s.configured);
   const awaiting = useAuth((s) => s.awaitingConfirm);
 
   return (
-    <div className="fixed inset-0 z-[70] flex overflow-y-auto" style={{ background: 'var(--c-bg)' }}>
-      <Aside />
-
-      <main className="relative flex min-h-full min-w-0 flex-1 items-center justify-center px-5 py-10">
-        <button
-          className="icon-btn absolute right-4 top-4"
-          onClick={onClose}
-          aria-label={t(L('Затвори', 'Close'))}
-          title={t(L('Продължи без профил', 'Continue without an account'))}
-        >
-          <Icon name="x" size={18} />
-        </button>
-
-        <div className="w-full max-w-[380px]">
-          {awaiting ? <ConfirmStep email={awaiting} /> : configured ? <Forms onClose={onClose} /> : <Setup />}
-        </div>
-      </main>
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ aside */
-
-/** The half of the screen that explains why an account is worth having. */
-function Aside() {
-  const t = useT();
-  const lang = useLang();
-  const points = [
-    { icon: 'drive', text: L('Учебниците и дъските ти — и на телефона', 'Your textbooks and boards, on your phone too') },
-    { icon: 'pencil', text: L('Бележките се сливат сами, по-новото печели', 'Notes merge on their own — the newer write wins') },
-    { icon: 'cards', text: L('Картите и задачите вървят с теб', 'Cards and tasks travel with you') },
-    { icon: 'cloud', text: L('Данните пътуват само между твоите устройства', 'Your data travels between your devices and nowhere else') },
-  ];
-  return (
-    <aside
-      className="relative hidden w-[42%] max-w-[520px] shrink-0 flex-col justify-between overflow-hidden p-10 lg:flex"
-      style={{
-        background: 'linear-gradient(150deg, var(--c-brand-lift), var(--c-brand-deep))',
-        color: '#fff',
-      }}
-    >
-      <div className="flex items-center gap-2.5">
-        <span className="grid h-9 w-9 place-items-center rounded-xl" style={{ background: 'rgb(255 255 255 / 18%)' }}>
-          <PlauviaMark size={19} />
-        </span>
-        <PlauviaWordmark size={17} />
-      </div>
-
-      <div>
-        <h2
-          className="font-semibold leading-[1.12]"
-          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-        >
-          {BRAND.tagline[lang]}
-        </h2>
-        <ul className="mt-6 space-y-3">
-          {points.map((p) => (
-            <li key={p.text.en} className="flex items-start gap-2.5 text-[13.5px]" style={{ opacity: 0.92 }}>
-              <Icon name={p.icon} size={16} className="mt-px shrink-0" />
-              {t(p.text)}
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <p className="text-[11.5px] leading-relaxed" style={{ opacity: 0.75 }}>
-        {t(
-          L(
-            'Профилът е по избор. Без него приложението работи точно толкова добре — данните просто остават на това устройство.',
-            'An account is optional. Without one the app works just as well — the data simply stays on this device.',
-          ),
-        )}
-      </p>
-    </aside>
+    <AuthLayout onClose={onClose}>
+      {awaiting ? <ConfirmStep email={awaiting} /> : configured ? <Forms onClose={onClose} /> : <Setup />}
+    </AuthLayout>
   );
 }
 
@@ -123,7 +59,7 @@ function Aside() {
 
 function Forms({ onClose }: { onClose: () => void }) {
   const t = useT();
-  const [tab, setTab] = useState<Tab>('signin');
+  const [tab, setTab] = useState<Tab>(() => useApp.getState().authMode);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -210,252 +146,245 @@ function Forms({ onClose }: { onClose: () => void }) {
     }
   };
 
+  const title = codeSent
+    ? L('Провери пощата си', 'Check your inbox')
+    : forgot
+      ? L('Нова парола', 'New password')
+      : byCode
+        ? L('Влез с код', 'Sign in with a code')
+        : tab === 'signin'
+          ? L('Влез в профила си', 'Welcome back')
+          : L('Създай профил', 'Create an account');
+
+  const hint = codeSent
+    ? L(
+        `Изпратихме код на ${email}. Валиден е за около час.`,
+        `We sent a code to ${email}. It is good for about an hour.`,
+      )
+    : forgot
+      ? L('Ще ти пратим код, с който да смениш паролата.', 'We will send you a code to set a new password with.')
+      : byCode
+        ? L('Без парола — код от пощата и си вътре.', 'No password — a code from your inbox and you are in.')
+        : tab === 'signin'
+          ? L('За да намериш библиотеката си и тук.', 'So your library is here too.')
+          : L('Отнема минута и иска само имейл.', 'It takes a minute and asks for nothing but an e-mail.');
+
   return (
     <>
-      <header className="mb-6 lg:hidden">
-        <span className="flex items-center gap-2.5">
-          <PlauviaTile size={34} />
-          <PlauviaWordmark size={17} />
-        </span>
-      </header>
+      <Panel>
+        <Title title={t(title)} hint={t(hint)} />
 
-      <h1
-        className="font-semibold leading-[1.12]"
-        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-      >
-        {t(
-          codeSent
-            ? L('Провери пощата си', 'Check your inbox')
-            : forgot
-              ? L('Нова парола', 'New password')
-              : byCode
-                ? L('Влез с код', 'Sign in with a code')
-                : tab === 'signin'
-                  ? L('Влез в профила си', 'Sign in')
-                  : L('Създай профил', 'Create an account'),
-        )}
-      </h1>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-        {codeSent
-          ? t(
-              L(
-                `Изпратихме шестцифрен код на ${email}. Валиден е за около час.`,
-                `We sent a six-digit code to ${email}. It is good for about an hour.`,
-              ),
-            )
-          : forgot
-            ? t(L('Ще ти пратим код, с който да смениш паролата.', 'We will send you a code to set a new password with.'))
-            : byCode
-              ? t(L('Без парола — код от пощата и си вътре.', 'No password — a code from your inbox and you are in.'))
-              : tab === 'signin'
-                ? t(L('За да намериш библиотеката си и тук.', 'So your library is here too.'))
-                : t(L('Отнема минута и не иска нищо освен имейл.', 'It takes a minute and asks for nothing but an e-mail.'))}
-      </p>
-
-      {!forgot && !codeSent && !byCode && (
-        <div className="segmented mt-5">
-          {(
-            [
-              ['signin', t(L('Вход', 'Sign in'))],
-              ['signup', t(L('Регистрация', 'Sign up'))],
-            ] as const
-          ).map(([id, label]) => (
-            <button
-              key={id}
-              aria-pressed={tab === id}
-              onClick={() => {
-                setTab(id);
-                setError(null);
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      <form
-        className="mt-4 space-y-3"
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (ready) void submit();
-        }}
-      >
-        {codeSent && (
-          <>
-            <input
-              autoFocus
-              className="field field-lg t-num text-center"
-              // Tracking loosens for short codes and tightens for long ones, so
-              // ten digits still fit the box instead of scrolling inside it.
-              style={{
-                fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
-                letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
-              }}
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              // Six is the common length, but it is a per-project setting and
-              // can be anything up to ten. Hard-coding six meant an eight-digit
-              // code could be typed and never submitted.
-              maxLength={EMAIL_CODE_MAX}
-              placeholder="······"
-              aria-label={t(L('Код от пощата', 'Code from your inbox'))}
-            />
-            <button
-              type="button"
-              className="text-[12.5px] text-muted underline-offset-2 hover:underline"
-              onClick={restart}
-            >
-              {t(L('← Друг адрес, или нов код', '← A different address, or a new code'))}
-            </button>
-          </>
-        )}
-
-        {!codeSent && tab === 'signup' && needsPassword && (
-          <Field label={t(L('Име', 'Name'))}>
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="field h-10"
-              placeholder={t(L('Как да ти казвам', 'What should we call you'))}
-              autoComplete="name"
-            />
-          </Field>
-        )}
-
-        {!codeSent && (
-          <Field label={t(L('Имейл', 'E-mail'))}>
-            <input
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="field h-10"
-              type="email"
-              placeholder="ime@example.com"
-              autoComplete="email"
-              autoFocus
-            />
-          </Field>
-        )}
-
-        {!codeSent && needsPassword && (
-          <PasswordField
-            id="plauvia-password"
-            label={t(L('Парола', 'Password'))}
-            value={password}
-            onChange={setPassword}
-            autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-            placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
-            showMeter={tab === 'signup'}
-          />
-        )}
-
-        {!codeSent && tab === 'signup' && needsPassword && (
-          <div>
-            <PasswordField
-              id="plauvia-confirm"
-              label={t(L('Повтори паролата', 'Repeat the password'))}
-              value={confirm}
-              onChange={setConfirm}
-              autoComplete="new-password"
-            />
-            {mismatch && (
-              <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
-                <Icon name="alert" size={12} />
-                {t(L('Двете полета не съвпадат.', 'The two do not match.'))}
-              </p>
-            )}
-          </div>
-        )}
-
-        {error && <Banner tone="danger" text={error} />}
-
-        {/* An answer with nothing to do next is only half an answer. */}
-        {emailTaken && (
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn btn-outline"
-              onClick={() => {
-                setTab('signin');
-                setError(null);
-                setPassword('');
-                setConfirm('');
-              }}
-            >
-              {t(L('Влез с този имейл', 'Sign in with this e-mail'))}
-            </button>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                setForgot(true);
-                setError(null);
-              }}
-            >
-              {t(L('Забравена парола', 'Forgotten password'))}
-            </button>
-          </div>
-        )}
-        {notice && <Banner tone="ok" text={notice} />}
-
-        <button className="btn btn-primary h-10 w-full" disabled={!ready} type="submit">
-          {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {t(
-            codeSent
-              ? L('Потвърди', 'Confirm')
-              : forgot || byCode
-                ? L('Изпрати код', 'Send the code')
-                : tab === 'signin'
-                  ? L('Влез', 'Sign in')
-                  : L('Създай профил', 'Create the account'),
+        <form
+          className="space-y-3.5"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (ready) void submit();
+          }}
+        >
+          {codeSent && (
+            <>
+              <input
+                autoFocus
+                className="field field-lg t-num text-center"
+                // Tracking loosens for short codes and tightens for long ones, so
+                // ten digits still fit the box instead of scrolling inside it.
+                style={{
+                  fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
+                  letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
+                }}
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                // Six is the common length, but it is a per-project setting and
+                // can be anything up to ten. Hard-coding six meant an eight-digit
+                // code could be typed and never submitted.
+                maxLength={EMAIL_CODE_MAX}
+                placeholder="······"
+                aria-label={t(L('Код от пощата', 'Code from your inbox'))}
+              />
+              <button type="button" className="link-quiet text-[12.5px]" onClick={restart}>
+                {t(L('← Друг адрес, или нов код', '← A different address, or a new code'))}
+              </button>
+            </>
           )}
-        </button>
-      </form>
 
-      {!forgot && !codeSent && (
-        <>
-          <div className="my-4 flex items-center gap-3">
-            <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
-            <span className="text-[11.5px] text-faint">{t(L('или', 'or'))}</span>
-            <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
-          </div>
-          <GoogleButton onClick={() => void withGoogle()} busy={google} label={t(L('Продължи с Google', 'Continue with Google'))} />
-        </>
-      )}
+          {!codeSent && tab === 'signup' && needsPassword && (
+            <Field label={t(L('Име', 'Name'))}>
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="field field-lg"
+                placeholder={t(L('Как да ти казвам', 'What should we call you'))}
+                autoComplete="name"
+              />
+            </Field>
+          )}
 
-      {tab === 'signup' && needsPassword && !codeSent && <TermsNote />}
+          {!codeSent && (
+            <Field label={t(L('Имейл', 'E-mail'))}>
+              <input
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="field field-lg"
+                type="email"
+                placeholder="ime@example.com"
+                autoComplete="email"
+                autoFocus
+              />
+            </Field>
+          )}
 
-      {!codeSent && (
-        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-[12px]">
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <button
-              className="cursor-pointer text-muted underline-offset-2 hover:underline"
-              onClick={() => {
-                setForgot(!forgot);
-                setByCode(false);
-                setError(null);
-              }}
-            >
-              {t(forgot ? L('← Назад към входа', '← Back to sign in') : L('Забравена парола?', 'Forgotten your password?'))}
-            </button>
-            {!forgot && tab === 'signin' && (
+          {!codeSent && needsPassword && (
+            <div>
+              <div className="mb-1.5 flex items-baseline justify-between gap-3">
+                <label htmlFor="plauvia-password" className="t-label">
+                  {t(L('Парола', 'Password'))}
+                </label>
+                {tab === 'signin' && (
+                  <button
+                    type="button"
+                    className="link-quiet text-[12.5px]"
+                    onClick={() => {
+                      setForgot(true);
+                      setByCode(false);
+                      setError(null);
+                    }}
+                  >
+                    {t(L('Забравена?', 'Forgotten?'))}
+                  </button>
+                )}
+              </div>
+              <PasswordField
+                id="plauvia-password"
+                value={password}
+                onChange={setPassword}
+                autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
+                placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
+                showMeter={tab === 'signup'}
+              />
+            </div>
+          )}
+
+          {!codeSent && tab === 'signup' && needsPassword && (
+            <div>
+              <PasswordField
+                id="plauvia-confirm"
+                label={t(L('Повтори паролата', 'Repeat the password'))}
+                value={confirm}
+                onChange={setConfirm}
+                autoComplete="new-password"
+              />
+              {mismatch && (
+                <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
+                  <Icon name="alert" size={12} />
+                  {t(L('Двете полета не съвпадат.', 'The two do not match.'))}
+                </p>
+              )}
+            </div>
+          )}
+
+          {error && <Banner tone="danger" text={error} />}
+
+          {/* An answer with nothing to do next is only half an answer. */}
+          {emailTaken && (
+            <div className="flex flex-wrap gap-2">
               <button
-                className="cursor-pointer text-muted underline-offset-2 hover:underline"
+                type="button"
+                className="btn btn-outline"
+                onClick={() => {
+                  setTab('signin');
+                  setError(null);
+                  setPassword('');
+                  setConfirm('');
+                }}
+              >
+                {t(L('Влез с този имейл', 'Sign in with this e-mail'))}
+              </button>
+              <button
+                type="button"
+                className="btn"
+                onClick={() => {
+                  setForgot(true);
+                  setError(null);
+                }}
+              >
+                {t(L('Забравена парола', 'Forgotten password'))}
+              </button>
+            </div>
+          )}
+          {notice && <Banner tone="ok" text={notice} />}
+
+          <button className="btn btn-primary btn-lg w-full" disabled={!ready} type="submit">
+            {busy && <Icon name="refresh" size={15} className="animate-spin" />}
+            {t(
+              codeSent
+                ? L('Потвърди', 'Confirm')
+                : forgot || byCode
+                  ? L('Изпрати код', 'Send the code')
+                  : tab === 'signin'
+                    ? L('Влез', 'Sign in')
+                    : L('Създай профил', 'Create the account'),
+            )}
+          </button>
+        </form>
+
+        {!forgot && !codeSent && (
+          <>
+            <Divider label={t(L('или', 'or'))} />
+            <GoogleButton
+              onClick={() => void withGoogle()}
+              busy={google}
+              label={t(L('Продължи с Google', 'Continue with Google'))}
+            />
+            {tab === 'signin' && (
+              <button
+                type="button"
+                className="btn btn-lg mt-2 w-full"
                 onClick={() => {
                   setByCode(!byCode);
                   setError(null);
                 }}
               >
-                {t(byCode ? L('Влез с парола', 'Use a password instead') : L('Влез с код вместо парола', 'Send me a code instead'))}
+                <Icon name="mail" size={16} />
+                {t(byCode ? L('Влез с парола', 'Use a password instead') : L('Изпрати ми код', 'E-mail me a code'))}
               </button>
             )}
-          </div>
-          <button className="cursor-pointer text-muted underline-offset-2 hover:underline" onClick={onClose}>
-            {t(L('Продължи без профил', 'Continue without an account'))}
+          </>
+        )}
+
+        {forgot && !codeSent && (
+          <button
+            className="link-quiet mt-4 block text-[12.5px]"
+            onClick={() => {
+              setForgot(false);
+              setError(null);
+            }}
+          >
+            {t(L('← Назад към входа', '← Back to sign in'))}
           </button>
-        </div>
+        )}
+
+        {tab === 'signup' && needsPassword && !codeSent && <TermsNote />}
+      </Panel>
+
+      {/* -------------------------------------------------------- switch */}
+
+      {!codeSent && !forgot && (
+        <p className="mt-5 text-center text-[13px] text-muted">
+          {t(tab === 'signin' ? L('Нямаш профил?', 'No account yet?') : L('Вече имаш профил?', 'Already have one?'))}{' '}
+          <button
+            className="font-medium underline-offset-2 hover:underline"
+            style={{ color: 'var(--c-accent)' }}
+            onClick={() => {
+              setTab(tab === 'signin' ? 'signup' : 'signin');
+              setByCode(false);
+              setError(null);
+            }}
+          >
+            {t(tab === 'signin' ? L('Създай профил', 'Create one') : L('Влез', 'Sign in'))}
+          </button>
+        </p>
       )}
 
     </>
@@ -464,7 +393,6 @@ function Forms({ onClose }: { onClose: () => void }) {
 
 /* ------------------------------------------------------------ confirm step */
 
-/** Shown when the project requires a confirmation e-mail. */
 /**
  * The step after signing up, when the project asks for a confirmed address.
  *
@@ -492,30 +420,19 @@ function ConfirmStep({ email }: { email: string }) {
   };
 
   return (
-    <div className="text-center">
-      <span
-        className="mx-auto grid h-14 w-14 place-items-center rounded-2xl"
-        style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
-      >
-        <Icon name="send" size={24} />
-      </span>
-      <h1
-        className="mt-4 font-semibold leading-[1.12]"
-        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-      >
-        {t(L('Провери пощата си', 'Check your inbox'))}
-      </h1>
-      <p className="mt-2 text-[13px] leading-relaxed text-muted">
-        {t(
+    <Panel>
+      <AuthTitle
+        icon="send"
+        title={t(L('Провери пощата си', 'Check your inbox'))}
+        hint={t(
           L(
             `Изпратихме код на ${email}. Въведи го, за да активираш профила си.`,
             `We sent a code to ${email}. Enter it to activate your account.`,
           ),
         )}
-      </p>
+      />
 
       <form
-        className="mt-5"
         onSubmit={(e) => {
           e.preventDefault();
           if (emailCodeLooksComplete(code) && !busy) void submit();
@@ -546,9 +463,9 @@ function ConfirmStep({ email }: { email: string }) {
         </button>
       </form>
 
-      <div className="mt-3 space-y-2">
+      <div className="mt-2 space-y-2">
         <button
-          className="btn btn-outline h-10 w-full"
+          className="btn btn-lg w-full"
           disabled={busy}
           onClick={() => {
             setBusy(true);
@@ -564,7 +481,7 @@ function ConfirmStep({ email }: { email: string }) {
           {busy && <Icon name="refresh" size={15} className="animate-spin" />}
           {t(L('Изпрати нов код', 'Send a new code'))}
         </button>
-        <button className="btn h-10 w-full" onClick={() => useAuth.getState().clearNotice()}>
+        <button className="link-quiet block w-full text-[12.5px]" onClick={() => useAuth.getState().clearNotice()}>
           {t(L('Назад към входа', 'Back to sign in'))}
         </button>
       </div>
@@ -575,7 +492,7 @@ function ConfirmStep({ email }: { email: string }) {
         </p>
       )}
 
-      <p className="mt-5 rounded-xl p-3 text-left text-[11.5px] leading-relaxed text-muted" style={{ background: 'var(--c-surface-2)' }}>
+      <p className="mt-5 text-[12px] leading-relaxed text-faint">
         {t(
           L(
             'Не идва ли? Провери и в спама. Писмото тръгва веднага, но понякога се бави минута-две.',
@@ -583,7 +500,7 @@ function ConfirmStep({ email }: { email: string }) {
           ),
         )}
       </p>
-    </div>
+    </Panel>
   );
 }
 
@@ -600,29 +517,26 @@ function Setup() {
 
   if (fixed)
     return (
-      <p className="text-[13px] text-muted">
-        {t(L('Облакът е зададен при публикуването.', 'The cloud was configured at deploy time.'))}
-      </p>
+      <Panel>
+        <p className="text-[13px] text-muted">
+          {t(L('Облакът е зададен при публикуването.', 'The cloud was configured at deploy time.'))}
+        </p>
+      </Panel>
     );
 
   return (
-    <>
-      <h1
-        className="font-semibold leading-[1.12]"
-        style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-      >
-        {t(L('Свържи база', 'Connect a database'))}
-      </h1>
-      <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-        {t(
+    <Panel>
+      <Title
+        title={t(L('Свържи база', 'Connect a database'))}
+        hint={t(
           L(
             'За да пренасяш библиотеката между устройства, приложението има нужда от собствена база. Supabase дава безплатен план. Прави се веднъж, за около пет минути.',
             'To carry your library between devices the app needs a database of its own. Supabase has a free plan. It is a one-off, about five minutes.',
           ),
         )}
-      </p>
+      />
 
-      <ol className="mt-5 space-y-2.5 text-[12.5px]">
+      <ol className="space-y-2.5 text-[13px]">
         <Step n={1}>
           {t(L('Създай проект в', 'Create a project on'))}{' '}
           <a
@@ -657,16 +571,17 @@ function Setup() {
           {t(L('остави го private.', 'leave it private.'))}
         </Step>
         <Step n={4}>
-          <b>Project Settings → API</b> → {t(L('копирай адреса и publishable ключа тук.', 'copy the URL and the publishable key here.'))}
+          <b>Project Settings → API</b> →{' '}
+          {t(L('копирай адреса и publishable ключа тук.', 'copy the URL and the publishable key here.'))}
         </Step>
       </ol>
 
-      <div className="mt-4 space-y-2.5">
+      <div className="mt-5 space-y-3">
         <Field label="Project URL">
           <input
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            className="field h-10 font-mono text-[12px]"
+            className="field field-lg font-mono text-[12px]"
             placeholder="https://xxxxxxxx.supabase.co"
             spellCheck={false}
           />
@@ -675,14 +590,14 @@ function Setup() {
           <input
             value={key}
             onChange={(e) => setKey(e.target.value)}
-            className="field h-10 font-mono text-[12px]"
+            className="field field-lg font-mono text-[12px]"
             placeholder={t(L('sb_publishable_… или eyJhbGciOi…', 'sb_publishable_… or eyJhbGciOi…'))}
             spellCheck={false}
           />
         </Field>
         {error && <Banner tone="danger" text={error} />}
         <button
-          className="btn btn-primary h-10 w-full"
+          className="btn btn-primary btn-lg w-full"
           disabled={!url || !key || busy}
           onClick={() => {
             setBusy(true);
@@ -700,20 +615,19 @@ function Setup() {
         </button>
       </div>
 
-      <p className="mt-3 text-[11px] leading-relaxed text-muted">
+      <p className="mt-3 text-[11.5px] leading-relaxed text-faint">
         {t(
           L(
             'Адресът и publishable ключът са публични по замисъл — защитата е в правилата на базата.',
             'The URL and the publishable key are public by design — the protection lives in the database rules.',
           ),
         )}
-        <b className="text-ink">
+        <b className="text-muted">
           {' '}
           {t(L('Тайният (secret) ключ никога не влиза тук.', 'The secret key never goes in here.'))}
         </b>
       </p>
-
-    </>
+    </Panel>
   );
 }
 
@@ -722,9 +636,19 @@ function Setup() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="mb-1 block label">{label}</span>
+      <span className="t-label mb-1.5 block">{label}</span>
       {children}
     </label>
+  );
+}
+
+function Divider({ label }: { label: string }) {
+  return (
+    <div className="my-4 flex items-center gap-3">
+      <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
+      <span className="text-[12px] text-faint">{label}</span>
+      <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
+    </div>
   );
 }
 
@@ -732,26 +656,13 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
   return (
     <li className="flex gap-2.5">
       <span
-        className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-semibold"
-        style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
+        className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-medium"
+        style={{ background: 'var(--c-surface-3)', color: 'var(--c-muted)' }}
       >
         {n}
       </span>
       <span className="flex-1 leading-relaxed">{children}</span>
     </li>
-  );
-}
-
-function Banner({ tone, text }: { tone: 'danger' | 'ok'; text: string }) {
-  const color = tone === 'danger' ? 'var(--c-danger)' : 'var(--c-success)';
-  return (
-    <p
-      className="flex items-start gap-1.5 rounded-[10px] px-2.5 py-2 text-[12px] leading-snug"
-      style={{ background: `color-mix(in srgb, ${color} 10%, transparent)`, color }}
-    >
-      <Icon name={tone === 'danger' ? 'alert' : 'checkCircle'} size={13} className="mt-px shrink-0" />
-      {text}
-    </p>
   );
 }
 

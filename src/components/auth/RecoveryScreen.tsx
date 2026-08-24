@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { Icon } from '../Icon';
 import { PasswordField } from './PasswordField';
+import { AuthLayout, AuthNote, AuthPanel, AuthTitle } from './Shell';
 import { useT, L } from '@/i18n';
 
 /**
@@ -33,33 +34,20 @@ export function RecoveryScreen() {
   };
 
   return (
-    <div className="grid h-full place-items-center overflow-y-auto px-5 py-10" style={{ background: 'var(--c-bg)' }}>
-      <div className="w-full max-w-[380px]">
-        <span
-          className="grid h-12 w-12 place-items-center rounded-2xl"
-          style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
-        >
-          <Icon name="shield" size={22} />
-        </span>
-
-        <h1
-          className="mt-4 font-semibold leading-[1.12]"
-          style={{ fontSize: 'var(--text-title)', letterSpacing: 'var(--track-title)' }}
-        >
-          {t(L("Нова парола", "New password"))}
-        </h1>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-muted">
-          {email ? (
-            <>
-              {t(L(`Задай нова парола за ${email}.`, `Set a new password for ${email}.`))}
-            </>
-          ) : (
-            'Задай нова парола за профила си.'
-          )}
-        </p>
+    <AuthLayout>
+      <AuthPanel>
+        <AuthTitle
+          icon="shield"
+          title={t(L('Нова парола', 'New password'))}
+          hint={
+            email
+              ? t(L(`Задай нова парола за ${email}.`, `Set a new password for ${email}.`))
+              : t(L('Задай нова парола за профила си.', 'Set a new password for your account.'))
+          }
+        />
 
         <form
-          className="mt-5 space-y-3"
+          className="space-y-3.5"
           onSubmit={(e) => {
             e.preventDefault();
             if (ready) void submit();
@@ -93,32 +81,21 @@ export function RecoveryScreen() {
             )}
           </div>
 
-          {error && (
-            <p
-              className="flex items-start gap-1.5 rounded-[10px] px-2.5 py-2 text-[12px] leading-snug"
-              style={{
-                background: 'color-mix(in srgb, var(--c-danger) 10%, transparent)',
-                color: 'var(--c-danger)',
-              }}
-            >
-              <Icon name="alert" size={13} className="mt-px shrink-0" />
-              {error}
-            </p>
-          )}
+          {error && <AuthNote text={error} />}
 
-          <button className="btn btn-primary h-10 w-full" disabled={!ready} type="submit">
+          <button className="btn btn-primary btn-lg w-full" disabled={!ready} type="submit">
             {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-            Запази паролата
+            {t(L('Запази паролата', 'Save the password'))}
           </button>
         </form>
 
         <button
-          className="mt-3 w-full cursor-pointer text-[12px] text-muted underline-offset-2 hover:underline"
+          className="link-quiet mt-4 block w-full text-center text-[12.5px]"
           onClick={() => useAuth.getState().endRecovery()}
         >
           {t(L('Ще я сменя по-късно', 'I will change it later'))}
         </button>
-      </div>
-    </div>
+      </AuthPanel>
+    </AuthLayout>
   );
 }
