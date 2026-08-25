@@ -31,8 +31,10 @@ export const DB_NAME = 'studypdf';
  * device learns about them, and blobs remember whether they are uploaded.
  * v5 adds goals — the only new store the 2.0 screens needed, because levels,
  * achievements and statistics are all derived from records that already exist.
+ * v6 fixes a silent sync failure: four kinds of record were written without a
+ * `updatedAt`, so the cloud never saw them. See the migration below.
  */
-export const DB_VERSION = 5;
+export const DB_VERSION = 6;
 
 export interface StudyDB extends DBSchema {
   folders: { key: string; value: Folder; indexes: { 'by-updated': number } };
@@ -159,6 +161,56 @@ export function getDB(): Promise<IDBPDatabase<StudyDB>> {
         }
         if (!db.objectStoreNames.contains('uploads')) {
           db.createObjectStore('uploads', { keyPath: 'key' });
+        }
+
+        /* ------------------------------------------------------- v6 */
+
+        /**
+         * Backfilling the write times the sync engine needs.
+         *
+         * Focus sessions, grades and timetable slots were written without an
+         * `updatedAt`. The sync engine reads that field to decide what is new,
+         * treats a missing one as zero, and only pushes rows *newer* than the
+         * last push — so those three kinds were never pushed at all. Not once.
+         * Every hour of focus a person had logged lived on one device only,
+         * and a new phone came up with an empty history and empty statistics.
+         *
+         * The repository stamps them on write now (see `storageService`), and
+         * this walks what is already on disk. The stamp is the moment the
+         * record is known to have existed — the session's start, the mark's
+         * date — rather than `now`, so that two devices which both migrate do
+         * not each claim to hold the newer copy of the same row.
+         */
+        if (oldVersion > 0 && oldVersion < 6) {
+          const backfill = async (
+            name: 'sessions' | 'grades' | 'schedule' | 'bookmarks',
+            when: (row: Record<string, unknown>) => number,
+          ) => {
+            if (!db.objectStoreNames.contains(name)) return;
+            const store = tx.objectStore(name);
+            let cursor = await store.openCursor();
+            while (cursor) {
+              const row = cursor.value as unknown as Record<string, unknown>;
+              if (!row.updatedAt) {
+                await cursor.update({ ...row, updatedAt: when(row) } as never);
+              }
+              cursor = await cursor.continue();
+            }
+          };
+          // All four walks are started in the same tick, on purpose. An
+          // upgrade transaction commits itself the moment the microtask queue
+          // drains with no request outstanding, so running them one after the
+          // other would leave a gap between the first finishing and the second
+          // opening its cursor — and the second would find the transaction
+          // already closed.
+          void Promise.all([
+            backfill('sessions', (r) => Number(r.startedAt) || Date.now()),
+            backfill('grades', (r) => Number(r.date) || Date.now()),
+            // A lesson slot has no date of its own; it has always just been
+            // there, so the migration itself is the only honest answer.
+            backfill('schedule', () => Date.now()),
+            backfill('bookmarks', (r) => Number(r.createdAt) || Date.now()),
+          ]);
         }
 
         // The timer's flat task list becomes planner items, so there is only

@@ -3,13 +3,12 @@ import type { PlannerItem } from '@/types';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useLibrary } from '@/state/libraryStore';
-import { useViewer } from '@/state/viewerStore';
 import { useCards } from '@/state/cardStore';
 import { usePlanner, daysUntil, openItems, sortByDue } from '@/state/plannerStore';
 import { useTimer } from '@/state/timerStore';
 import { useT, L, useLang, formatDate, formatDuration } from '@/i18n';
 import { S } from '@/i18n/strings';
-import { Screen } from '../shell/Screen';
+import { Section } from '../shell/Screen';
 import { Icon } from '../Icon';
 import {
   Badge,
@@ -21,6 +20,7 @@ import {
   Tabs,
 } from '../kit';
 import { TaskRow } from '../tasks/TaskRow';
+import { openDoc } from '@/services/openDoc';
 
 /**
  * Exams, with the only two questions that matter: how long is left, and how
@@ -31,7 +31,7 @@ import { TaskRow } from '../tasks/TaskRow';
  * cards in the deck that are not overdue, and hours logged since the exam was
  * put in. A preparation bar you fill in by hand measures optimism.
  */
-export function ExamsScreen() {
+export function ExamsScreen({ embedded }: { embedded?: boolean } = {}) {
   const t = useT();
   const items = usePlanner((s) => s.items);
   const focusId = useApp((s) => s.focusId);
@@ -64,7 +64,8 @@ export function ExamsScreen() {
   const next = upcoming[0];
 
   return (
-    <Screen
+    <Section
+      embedded={embedded}
       title={t(S.exams)}
       subtitle={
         next?.due != null
@@ -77,7 +78,7 @@ export function ExamsScreen() {
           : t(L('Нищо не е насрочено.', 'Nothing scheduled.'))
       }
       actions={
-        <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('exam')}>
+        <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('item', 'exam')}>
           {t(L('Нов изпит', 'New exam'))}
         </Button>
       }
@@ -105,7 +106,7 @@ export function ExamsScreen() {
             )}
             action={
               tab === 'upcoming'
-                ? { label: t(L('Добави изпит', 'Add exam')), icon: 'plus', onClick: () => useApp.getState().setQuick('exam') }
+                ? { label: t(L('Добави изпит', 'Add exam')), icon: 'plus', onClick: () => useApp.getState().setQuick('item', 'exam') }
                 : undefined
             }
           />
@@ -128,7 +129,7 @@ export function ExamsScreen() {
           ))}
         </div>
       )}
-    </Screen>
+    </Section>
   );
 }
 
@@ -289,7 +290,7 @@ function ExamCard({ exam, open, onToggle }: { exam: PlannerItem; open: boolean; 
                     icon="plus"
                     onClick={() => {
                       useApp.getState().setFilter(exam.subjectId);
-                      useApp.getState().setQuick('task');
+                      useApp.getState().setQuick('item', 'task');
                     }}
                   >
                     {t(S.add)}
@@ -315,7 +316,7 @@ function ExamCard({ exam, open, onToggle }: { exam: PlannerItem; open: boolean; 
                     {materials.map((doc) => (
                       <button
                         key={doc.id}
-                        onClick={() => void useViewer.getState().openDocument(doc.id)}
+                        onClick={() => void openDoc(doc.id)}
                         className="flex cursor-pointer items-center gap-2 rounded-[10px] border border-line px-2.5 py-1.5 text-[12.5px] transition-colors hover:bg-surface-2"
                       >
                         <Icon name={doc.kind === 'board' ? 'board' : 'book'} size={13} className="text-faint" />
@@ -332,7 +333,7 @@ function ExamCard({ exam, open, onToggle }: { exam: PlannerItem; open: boolean; 
                   icon="timer"
                   onClick={() => {
                     useTimer.getState().setActiveTask(exam.id);
-                    useTimer.getState().setView('full');
+                    useApp.getState().go('focus');
                     useTimer.getState().start();
                   }}
                 >

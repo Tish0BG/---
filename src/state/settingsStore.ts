@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { AppSettings, ToolId, ToolSettings } from '@/types';
+import { DEFAULT_DASHBOARD } from '@/components/dashboard/dashboardDefaults';
 
 const KEY = 'studypdf.settings.v1';
 
@@ -54,6 +55,7 @@ const DEFAULTS: AppSettings = {
   driveSort: 'recent',
   gradeScale: { min: 2, max: 6, pass: 3 },
   railCollapsed: false,
+  dashboard: DEFAULT_DASHBOARD,
 };
 
 /** Everything in AppSettings is persisted; listing the keys keeps the
@@ -72,6 +74,11 @@ function load(): AppSettings {
       timer: { ...DEFAULTS.timer, ...(parsed.timer ?? {}) },
       timerPos: { ...DEFAULTS.timerPos, ...(parsed.timerPos ?? {}) },
       gradeScale: { ...DEFAULTS.gradeScale, ...(parsed.gradeScale ?? {}) },
+      // A layout saved before a panel existed, or after one was retired, is
+      // still a valid layout — unknown ids are simply dropped at render.
+      dashboard: Array.isArray(parsed.dashboard) && parsed.dashboard.length
+        ? parsed.dashboard
+        : DEFAULTS.dashboard,
     };
   } catch {
     return DEFAULTS;

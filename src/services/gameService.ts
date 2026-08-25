@@ -30,7 +30,16 @@ export const EMPTY_CONTEXT: GameContext = {
 /* ------------------------------------------------------------------- XP */
 
 export const XP_PER_MINUTE = 1;
-export const XP_TASK: Record<PlannerItem['kind'], number> = { task: 12, homework: 15, exam: 30 };
+/**
+ * What a finished entry is worth.
+ *
+ * The three built-in kinds have their own weights because an exam really is
+ * more work than a to-do. Types a person invents are worth a plain task —
+ * letting somebody set their own XP would make the level a number they had
+ * awarded themselves.
+ */
+export const XP_TASK: Record<string, number> = { task: 12, homework: 15, exam: 30 };
+export const xpForItem = (kind: string): number => XP_TASK[kind] ?? XP_TASK.task;
 export const XP_CARD_REVIEW = 1;
 export const XP_GOAL = 120;
 export const XP_STREAK_DAY = 10;
@@ -46,7 +55,7 @@ export interface XpBreakdown {
 
 export function xpBreakdown(ctx: GameContext): XpBreakdown {
   const focus = ctx.sessions.reduce((sum, s) => sum + s.minutes, 0) * XP_PER_MINUTE;
-  const tasks = ctx.items.filter((i) => i.done).reduce((sum, i) => sum + XP_TASK[i.kind], 0);
+  const tasks = ctx.items.filter((i) => i.done).reduce((sum, i) => sum + xpForItem(i.kind), 0);
   const cards = ctx.cards.reduce((sum, c) => sum + c.reps, 0) * XP_CARD_REVIEW;
   const goals = ctx.goals.filter((g) => g.completedAt).length * XP_GOAL;
   // Longest, not current: XP must never go down because a day was missed.
@@ -365,6 +374,13 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     value: (c) => c.items.filter((i) => i.kind === 'exam' && i.done).length,
   },
 ];
+
+/** The three tiers, in the language the screen is being read in. */
+export const TIER_LABEL: Record<AchievementTier, Msg> = {
+  bronze: L('бронз', 'bronze'),
+  silver: L('сребро', 'silver'),
+  gold: L('злато', 'gold'),
+};
 
 export const TIER_COLOR: Record<AchievementTier, string> = {
   bronze: '#b06c3d',

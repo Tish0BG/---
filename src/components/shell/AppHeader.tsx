@@ -3,21 +3,29 @@ import { VIEW_TITLES, useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useTimer, formatClock } from '@/state/timerStore';
-import { useT, L, useLang, longDate } from '@/i18n';
+import { useT, tr, L, useLang, longDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Icon } from '../Icon';
 import { Popover, MenuItem, MenuSep } from '../ui';
 import { Button, IconButton, Tooltip, useIsPhone } from '../kit';
-import { UtilityButton } from '../utilities/UtilityLayer';
 import { ProfileMenu } from './ProfileMenu';
 import { NoticeBell } from './NoticePanel';
+import { openDoc } from '@/services/openDoc';
 
 /**
  * The header is the app's control surface: where you are, one field that
  * reaches everything, and the one button that makes something new. Everything
  * else in it is a status light, and status lights are small.
  */
-export function AppHeader({ onMenu }: { onMenu?: () => void }) {
+export function AppHeader({
+  onMenu,
+  onNewBoard,
+  onUpload,
+}: {
+  onMenu?: () => void;
+  onNewBoard?: () => void;
+  onUpload?: () => void;
+}) {
   const t = useT();
   const lang = useLang();
   const view = useApp((s) => s.view);
@@ -71,7 +79,7 @@ export function AppHeader({ onMenu }: { onMenu?: () => void }) {
         {running && (
           <Tooltip label={t(L('Фокус сесия — отвори', 'Focus session — open'))}>
             <button
-              onClick={() => useTimer.getState().setView('full')}
+              onClick={() => useApp.getState().go('focus')}
               className="t-num mr-1 hidden h-8 cursor-pointer items-center gap-1.5 rounded-full px-2.5 text-[12.5px] font-semibold sm:flex"
               style={{
                 background: 'color-mix(in srgb, var(--c-timer-focus) 14%, transparent)',
@@ -91,9 +99,8 @@ export function AppHeader({ onMenu }: { onMenu?: () => void }) {
           onClick={() => useApp.getState().setPalette(true)}
         />
 
-        <NewButton compact={phone} />
+        <NewButton compact={phone} onNewBoard={onNewBoard} onUpload={onUpload} />
         <NoticeBell />
-        {!phone && <UtilityButton compact />}
         <div className="mx-1 hidden h-6 w-px bg-line sm:block" />
         <ProfileMenu />
       </div>
@@ -106,7 +113,15 @@ export function AppHeader({ onMenu }: { onMenu?: () => void }) {
  * palette and the phone's plus button offer, so "how do I add a task" has a
  * single answer wherever you are.
  */
-export function NewButton({ compact }: { compact?: boolean }) {
+export function NewButton({
+  compact,
+  onNewBoard,
+  onUpload,
+}: {
+  compact?: boolean;
+  onNewBoard?: () => void;
+  onUpload?: () => void;
+}) {
   const t = useT();
   return (
     <Popover
@@ -126,21 +141,42 @@ export function NewButton({ compact }: { compact?: boolean }) {
     >
       {(close) => (
         <>
+          <MenuLabel>{t(L('Файл', 'File'))}</MenuLabel>
           <MenuItem
-            icon="listTodo"
-            label={t(S.task)}
-            shortcut="T"
+            icon="notebook"
+            label={t(L('Текстов документ', 'Text document'))}
+            shortcut="D"
             onClick={() => {
-              useApp.getState().setQuick('task');
+              void newNote();
               close();
             }}
           />
           <MenuItem
-            icon="graduation"
-            label={t(S.exam)}
-            shortcut="E"
+            icon="board"
+            label={t(L('Дъска', 'Whiteboard'))}
+            shortcut="B"
             onClick={() => {
-              useApp.getState().setQuick('exam');
+              onNewBoard?.();
+              close();
+            }}
+          />
+          <MenuItem
+            icon="upload"
+            label={t(L('Качи файл', 'Upload a file'))}
+            onClick={() => {
+              onUpload?.();
+              close();
+            }}
+          />
+
+          <MenuSep />
+          <MenuLabel>{t(L('План', 'Plan'))}</MenuLabel>
+          <MenuItem
+            icon="listTodo"
+            label={t(L('Запис — задача, изпит, свой тип', 'Entry — task, exam, your own type'))}
+            shortcut="T"
+            onClick={() => {
+              useApp.getState().setQuick('item', 'task');
               close();
             }}
           />
@@ -161,12 +197,13 @@ export function NewButton({ compact }: { compact?: boolean }) {
               close();
             }}
           />
+
           <MenuSep />
           <MenuItem
             icon="timer"
-            label={t(L('Започни фокус', 'Start focus'))}
+            label={t(L('Започни фокус сесия', 'Start a focus session'))}
             onClick={() => {
-              useTimer.getState().setView('full');
+              useApp.getState().go('focus');
               useTimer.getState().start();
               close();
             }}
@@ -175,4 +212,21 @@ export function NewButton({ compact }: { compact?: boolean }) {
       )}
     </Popover>
   );
+}
+
+/** A quiet caption inside a menu, so a long list reads as two short ones. */
+function MenuLabel({ children }: { children: React.ReactNode }) {
+  return <div className="px-2 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.06em] text-faint">{children}</div>;
+}
+
+/**
+ * A new written document, made and opened in one gesture.
+ *
+ * Named after the day rather than left as "Untitled": a library of six
+ * documents all called the same thing is a library you stop opening.
+ */
+export async function newNote(folderId: string | null = null): Promise<void> {
+  const name = tr(L('Нов документ', 'New document'));
+  const id = await useLibrary.getState().createNote(name, folderId);
+  await openDoc(id);
 }

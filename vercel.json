@@ -84,6 +84,10 @@
       "destination": "/dashboard"
     },
     {
+      "source": "/note/:id",
+      "destination": "/dashboard"
+    },
+    {
       "source": "/subjects/:id",
       "destination": "/dashboard"
     },

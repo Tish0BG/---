@@ -27,7 +27,7 @@ export interface SyncRow {
 }
 
 /** Meta keys that belong to the account rather than to this browser. */
-export const SYNCED_META_KEYS = ['profile', 'learning', 'privacy', 'decks', 'game'] as const;
+export const SYNCED_META_KEYS = ['profile', 'learning', 'privacy', 'decks', 'game', 'itemTypes'] as const;
 
 /**
  * Everything the app needs from persistence lives behind this interface.
@@ -125,6 +125,22 @@ export interface StudyRepository {
   /** Wipes every store. Used by "restore over the existing library". */
   clearAll(): Promise<void>;
 }
+
+/**
+ * The write time every record needs in order to be syncable.
+ *
+ * It is applied here, at the door, rather than left to each caller. It *was*
+ * left to each caller, and four of them forgot: focus sessions, grades and
+ * timetable slots went to disk with no `updatedAt` at all, which the sync
+ * engine reads as "written at the epoch" — older than the last push, forever.
+ * The result was silent and total: none of those three kinds ever reached the
+ * cloud, so a second device showed no study history and no marks, and nothing
+ * anywhere reported an error.
+ *
+ * A rule that has to be remembered in five places is a rule that will be
+ * forgotten in the sixth. This is the one place.
+ */
+const stamp = <T extends object>(row: T): T => ({ ...row, updatedAt: Date.now() });
 
 /** Which IndexedDB store backs each syncable kind. */
 const KIND_STORE: Record<Exclude<SyncKind, 'meta'>, keyof StudyDB> = {
@@ -297,7 +313,7 @@ class IndexedDBRepository implements StudyRepository {
     return (await this.db()).getAll('grades');
   }
   async putGrade(g: Grade) {
-    await (await this.db()).put('grades', g);
+    await (await this.db()).put('grades', stamp(g));
   }
   async deleteGrade(id: string) {
     await (await this.db()).delete('grades', id);
@@ -308,7 +324,7 @@ class IndexedDBRepository implements StudyRepository {
     return (await this.db()).getAll('schedule');
   }
   async putSlot(s: ClassSlot) {
-    await (await this.db()).put('schedule', s);
+    await (await this.db()).put('schedule', stamp(s));
   }
   async deleteSlot(id: string) {
     await (await this.db()).delete('schedule', id);
@@ -319,7 +335,7 @@ class IndexedDBRepository implements StudyRepository {
     return (await this.db()).getAll('sessions');
   }
   async putSession(s: FocusSession) {
-    await (await this.db()).put('sessions', s);
+    await (await this.db()).put('sessions', stamp(s));
   }
   async deleteSessionsOfDay(day: string) {
     const db = await this.db();
@@ -340,7 +356,7 @@ class IndexedDBRepository implements StudyRepository {
     return (await this.db()).getAllFromIndex('bookmarks', 'by-doc', IDBKeyRange.only(docId));
   }
   async putBookmark(b: Bookmark) {
-    await (await this.db()).put('bookmarks', b);
+    await (await this.db()).put('bookmarks', stamp(b));
   }
   async deleteBookmark(id: string) {
     await (await this.db()).delete('bookmarks', id);
@@ -384,7 +400,13 @@ class IndexedDBRepository implements StudyRepository {
     const all = (await db.getAll(KIND_STORE[kind] as 'documents')) as unknown as Record<string, unknown>[];
     return all.map((r) => ({
       id: String(r.id),
-      updatedAt: Number(r.updatedAt ?? r.createdAt ?? 0),
+      // The fallback chain is defence, not the mechanism: `stamp` above puts a
+      // real `updatedAt` on everything written today, and the v6 migration put
+      // one on everything written before. This catches a record that reached
+      // the store by some route neither of those covers — and reaching for the
+      // moment the record describes is better than reaching for zero, which
+      // the push filter reads as "already sent".
+      updatedAt: Number(r.updatedAt ?? r.startedAt ?? r.date ?? r.createdAt ?? 0),
       docId: (r.docId as string | null) ?? (kind === 'documents' ? String(r.id) : null),
       data: r,
     }));

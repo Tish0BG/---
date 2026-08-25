@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
+import { useItemTypes } from '@/state/itemTypeStore';
 import { usePlanner, startOfDay } from '@/state/plannerStore';
 import { useTimer } from '@/state/timerStore';
 import { useT, L, useLang, monthTitle, weekdayNames, clockTime, shortDate, formatDate } from '@/i18n';
@@ -36,6 +37,7 @@ export function CalendarScreen() {
   const schedule = usePlanner((s) => s.schedule);
   const sessions = useTimer((s) => s.sessions);
   const subjects = useWorkspace((s) => s.subjects);
+  const types = useItemTypes((s) => s.custom);
 
   const [view, setView] = useState<View>(phone ? 'day' : 'month');
   const [anchor, setAnchor] = useState(() => new Date());
@@ -48,8 +50,8 @@ export function CalendarScreen() {
   );
 
   const events = useMemo(
-    () => eventsForRange(days, { items, schedule, sessions, subjects }, { includeSessions: view !== 'month' }),
-    [days, items, schedule, sessions, subjects, view],
+    () => eventsForRange(days, { items, schedule, sessions, subjects, types }, { includeSessions: view !== 'month' }),
+    [days, items, schedule, sessions, subjects, types, view],
   );
 
   const step = (dir: number) => {
@@ -101,7 +103,7 @@ export function CalendarScreen() {
               { id: 'timetable', label: t(L('Програма', 'Timetable')) },
             ]}
           />
-          <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('task')}>
+          <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('item')}>
             {t(S.add)}
           </Button>
         </>

@@ -59,6 +59,11 @@ interface LibraryStore {
 
   importFiles(files: File[], folderId: string | null): Promise<string[]>;
   createBoard(name: string, config: BoardConfig, folderId: string | null): Promise<string>;
+  /** a written document: no pages, a rich-text body on the record itself */
+  createNote(name: string, folderId: string | null, patch?: Partial<DocumentMeta>): Promise<string>;
+  /** ties two documents together, from both sides; returns the first one */
+  linkDocuments(a: string, b: string): Promise<DocumentMeta | undefined>;
+  unlinkDocuments(a: string, b: string): Promise<DocumentMeta | undefined>;
   renameDocument(id: string, name: string): Promise<void>;
   /** moves to the bin; the bytes stay until the bin is emptied */
   deleteDocument(id: string): Promise<void>;
@@ -210,6 +215,67 @@ export const useLibrary = create<LibraryStore>((set, get) => ({
     await repo.putDocument(doc);
     set((s) => ({ documents: [...s.documents, doc] }));
     return doc.id;
+  },
+
+  /**
+   * A written document.
+   *
+   * `pageCount: 1` is a small lie that keeps every list, progress bar and
+   * sorting rule in the library working without a special case; a note has no
+   * pages, and nothing in the product asks it for one.
+   */
+  async createNote(name, folderId, patch) {
+    const doc: DocumentMeta = {
+      ...blankDocument(name.trim() || 'Нов документ', folderId, get().documents.length),
+      kind: 'note',
+      note: { html: '', text: '', words: 0 },
+      links: [],
+      ...patch,
+    };
+    await repo.putDocument(doc);
+    set((s) => ({ documents: [...s.documents, doc] }));
+    return doc.id;
+  },
+
+  /**
+   * Links are held on both records.
+   *
+   * A single-sided link is a link that disappears the moment the other half is
+   * restored from a device that never saw it — and the whole point of tying a
+   * note to the board it was written against is that the tie survives.
+   */
+  async linkDocuments(a, b) {
+    if (a === b) return undefined;
+    // Both halves have to exist. A link to an id that is not in the library
+    // — a paste from another account, a document deleted for good — would
+    // otherwise sit in the record forever, counted and never shown.
+    const docs = get().documents;
+    if (!docs.some((d) => d.id === a) || !docs.some((d) => d.id === b)) return undefined;
+    const add = async (from: string, to: string) => {
+      const current = get().documents.find((d) => d.id === from);
+      if (!current) return undefined;
+      const links = current.links ?? [];
+      if (links.includes(to)) return current;
+      const doc = await repo.patchDocument(from, { links: [...links, to] });
+      if (doc) get().syncDocument(doc);
+      return doc;
+    };
+    const first = await add(a, b);
+    await add(b, a);
+    return first;
+  },
+
+  async unlinkDocuments(a, b) {
+    const drop = async (from: string, to: string) => {
+      const current = get().documents.find((d) => d.id === from);
+      if (!current?.links?.includes(to)) return current;
+      const doc = await repo.patchDocument(from, { links: current.links.filter((x) => x !== to) });
+      if (doc) get().syncDocument(doc);
+      return doc;
+    };
+    const first = await drop(a, b);
+    await drop(b, a);
+    return first;
   },
 
   async renameDocument(id, name) {

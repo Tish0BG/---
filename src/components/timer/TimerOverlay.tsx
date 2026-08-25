@@ -4,6 +4,7 @@ import type { TimerMode } from '@/types';
 import { useSettings } from '@/state/settingsStore';
 import { MODE_LABEL, dayKey, formatClock, statsForDay, useTimer, type TimerTab } from '@/state/timerStore';
 import { usePlanner } from '@/state/plannerStore';
+import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { currentStreak } from '@/services/gameService';
 import { useT, useLang, L, clockTime, formatDuration } from '@/i18n';
@@ -232,9 +233,11 @@ function FullScreen() {
   const lang = useLang();
   const { mode, running, left, cycle } = useTimer();
   const timer = useSettings((s) => s.timer);
-  const activeTaskId = useTimer((s) => s.activeTaskId);
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
   const lastSession = useTimer((s) => s.lastSession);
-  const task = usePlanner((s) => s.items.find((x) => x.id === activeTaskId));
+  const items = usePlanner((s) => s.items);
+  const picked = activeTaskIds.map((id) => items.find((x) => x.id === id)).filter(Boolean) as typeof items;
+  const task = picked[0];
   const subject = useWorkspace((s) => s.subjects.find((x) => x.id === task?.subjectId));
   const [now, setNow] = useState(() => new Date());
   const store = useTimer.getState;
@@ -276,7 +279,12 @@ function FullScreen() {
           icon="shrink"
           label={t(L('Изход (Esc)', 'Exit (Esc)'))}
           size="lg"
-          onClick={() => store().setView('mini')}
+          onClick={() => {
+            // Out of full screen lands on the focus screen: that is where the
+            // same session carries on, with the task list and the lengths.
+            useApp.getState().go('focus');
+            store().setView('hidden');
+          }}
         />
         <span className="t-num text-[13px] text-muted">{clockTime(now.getTime(), lang)}</span>
       </header>
@@ -292,6 +300,16 @@ function FullScreen() {
               <span className="mt-1 max-w-[36ch] truncate text-[19px] font-semibold tracking-[-0.02em]">
                 {task.title}
               </span>
+              {picked.length > 1 && (
+                <span className="mt-1 text-[12px] text-faint">
+                  {t(
+                    L(
+                      `и още ${picked.length - 1} в тази сесия`,
+                      `and ${picked.length - 1} more this session`,
+                    ),
+                  )}
+                </span>
+              )}
             </>
           )}
         </div>
@@ -341,7 +359,12 @@ function FullScreen() {
           </button>
           <IconButton
             icon="skip"
-            label={t(L('Следващ (S)', 'Next (S)'))}
+            label={t(
+              L(
+                'Следващ (S) — прескочените минути не се броят',
+                'Next (S) — skipped minutes are not counted',
+              ),
+            )}
             size="lg"
             onClick={() => store().skip()}
           />
@@ -471,6 +494,7 @@ function SessionComplete({ minutes, accent }: { minutes: number; accent: string 
             onClick={() => {
               store().clearLast();
               store().setView('hidden');
+              useApp.getState().go('focus');
             }}
           >
             {t(L('Готово', 'Done'))}
@@ -518,7 +542,8 @@ function useTimerShortcuts() {
     } else if (/^[sSсС]$/.test(e.key)) {
       store.skip();
     } else if (e.key === 'Escape') {
-      store.setView('mini');
+      useApp.getState().go('focus');
+      store.setView('hidden');
     }
   }, []);
 

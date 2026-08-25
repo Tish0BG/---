@@ -101,7 +101,7 @@ export function TodayPlan() {
           action={{
             label: t(L('Добави задача', 'Add a task')),
             icon: 'plus',
-            onClick: () => useApp.getState().setQuick('task'),
+            onClick: () => useApp.getState().setQuick('item', 'task'),
           }}
         />
       ) : (
@@ -191,7 +191,7 @@ function Row({ entry, live }: { entry: Entry; live: boolean }) {
           <button
             className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
             onClick={() => {
-              useTimer.getState().setView('full');
+              useApp.getState().go('focus');
               useTimer.getState().start();
             }}
             aria-label={t(L('Започни фокус', 'Start focus'))}
@@ -273,7 +273,7 @@ function Row({ entry, live }: { entry: Entry; live: boolean }) {
           className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
           onClick={() => {
             useTimer.getState().setActiveTask(item.id);
-            useTimer.getState().setView('full');
+            useApp.getState().go('focus');
             useTimer.getState().start();
           }}
           aria-label={t(L('Започни фокус', 'Start focus'))}

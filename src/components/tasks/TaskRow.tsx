@@ -4,19 +4,17 @@ import { useWorkspace } from '@/state/workspaceStore';
 import { usePlanner, addDays, startOfDay } from '@/state/plannerStore';
 import { useTimer } from '@/state/timerStore';
 import { useLibrary } from '@/state/libraryStore';
-import { useViewer } from '@/state/viewerStore';
-import { useT, L } from '@/i18n';
+import { useApp } from '@/state/appStore';
+import { useItemTypes, typeName, typeOf } from '@/state/itemTypeStore';
+import { useT, useLang, L } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover } from '../ui';
-import { Tooltip } from '../kit';
+import { Tooltip, useIsPhone } from '../kit';
 import { DueChip } from '../planner/DueChip';
+import { openDoc } from '@/services/openDoc';
 
-export const KIND_ICON: Record<PlannerItem['kind'], string> = {
-  task: 'listTodo',
-  homework: 'pencil',
-  exam: 'graduation',
-};
+
 
 /**
  * One task, everywhere.
@@ -37,10 +35,18 @@ export function TaskRow({
   dense?: boolean;
 }) {
   const t = useT();
+  const lang = useLang();
+  const phone = useIsPhone();
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
+  const custom = useItemTypes((s) => s.custom);
   const subject = subjects.find((s) => s.id === item.subjectId) ?? null;
   const doc = documents.find((d) => d.id === item.docId);
+  const type = typeOf(item.kind, custom);
+  // The tint is the type's own colour where it has one, and the subject's
+  // otherwise — a "rehearsal" should look like a rehearsal, but an ordinary
+  // task should look like the subject it belongs to.
+  const tint = type.color ?? subject?.color ?? null;
   const [justDone, setJustDone] = useState(false);
 
   const toggle = () => {
@@ -89,17 +95,40 @@ export function TaskRow({
         onDoubleClick={() => onEdit?.(item)}
       >
         <span className="flex items-center gap-2">
+          {item.kind !== 'task' && (
+            <Icon
+              name={type.icon}
+              size={13}
+              className="shrink-0"
+              style={{ color: tint ?? 'var(--c-muted)' }}
+            />
+          )}
           <span className={`truncate text-[13.5px] ${item.done ? 'line-through' : 'font-medium'}`}>
             {item.title}
           </span>
-          {item.kind === 'exam' && (
-            <span className="chip shrink-0" style={{ background: 'var(--c-warn-soft)', color: 'var(--c-warn)' }}>
-              {t(S.exam)}
+          {/* The chip repeats what the icon already says. In a dense row —
+              the calendar's day column, the timer panel — the title needs
+              that width more than the type needs a second mention. */}
+          {!dense && item.kind !== 'task' && item.kind !== 'homework' && (
+            <span
+              className="chip shrink-0"
+              style={{
+                background: tint ? `color-mix(in srgb, ${tint} 14%, transparent)` : 'var(--c-surface-3)',
+                color: tint ?? 'var(--c-muted)',
+              }}
+            >
+              {typeName(type, lang)}
             </span>
           )}
         </span>
-        {(subject || item.notes || doc || item.pomodoros > 0) && (
+        {(subject || item.notes || doc || item.time || item.pomodoros > 0) && (
           <span className="mt-1 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[11.5px] text-muted">
+            {item.time && (
+              <span className="t-num inline-flex items-center gap-1">
+                <Icon name="clock" size={11} />
+                {item.time}
+              </span>
+            )}
             {subject && (
               <span className="inline-flex items-center gap-1.5">
                 <span className="badge-dot" style={{ background: subject.color }} />
@@ -108,11 +137,14 @@ export function TaskRow({
             )}
             {doc && (
               <span className="inline-flex max-w-[180px] items-center gap-1">
-                <Icon name="book" size={11} />
+                <Icon
+                  name={doc.kind === 'board' ? 'board' : doc.kind === 'note' ? 'notebook' : 'book'}
+                  size={11}
+                />
                 <span className="truncate">{doc.name}</span>
               </span>
             )}
-            {item.pomodoros > 0 && (
+            {item.pomodoros > 0 && !phone && (
               <span className="t-num inline-flex items-center gap-1">
                 <Icon name="timer" size={11} />
                 {item.pomodoros}
@@ -134,7 +166,7 @@ export function TaskRow({
         </Tooltip>
       )}
 
-      {item.due !== null && !item.done && <DueChip due={item.due} />}
+      {item.due !== null && !item.done && <DueChip due={item.due} compact={dense || phone} />}
 
       <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
         {!item.done && (
@@ -143,8 +175,10 @@ export function TaskRow({
               className="icon-btn h-7 w-7"
               aria-label={t(L('Започни фокус', 'Start focus'))}
               onClick={() => {
+                // Straight to the focus screen, not into full screen: the
+                // timer offers the room, it does not take it.
                 useTimer.getState().setActiveTask(item.id);
-                useTimer.getState().setView('full');
+                useApp.getState().go('focus');
                 useTimer.getState().start();
               }}
             >
@@ -213,7 +247,7 @@ export function TaskRow({
                     icon="book"
                     label={t(L('Отвори материала', 'Open material'))}
                     onClick={() => {
-                      void useViewer.getState().openDocument(doc.id);
+                      void openDoc(doc.id);
                       close();
                     }}
                   />

@@ -2,11 +2,12 @@ import { useEffect } from 'react';
 import { applyHead } from '@/seo/head';
 import { entryPath, isAppPath, normalisePath } from '@/seo/routes';
 import { currentLang, tr, L } from '@/i18n';
-import { useApp, VIEW_TITLES, resolveView, type AppView } from './appStore';
+import { useApp, VIEW_TITLES, PLAN_TAB_FOR, resolveView, type AppView } from './appStore';
 import { useAuth } from './authStore';
 import { useRoute } from './routeStore';
 import { useTimer } from './timerStore';
 import { useViewer } from './viewerStore';
+import { useNotes } from './noteStore';
 import { useWorkspace } from './workspaceStore';
 
 /**
@@ -29,15 +30,22 @@ import { useWorkspace } from './workspaceStore';
  * somebody pasted or a Back button they pressed.
  */
 
+/**
+ * The three addresses the plan absorbed.
+ *
+ * They still answer — people bookmarked them — but the app straightens them
+ * out to `/plan` in place rather than pushing a second history entry.
+ */
+const LEGACY_PLAN_PATHS = ['/tasks', '/goals', '/exams'];
+
 /** The address of each screen. The slug is the name the app already uses. */
 export const VIEW_PATHS: Record<AppView, string> = {
   dashboard: '/dashboard',
-  tasks: '/tasks',
-  calendar: '/calendar',
-  goals: '/goals',
-  exams: '/exams',
   drive: '/library',
+  plan: '/plan',
+  calendar: '/calendar',
   cards: '/cards',
+  focus: '/focus',
   subjects: '/subjects',
   stats: '/stats',
   achievements: '/achievements',
@@ -52,6 +60,8 @@ export const VIEW_PATHS: Record<AppView, string> = {
  * settings sit over whichever screen you were on.
  */
 export function appAddress(): string {
+  const note = useNotes.getState().docId;
+  if (note) return `/note/${note}`;
   const doc = useViewer.getState().docId;
   if (doc) return `/document/${doc}`;
 
@@ -69,6 +79,9 @@ export function appAddress(): string {
    * link to it. It just does not stay in the address afterwards.
    */
   if (app.settingsOpen) return '/settings';
+  // Full screen is a way of *looking* at the focus screen, not a place of its
+  // own — both answer to `/focus`, so leaving full screen does not shove a
+  // second entry into the history.
   if (useTimer.getState().view === 'full') return '/focus';
   if (app.subjectId) return `/subjects/${app.subjectId}`;
   return VIEW_PATHS[app.view];
@@ -76,6 +89,8 @@ export function appAddress(): string {
 
 /** The same question, answered in words for the browser tab. */
 export function appLabel(): string {
+  const note = useNotes.getState();
+  if (note.docId) return note.meta?.name ?? tr(L('Документ', 'Document'));
   const viewer = useViewer.getState();
   if (viewer.docId) return viewer.meta?.name ?? tr(L('Документ', 'Document'));
 
@@ -125,9 +140,14 @@ export function applyAppPath(path: string): void {
   if (head !== 'settings' && app.settingsOpen) app.setSettings(false);
   if (head !== 'focus' && useTimer.getState().view === 'full') useTimer.getState().setView('mini');
   if (head !== 'document' && useViewer.getState().docId) void useViewer.getState().closeDocument();
+  if (head !== 'note' && useNotes.getState().docId) void useNotes.getState().close();
 
   if (head === 'document' && id) {
     void useViewer.getState().openDocument(id);
+    return;
+  }
+  if (head === 'note' && id) {
+    void useNotes.getState().open(id);
     return;
   }
   if (head === 'settings') {
@@ -135,7 +155,7 @@ export function applyAppPath(path: string): void {
     return;
   }
   if (head === 'focus') {
-    useTimer.getState().setView('full');
+    app.go('focus');
     return;
   }
   if (head === 'subjects' && id) {
@@ -153,7 +173,10 @@ export function applyAppPath(path: string): void {
     return;
   }
   const view = resolveView(head);
-  if (view) app.go(view);
+  // `/tasks`, `/goals` and `/exams` are the plan, opened on the half the old
+  // address was asking for.
+  if (view === 'plan') app.goPlan(PLAN_TAB_FOR[head] ?? 'work', head === 'exams' ? 'exam' : null);
+  else if (view) app.go(view);
 }
 
 /**
@@ -173,10 +196,13 @@ function sync(): void {
   const here = normalisePath(window.location.pathname);
 
   if (next !== here) {
-    // Collapsing `/settings/sync` to `/settings` is the address correcting
-    // itself, not a move. Pushing would leave a Back button that walks
-    // straight back into the same correction.
-    const correcting = here.startsWith('/settings/') && next === '/settings';
+    // Collapsing `/settings/sync` to `/settings`, or `/tasks` to `/plan`, is
+    // the address correcting itself rather than a move. Pushing would leave a
+    // Back button that walks straight back into the same correction — and in
+    // the alias case, into an infinite one.
+    const correcting =
+      (here.startsWith('/settings/') && next === '/settings') ||
+      (LEGACY_PLAN_PATHS.includes(here) && next === '/plan');
     const url = `${next}${window.location.hash}`;
     if (correcting) history.replaceState(null, '', url);
     else history.pushState(null, '', url);
@@ -207,6 +233,9 @@ export function useAppAddress(): void {
         if (s.view !== p.view) sync();
       }),
       useViewer.subscribe((s, p) => {
+        if (s.docId !== p.docId || s.meta?.name !== p.meta?.name) sync();
+      }),
+      useNotes.subscribe((s, p) => {
         if (s.docId !== p.docId || s.meta?.name !== p.meta?.name) sync();
       }),
       useWorkspace.subscribe((s, p) => {

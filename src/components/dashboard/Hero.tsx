@@ -8,7 +8,9 @@ import { useGameContext } from '@/state/gameStore';
 import { currentStreak, levelState, levelTitle, totalXp } from '@/services/gameService';
 import { useT, useLang, L, longDate } from '@/i18n';
 import { Icon } from '../Icon';
+import { MenuItem, MenuSep, Popover } from '../ui';
 import { Button } from '../kit';
+import { newNote } from '../shell/AppHeader';
 
 const greeting = (hour: number) =>
   hour < 5
@@ -28,7 +30,17 @@ const greeting = (hour: number) =>
  * none of that was information. What is left is the sentence, the two things
  * you can do about it, and the bar.
  */
-export function Hero() {
+export function Hero({
+  editing,
+  onEdit,
+  onNewBoard,
+  onUpload,
+}: {
+  editing?: boolean;
+  onEdit?: () => void;
+  onNewBoard?: () => void;
+  onUpload?: () => void;
+}) {
   const t = useT();
   const lang = useLang();
   const profile = useWorkspace((s) => s.profile);
@@ -72,19 +84,26 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* On a phone the two buttons share the row and the menu stays pinned
+            to the end of it; wrapping put a lone three-dot button on a line of
+            its own, which reads as a mistake. */}
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
+            className="flex-1 sm:flex-none"
             variant="primary"
             size="lg"
             icon="timer"
             onClick={() => {
-              useTimer.getState().setView('full');
+              // The focus screen, not full screen. Full screen is a room you
+              // choose to walk into, not one the app pushes you into.
+              useApp.getState().go('focus');
               useTimer.getState().start();
             }}
           >
             {t(L('Започни фокус', 'Start focus'))}
           </Button>
           <Button
+            className="flex-1 sm:flex-none"
             variant="outline"
             size="lg"
             icon="cards"
@@ -97,6 +116,54 @@ export function Hero() {
             {t(L('Преговор', 'Review'))}
             {due > 0 && <span className="t-num ml-0.5 opacity-70">{due}</span>}
           </Button>
+
+          <Popover
+            width={220}
+            align="end"
+            trigger={({ toggle, ref }) => (
+              <button ref={ref} onClick={toggle} className="icon-btn icon-btn-lg" aria-label={t(L('Табло', 'Dashboard'))}>
+                <Icon name="dots" size={18} />
+              </button>
+            )}
+          >
+            {(close) => (
+              <>
+                <MenuItem
+                  icon="sliders"
+                  label={t(editing ? L('Готово с подредбата', 'Done arranging') : L('Подреди таблото', 'Rearrange the dashboard'))}
+                  onClick={() => {
+                    onEdit?.();
+                    close();
+                  }}
+                />
+                <MenuSep />
+                <MenuItem
+                  icon="notebook"
+                  label={t(L('Нов текстов документ', 'New text document'))}
+                  onClick={() => {
+                    void newNote();
+                    close();
+                  }}
+                />
+                <MenuItem
+                  icon="board"
+                  label={t(L('Нова дъска', 'New whiteboard'))}
+                  onClick={() => {
+                    onNewBoard?.();
+                    close();
+                  }}
+                />
+                <MenuItem
+                  icon="upload"
+                  label={t(L('Качи материал', 'Upload material'))}
+                  onClick={() => {
+                    onUpload?.();
+                    close();
+                  }}
+                />
+              </>
+            )}
+          </Popover>
         </div>
       </div>
 

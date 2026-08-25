@@ -251,10 +251,8 @@ export const appPageByPath = (path: string): AppPage | undefined => {
  * production.
  */
 export const APP_SCREEN_PATHS = [
-  '/tasks',
+  '/plan',
   '/calendar',
-  '/goals',
-  '/exams',
   '/library',
   '/cards',
   '/focus',
@@ -263,6 +261,10 @@ export const APP_SCREEN_PATHS = [
   '/subjects',
   '/profile',
   '/settings',
+  /* the three screens the plan absorbed; still answered, still linkable */
+  '/tasks',
+  '/goals',
+  '/exams',
 ] as const;
 
 /**
@@ -270,7 +272,7 @@ export const APP_SCREEN_PATHS = [
  * room of the settings. Ids are base-36 and lower-case, which is why
  * `normalisePath` lower-casing the address does no harm here.
  */
-const APP_DEEP_PATH = /^\/(document|subjects|settings)\/[a-z0-9_-]+$/;
+const APP_DEEP_PATH = /^\/(document|note|subjects|settings)\/[a-z0-9_-]+$/;
 
 /* ------------------------------------------------------------ addressing */
 

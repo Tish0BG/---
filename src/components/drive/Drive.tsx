@@ -1,7 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import type { DocumentMeta } from '@/types';
 import { folderPath, progressOf, useLibrary } from '@/state/libraryStore';
-import { useViewer } from '@/state/viewerStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
 import { formatBytes } from '@/lib/util';
@@ -12,16 +11,26 @@ import { SubjectDot } from '../subjects/SubjectDot';
 import { useT, useLang, L, type Msg, shortDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Button, Card, EmptyState as KitEmpty } from '../kit';
+import { openDoc } from '@/services/openDoc';
+import { newNote } from '../shell/AppHeader';
 
-type Scope = 'all' | 'pdf' | 'board' | 'starred' | 'trash';
+type Scope = 'all' | 'pdf' | 'board' | 'note' | 'starred' | 'trash';
 
 const SCOPES: { id: Scope; label: Msg; icon: string }[] = [
   { id: 'all', label: L('Всички', 'All'), icon: 'drive' },
   { id: 'pdf', label: L('Материали', 'Materials'), icon: 'file' },
+  { id: 'note', label: L('Документи', 'Documents'), icon: 'notebook' },
   { id: 'board', label: L('Дъски', 'Boards'), icon: 'board' },
   { id: 'starred', label: L('Със звезда', 'Starred'), icon: 'star' },
   { id: 'trash', label: L('Кошче', 'Bin'), icon: 'trash' },
 ];
+
+/** The face each kind of thing in the library wears, everywhere. */
+export const KIND_ICON: Record<DocumentMeta['kind'], string> = {
+  pdf: 'book',
+  board: 'board',
+  note: 'notebook',
+};
 
 /**
  * The workspace: folders, materials and boards with the affordances people
@@ -66,9 +75,13 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
     let list = documents.filter((d) => (scope === 'trash' ? !!d.deletedAt : !d.deletedAt));
     if (scope === 'pdf') list = list.filter((d) => d.kind === 'pdf');
     if (scope === 'board') list = list.filter((d) => d.kind === 'board');
+    if (scope === 'note') list = list.filter((d) => d.kind === 'note');
     if (scope === 'starred') list = list.filter((d) => d.starred);
-    if (q) list = list.filter((d) => d.name.toLowerCase().includes(q));
-    else if (scope === 'all' || scope === 'pdf' || scope === 'board') {
+    // Searching looks through the whole library, and inside written
+    // documents as well as at their names — a note you remember a phrase
+    // from is a note you should be able to find by that phrase.
+    if (q) list = list.filter((d) => d.name.toLowerCase().includes(q) || !!d.note?.text.toLowerCase().includes(q));
+    else if (scope === 'all' || scope === 'pdf' || scope === 'board' || scope === 'note') {
       list = list.filter((d) => d.folderId === activeFolderId);
     }
     const by = {
@@ -161,7 +174,14 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
               <span className="hidden lg:inline">{t(L('Папка', 'Folder'))}</span>
             </Button>
             <Button variant="outline" icon="board" onClick={onNewBoard}>
-              <span className="hidden sm:inline">{t(L('Нова дъска', 'New board'))}</span>
+              <span className="hidden lg:inline">{t(L('Дъска', 'Board'))}</span>
+            </Button>
+            <Button
+              variant="outline"
+              icon="notebook"
+              onClick={() => void newNote(activeFolderId)}
+            >
+              <span className="hidden lg:inline">{t(L('Документ', 'Document'))}</span>
             </Button>
             <Button variant="primary" icon="upload" onClick={() => inputRef.current?.click()}>
               <span className="hidden sm:inline">{t(L('Качи PDF', 'Upload PDF'))}</span>
@@ -585,7 +605,7 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
         onClick={(e) => {
           if (e.metaKey || e.ctrlKey || e.shiftKey || selected) return onSelect(e.metaKey || e.ctrlKey || e.shiftKey);
           if (trashed) return;
-          void useViewer.getState().openDocument(doc.id);
+          void openDoc(doc.id);
         }}
       >
         <span className="relative block">
@@ -597,8 +617,22 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
               draggable={false}
             />
           ) : (
-            <span className="grid aspect-[3/4] w-full place-items-center border-b border-line bg-surface-2">
-              <Icon name={doc.kind === 'board' ? 'board' : 'file'} size={22} className="text-faint" />
+            <span className="relative grid aspect-[3/4] w-full place-items-center overflow-hidden border-b border-line bg-surface-2">
+              {doc.kind === 'note' && doc.note?.text ? (
+                /* The first words of a written document are a better cover
+                   than an icon of a page: it says which document this is. */
+                <span
+                  className="absolute inset-0 px-3 py-2.5 text-left text-[9.5px] leading-[1.5] text-muted"
+                  style={{
+                    WebkitMaskImage: 'linear-gradient(to bottom, #000 55%, transparent)',
+                    maskImage: 'linear-gradient(to bottom, #000 55%, transparent)',
+                  }}
+                >
+                  {doc.note.text.slice(0, 220)}
+                </span>
+              ) : (
+                <Icon name={KIND_ICON[doc.kind]} size={22} className="text-faint" />
+              )}
             </span>
           )}
           {subject && (
@@ -617,20 +651,24 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
               <SubjectDot subject={subject} />
             ) : (
               <span>
-              {doc.board?.flow === 'scroll'
-                ? t(L('свитък', 'scroll'))
-                : t(L(`${doc.pageCount} стр.`, `${doc.pageCount} pages`))}
-            </span>
+                {doc.kind === 'note'
+                  ? t(L(`${doc.note?.words ?? 0} думи`, `${doc.note?.words ?? 0} words`))
+                  : doc.board?.flow === 'scroll'
+                    ? t(L('свитък', 'scroll'))
+                    : t(L(`${doc.pageCount} стр.`, `${doc.pageCount} pages`))}
+              </span>
             )}
           </span>
-          <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-surface-3">
-            <span
-              className="block h-full rounded-full"
-              style={{ width: `${pct}%`, background: subject?.color ?? statusColor(doc) }}
-            />
-          </span>
+          {doc.kind !== 'note' && (
+            <span className="mt-2 block h-1 w-full overflow-hidden rounded-full bg-surface-3">
+              <span
+                className="block h-full rounded-full"
+                style={{ width: `${pct}%`, background: subject?.color ?? statusColor(doc) }}
+              />
+            </span>
+          )}
           <span className="t-num mt-1 flex justify-between text-[10px] text-faint">
-            <span>{pct}%</span>
+            <span>{doc.kind === 'note' ? '' : `${pct}%`}</span>
             <span>
               {trashed
                 ? doc.deletedAt
@@ -679,15 +717,21 @@ function DocRow({ doc, first, trashed, selected, onSelect, confirm }: ItemProps 
 
       <button
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-2.5 text-left"
-        onClick={() => !trashed && void useViewer.getState().openDocument(doc.id)}
+        onClick={() => !trashed && void openDoc(doc.id)}
       >
         <Icon
-          name={doc.kind === 'board' ? 'board' : 'file'}
+          name={KIND_ICON[doc.kind]}
           size={16}
           className="shrink-0"
           style={{ color: subject?.color ?? 'var(--c-faint)' }}
         />
         <span className="min-w-0 flex-1 truncate text-[13px]">{doc.name}</span>
+        {!!doc.links?.length && (
+          <span className="t-num hidden shrink-0 items-center gap-1 text-[11px] text-faint sm:flex">
+            <Icon name="link" size={11} />
+            {doc.links.length}
+          </span>
+        )}
         {doc.starred && <Icon name="starFill" size={13} fill className="shrink-0 text-warn" />}
       </button>
 

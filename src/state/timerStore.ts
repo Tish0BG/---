@@ -4,6 +4,8 @@ import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
 import { useSettings } from './settingsStore';
 import { useViewer } from './viewerStore';
+import { useNotes } from './noteStore';
+import { useApp } from './appStore';
 import { usePlanner } from './plannerStore';
 import { useLibrary } from './libraryStore';
 import { announceProgress } from '@/services/progressBus';
@@ -44,8 +46,15 @@ interface TimerStore {
   tab: TimerTab;
 
   sessions: FocusSession[];
-  /** planner item the current focus block is credited to */
-  activeTaskId: string | null;
+  /**
+   * The planner entries the current block is being spent on.
+   *
+   * A list rather than one id: an hour of maths is very often three exercises
+   * off the same sheet, and being made to pick one of them — or to stop the
+   * clock between them — is how the number in the statistics stops matching
+   * what actually happened.
+   */
+  activeTaskIds: string[];
   loaded: boolean;
 
   init(): Promise<void>;
@@ -53,17 +62,31 @@ interface TimerStore {
   pause(): void;
   toggleRun(): void;
   reset(): void;
+  /**
+   * Ends the block early and moves on.
+   *
+   * Only the minutes actually spent are logged. Skipping used to credit the
+   * whole block, which meant a person could press it four times and be told
+   * they had studied for two hours — a statistic that lies is worse than no
+   * statistic, and this one lied in the flattering direction.
+   */
   skip(): void;
   setMode(mode: TimerMode, autoStart?: boolean): void;
   /** re-reads the duration after the settings change */
   syncDuration(): void;
+  /** changes one of the three lengths from the focus screen itself */
+  setDuration(mode: TimerMode, minutes: number): void;
 
   setView(view: TimerView): void;
   setTab(tab: TimerTab): void;
   toggleWidget(): void;
   toggleFullscreen(): void;
 
+  /** replaces the selection with one entry, or clears it with null */
   setActiveTask(id: string | null): void;
+  /** adds or removes one entry from the selection */
+  toggleTask(id: string): void;
+  clearTasks(): void;
   resetToday(): Promise<void>;
   /**
    * Ends the block early and logs only the minutes actually spent.
@@ -71,8 +94,15 @@ interface TimerStore {
    * which is right for a break and dishonest for focus.
    */
   stop(): Promise<void>;
-  /** The block that just finished, for the completion screen. */
-  lastSession: { minutes: number; at: number } | null;
+  /**
+   * The block that just finished, for the completion screen.
+   *
+   * It carries the entries it was spent on as well as the minutes: the moment
+   * a session ends is the moment a person knows whether the thing is actually
+   * finished, and asking them to go and find it in another screen is how a
+   * task list drifts out of date.
+   */
+  lastSession: { minutes: number; at: number; taskIds: string[] } | null;
   clearLast(): void;
 }
 
@@ -92,11 +122,11 @@ export const useTimer = create<TimerStore>((set, get) => {
   };
 
   const saveRuntime = () => {
-    const { mode, running, left, cycle, activeTaskId } = get();
+    const { mode, running, left, cycle, activeTaskIds } = get();
     try {
       localStorage.setItem(
         RUNTIME_KEY,
-        JSON.stringify({ mode, running, left, cycle, activeTaskId, endAt, savedAt: Date.now() }),
+        JSON.stringify({ mode, running, left, cycle, activeTaskIds, endAt, savedAt: Date.now() }),
       );
     } catch {
       /* not critical */
@@ -109,33 +139,49 @@ export const useTimer = create<TimerStore>((set, get) => {
     if (left <= 0) void finish();
   };
 
-  /** Logs the finished focus block and rolls over to the next mode. */
-  const finish = async () => {
+  /** Whole minutes already spent inside the current block. */
+  const spentMinutes = (): number => Math.max(0, Math.round((duration(get().mode) - get().left) / 60));
+
+  /**
+   * Ends the block and rolls on to the next mode, logging `minutes`.
+   *
+   * The one place that decides what a block was worth. A block that ran out
+   * on its own is worth its whole length; one that was skipped is worth the
+   * part that was actually sat through, and a break is worth nothing either
+   * way because breaks are not the thing being measured.
+   */
+  const roll = async (minutes: number, announceIt = true) => {
     const { mode, cycle } = get();
     stopTicker();
     set({ running: false });
     void keepAwake(false);
 
     const s = useSettings.getState().timer;
-    if (s.sound) chime(mode === 'work');
+    if (s.sound && announceIt) chime(mode === 'work');
 
     if (mode === 'work') {
-      await logSession(s.work);
+      if (minutes >= 1) await logSession(minutes);
       const next = cycle + 1;
       if (next >= s.cycles) {
         set({ cycle: 0 });
-        notify(tr(L('Кръгът е завършен', 'Round complete')), tr(L(`Дълга почивка — ${s.long} мин.`, `Long break — ${s.long} min.`)));
+        if (announceIt)
+          notify(tr(L('Кръгът е завършен', 'Round complete')), tr(L(`Дълга почивка — ${s.long} мин.`, `Long break — ${s.long} min.`)));
         get().setMode('long', true);
       } else {
         set({ cycle: next });
-        notify(tr(L('Сесията приключи', 'Session complete')), tr(L(`Почивка — ${s.break} мин.`, `Break — ${s.break} min.`)));
+        if (announceIt)
+          notify(tr(L('Сесията приключи', 'Session complete')), tr(L(`Почивка — ${s.break} мин.`, `Break — ${s.break} min.`)));
         get().setMode('break', true);
       }
     } else {
-      notify(tr(L('Почивката свърши', 'Break over')), tr(L(`Учене — ${s.work} мин.`, `Focus — ${s.work} min.`)));
+      if (announceIt)
+        notify(tr(L('Почивката свърши', 'Break over')), tr(L(`Учене — ${s.work} мин.`, `Focus — ${s.work} min.`)));
       get().setMode('work', true);
     }
   };
+
+  /** The clock reached zero: the whole block was sat through. */
+  const finish = () => roll(useSettings.getState().timer[get().mode]);
 
   /**
    * A focus block always lands in the statistics, tagged with the document
@@ -143,26 +189,39 @@ export const useTimer = create<TimerStore>((set, get) => {
    * makes "time per subject" possible without asking the user anything.
    */
   const logSession = async (minutes: number) => {
-    const { activeTaskId } = get();
-    const docId = useViewer.getState().docId;
+    const { activeTaskIds } = get();
+    const docId = useViewer.getState().docId ?? useNotes.getState().docId;
     const doc = useLibrary.getState().documents.find((d) => d.id === docId);
-    const task = usePlanner.getState().items.find((i) => i.id === activeTaskId);
+    const items = usePlanner.getState().items;
+    const tasks = activeTaskIds
+      .map((id) => items.find((i) => i.id === id))
+      .filter((x): x is NonNullable<typeof x> => !!x);
 
+    // One session record, tagged with the first entry: the statistics ask
+    // "how long on this" and a block counted once per selected task would
+    // answer with three times the minutes that were actually spent.
     const session: FocusSession = {
       id: uid('fs_'),
       day: dayKey(),
       startedAt: Date.now() - minutes * 60_000,
       minutes,
       docId,
-      taskId: activeTaskId,
-      subjectId: doc?.subjectId ?? task?.subjectId ?? null,
+      taskId: tasks[0]?.id ?? null,
+      subjectId: doc?.subjectId ?? tasks[0]?.subjectId ?? null,
     };
     await repo.putSession(session);
+    // The summary is only staged when the focus surface is actually on
+    // screen. Staging it always would mean a person who finished a block
+    // while reading the calendar walks into a stale "session complete" the
+    // next time they open the timer.
+    const watching = get().view === 'full' || useApp.getState().view === 'focus';
     set((st) => ({
       sessions: [...st.sessions, session],
-      lastSession: st.view === 'full' ? { minutes, at: Date.now() } : null,
+      lastSession: watching ? { minutes, at: Date.now(), taskIds: tasks.map((x) => x.id) } : null,
     }));
-    if (task) await usePlanner.getState().addPomodoro(task.id);
+    // The block count on each entry is a different question — "how many
+    // sittings did this take" — so every selected one gets its tally.
+    for (const task of tasks) await usePlanner.getState().addPomodoro(task.id);
     // Minutes just moved: goals, XP and achievements all want another look.
     announceProgress();
   };
@@ -175,7 +234,7 @@ export const useTimer = create<TimerStore>((set, get) => {
     view: useSettings.getState().timerVisible ? 'mini' : 'hidden',
     tab: 'timer',
     sessions: [],
-    activeTaskId: null,
+    activeTaskIds: [],
     loaded: false,
     lastSession: null,
 
@@ -192,10 +251,16 @@ export const useTimer = create<TimerStore>((set, get) => {
           running: boolean;
           left: number;
           cycle: number;
-          activeTaskId: string | null;
+          /** the shape written before a block could be spent on several entries */
+          activeTaskId?: string | null;
+          activeTaskIds?: string[];
           endAt: number;
         };
-        set({ mode: r.mode, cycle: r.cycle, activeTaskId: r.activeTaskId });
+        set({
+          mode: r.mode,
+          cycle: r.cycle,
+          activeTaskIds: r.activeTaskIds ?? (r.activeTaskId ? [r.activeTaskId] : []),
+        });
         if (r.running && r.endAt > Date.now()) {
           endAt = r.endAt;
           set({ left: (r.endAt - Date.now()) / 1000, running: true });
@@ -225,8 +290,13 @@ export const useTimer = create<TimerStore>((set, get) => {
       if (s.timer.notify && 'Notification' in window && Notification.permission === 'default') {
         void Notification.requestPermission();
       }
+      // Full screen only if it was asked for. Pressing play used to take over
+      // the whole window, which is a thing a timer should offer rather than
+      // do — the focus screen has a button for it.
       if (s.timer.fullscreenOnStart) get().setView('full');
-      else if (get().view === 'hidden') get().setView('mini');
+      // The floating pill is for people who are somewhere else in the app. On
+      // the focus screen the clock is already the size of the window.
+      else if (get().view === 'hidden' && useApp.getState().view !== 'focus') get().setView('mini');
       saveRuntime();
     },
 
@@ -250,8 +320,8 @@ export const useTimer = create<TimerStore>((set, get) => {
     },
 
     skip() {
-      endAt = Date.now();
-      void finish();
+      // Only what was sat through. See `roll`.
+      void roll(get().mode === 'work' ? spentMinutes() : 0, false);
     },
 
     setMode(mode, autoStart) {
@@ -267,8 +337,21 @@ export const useTimer = create<TimerStore>((set, get) => {
       saveRuntime();
     },
 
+    setDuration(mode, minutes) {
+      const bounds: Record<TimerMode, [number, number]> = { work: [5, 180], break: [1, 60], long: [5, 90] };
+      const [min, max] = bounds[mode];
+      useSettings.getState().setTimer({ [mode]: Math.min(max, Math.max(min, Math.round(minutes))) });
+      // A length changed under a running clock is the next block's length, not
+      // this one's: rewriting `left` mid-session would erase minutes already
+      // sat through, or invent ones that were not.
+      if (get().mode === mode) get().syncDuration();
+    },
+
     setView(view) {
-      set({ view, lastSession: view === 'full' ? get().lastSession : null });
+      // Leaving the timer altogether drops the summary; shrinking from full
+      // screen to the focus screen does not, because it is the same session
+      // still being looked at.
+      set({ view, lastSession: view === 'hidden' ? null : get().lastSession });
       useSettings.getState().set('timerVisible', view !== 'hidden');
     },
     setTab(tab) {
@@ -284,16 +367,26 @@ export const useTimer = create<TimerStore>((set, get) => {
     },
 
     setActiveTask(id) {
-      set({ activeTaskId: id });
+      set({ activeTaskIds: id ? [id] : [] });
+      saveRuntime();
+    },
+
+    toggleTask(id) {
+      const list = get().activeTaskIds;
+      set({ activeTaskIds: list.includes(id) ? list.filter((x) => x !== id) : [...list, id] });
+      saveRuntime();
+    },
+
+    clearTasks() {
+      set({ activeTaskIds: [] });
       saveRuntime();
     },
 
     async stop() {
-      const { mode, left, running } = get();
-      const total = duration(mode);
-      const spent = Math.round((total - left) / 60);
+      const { mode, running } = get();
+      const spent = spentMinutes();
       stopTicker();
-      set({ running: false, left: total });
+      set({ running: false, left: duration(mode) });
       void keepAwake(false);
       saveRuntime();
       if (mode === 'work' && spent >= 1) {

@@ -18,7 +18,7 @@ import {
 } from '@/services/goalService';
 import { useT, L, useLang, shortDate, formatDuration } from '@/i18n';
 import { S } from '@/i18n/strings';
-import { Screen } from '../shell/Screen';
+import { Section } from '../shell/Screen';
 import { Icon } from '../Icon';
 import { Modal, Select, useConfirm } from '../ui';
 import {
@@ -45,7 +45,7 @@ import { isoDay } from '../shell/QuickCreate';
  * would finish it, and which milestones are ticked. A percentage on its own
  * motivates nobody, because it never says whether it is good news.
  */
-export function GoalsScreen() {
+export function GoalsScreen({ embedded }: { embedded?: boolean } = {}) {
   const t = useT();
   const phone = useIsPhone();
   const goals = useGoals((s) => s.goals);
@@ -69,7 +69,8 @@ export function GoalsScreen() {
   const list = tab === 'active' ? live : tab === 'done' ? done : archived;
 
   return (
-    <Screen
+    <Section
+      embedded={embedded}
       title={t(S.goals)}
       subtitle={t(
         L(
@@ -130,7 +131,7 @@ export function GoalsScreen() {
             <GoalDetail goal={open} onClose={() => setOpen(null)} />
           </Modal>
         ))}
-    </Screen>
+    </Section>
   );
 }
 

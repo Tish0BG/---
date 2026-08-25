@@ -38,6 +38,9 @@ import { useCards } from './cardStore';
 import { usePlanner } from './plannerStore';
 import { useWorkspace } from './workspaceStore';
 import { useTimer } from './timerStore';
+import { useItemTypes } from './itemTypeStore';
+import { useNotes } from './noteStore';
+import { useGoals } from './goalStore';
 import { tr, L } from '@/i18n';
 
 const AUTO_KEY = 'studypdf.autosync';
@@ -162,11 +165,39 @@ async function reloadStores(): Promise<void> {
     usePlanner.getState().init(),
     useWorkspace.getState().init(),
     useTimer.getState().init(),
+    useItemTypes.getState().init(),
+    useGoals.getState().init(),
+    // A document open on this screen is re-read too, so a note edited on the
+    // phone does not sit here showing yesterday's paragraph.
+    useNotes.getState().refresh(),
   ]);
 }
 
 let autoTimer: number | null = null;
 let authWatcher: { unsubscribe: () => void } | null = null;
+
+/**
+ * Starts — or stops — the periodic sync.
+ *
+ * It used to live inside `setAutoSync`, which is reached from exactly one
+ * place: the toggle in the settings. Which meant the clock only ever started
+ * for somebody who had gone into the settings and flipped it, in a session
+ * where they had done so. On an ordinary launch nothing armed it at all, and
+ * the only sync a person got was the one fired when the tab was hidden — so a
+ * long afternoon in one window pushed nothing anywhere until it was closed.
+ *
+ * Called on start-up, on sign-in, and from the toggle. Safe to call twice.
+ */
+function armAutoSync(): void {
+  if (autoTimer) window.clearInterval(autoTimer);
+  autoTimer = null;
+  const { autoSync, user } = useAuth.getState();
+  if (!autoSync || !user) return;
+  autoTimer = window.setInterval(() => {
+    const state = useAuth.getState();
+    if (document.visibilityState === 'visible' && state.user && state.autoSync) void state.syncNow();
+  }, AUTO_EVERY);
+}
 
 export const useAuth = create<AuthStore>((set, get) => ({
   ready: false,
@@ -607,13 +638,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
   setAutoSync(on) {
     localStorage.setItem(AUTO_KEY, on ? 'on' : 'off');
     set({ autoSync: on });
-    if (autoTimer) window.clearInterval(autoTimer);
-    autoTimer = null;
-    if (on) {
-      autoTimer = window.setInterval(() => {
-        if (document.visibilityState === 'visible' && useAuth.getState().user) void useAuth.getState().syncNow();
-      }, AUTO_EVERY);
-    }
+    armAutoSync();
   },
 
   async refreshPending() {
@@ -689,9 +714,31 @@ export function installSyncEffects(): () => void {
       void useAuth.getState().syncNow();
     }
   };
+  /**
+   * Back on the network after being off it.
+   *
+   * `syncNow` refuses to run while offline — correctly, it would only produce
+   * an error — but nothing used to notice when the connection came back. An
+   * afternoon of work done on a train sat there until something else happened
+   * to trigger a sync.
+   */
+  const onOnline = () => {
+    const state = useAuth.getState();
+    if (state.user && state.autoSync) void state.syncNow();
+  };
+  // The timer follows the session: signing in arms it, signing out stops it.
+  const stopWatching = useAuth.subscribe((s, p) => {
+    if (s.user?.id !== p.user?.id) armAutoSync();
+  });
+
   document.addEventListener('visibilitychange', onHide);
+  window.addEventListener('online', onOnline);
+  armAutoSync();
+
   return () => {
     document.removeEventListener('visibilitychange', onHide);
+    window.removeEventListener('online', onOnline);
+    stopWatching();
     if (autoTimer) window.clearInterval(autoTimer);
     autoTimer = null;
   };

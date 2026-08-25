@@ -2,6 +2,8 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { useApp, resolveView } from '@/state/appStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useViewer, installAutosaveGuards } from '@/state/viewerStore';
+import { useNotes, installNoteGuards } from '@/state/noteStore';
+import { useItemTypes } from '@/state/itemTypeStore';
 import { useSettings, initTheme } from '@/state/settingsStore';
 import { useTimer, installTimerEffects } from '@/state/timerStore';
 import { useWorkspace } from '@/state/workspaceStore';
@@ -12,6 +14,7 @@ import { useGame } from '@/state/gameStore';
 import { dueCount, useCards } from '@/state/cardStore';
 import { requestPersistence } from '@/services/db';
 import { installProgressEffects } from '@/services/progressBus';
+import { openDoc } from '@/services/openDoc';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
@@ -39,12 +42,11 @@ import { PlauviaTile } from '@/components/brand/Logo';
  * the calendar grid, the statistics and the achievements to arrive first.
  */
 const Drive = lazy(() => import('@/components/drive/Drive').then((m) => ({ default: m.Drive })));
-const TasksScreen = lazy(() => import('@/components/tasks/TasksScreen').then((m) => ({ default: m.TasksScreen })));
+const PlanScreen = lazy(() => import('@/components/plan/PlanScreen').then((m) => ({ default: m.PlanScreen })));
 const CalendarScreen = lazy(() =>
   import('@/components/calendar/CalendarScreen').then((m) => ({ default: m.CalendarScreen })),
 );
-const GoalsScreen = lazy(() => import('@/components/goals/GoalsScreen').then((m) => ({ default: m.GoalsScreen })));
-const ExamsScreen = lazy(() => import('@/components/exams/ExamsScreen').then((m) => ({ default: m.ExamsScreen })));
+const FocusScreen = lazy(() => import('@/components/focus/FocusScreen').then((m) => ({ default: m.FocusScreen })));
 const SubjectsScreen = lazy(() =>
   import('@/components/subjects/SubjectsScreen').then((m) => ({ default: m.SubjectsScreen })),
 );
@@ -63,6 +65,9 @@ const ProfileScreen = lazy(() =>
  */
 const DocumentWorkspace = lazy(() =>
   import('@/components/viewer/DocumentWorkspace').then((m) => ({ default: m.DocumentWorkspace })),
+);
+const NoteWorkspace = lazy(() =>
+  import('@/components/note/NoteWorkspace').then((m) => ({ default: m.NoteWorkspace })),
 );
 const Landing = lazy(() => import('@/components/landing/Landing').then((m) => ({ default: m.Landing })));
 const PublicPageView = lazy(() =>
@@ -106,6 +111,7 @@ export default function App() {
   /** anything at all in the library means there is something to show already */
   const documentsReady = useLibrary((s) => s.documents.length > 0);
   const docId = useViewer((s) => s.docId);
+  const noteId = useNotes((s) => s.docId);
   const libraryLoaded = useLibrary((s) => s.loaded);
   const workspaceLoaded = useWorkspace((s) => s.loaded);
   const subjects = useWorkspace((s) => s.subjects);
@@ -131,6 +137,7 @@ export default function App() {
   useEffect(() => {
     const stopTheme = initTheme();
     const stopGuards = installAutosaveGuards();
+    const stopNotes = installNoteGuards();
     const stopTimer = installTimerEffects();
     const stopSync = installSyncEffects();
     const stopProgress = installProgressEffects();
@@ -141,6 +148,7 @@ export default function App() {
     void usePlanner.getState().init();
     void useCards.getState().init();
     void useGoals.getState().init();
+    void useItemTypes.getState().init();
     void useTimer
       .getState()
       .init()
@@ -155,11 +163,12 @@ export default function App() {
         if (isAppPath(entryPath(window.location.pathname))) return;
         const last = useSettings.getState().lastDocId;
         const exists = useLibrary.getState().documents.some((d) => d.id === last && !d.deletedAt);
-        if (last && exists) void useViewer.getState().openDocument(last);
+        if (last && exists) void openDoc(last);
       });
     return () => {
       stopTheme();
       stopGuards();
+      stopNotes();
       stopTimer();
       stopSync();
       stopProgress();
@@ -267,7 +276,11 @@ export default function App() {
     setTab('search');
   }, []);
 
-  useShortcuts({ onSearch: openSearch, onExport: () => setExportOpen(true) });
+  useShortcuts({
+    onSearch: openSearch,
+    onExport: () => setExportOpen(true),
+    onNewBoard: () => setNewBoard(true),
+  });
 
   /** Overlays reachable from every screen, including inside a document. */
   const globals = (
@@ -441,6 +454,18 @@ export default function App() {
     );
   }
 
+  /* A written document takes the whole window, like a page does. */
+  if (noteId) {
+    return (
+      <>
+        <Suspense fallback={<Splash />}>
+          <NoteWorkspace />
+        </Suspense>
+        {globals}
+      </>
+    );
+  }
+
   /* A document takes the whole window: writing needs the space. */
   if (docId) {
     return (
@@ -464,16 +489,15 @@ export default function App() {
 
   return (
     <>
-      <AppShell>
+      <AppShell onNewBoard={() => setNewBoard(true)} onUpload={requestUpload}>
         <Suspense fallback={<ScreenSkeleton />}>
           {view === 'dashboard' && (
             <Dashboard onNewBoard={() => setNewBoard(true)} onUpload={requestUpload} />
           )}
           {view === 'drive' && <Drive onNewBoard={() => setNewBoard(true)} />}
-          {view === 'tasks' && <TasksScreen />}
+          {view === 'plan' && <PlanScreen />}
           {view === 'calendar' && <CalendarScreen />}
-          {view === 'goals' && <GoalsScreen />}
-          {view === 'exams' && <ExamsScreen />}
+          {view === 'focus' && <FocusScreen />}
           {view === 'subjects' && <SubjectsScreen />}
           {view === 'stats' && <StatsScreen />}
           {view === 'achievements' && <AchievementsScreen />}

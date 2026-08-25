@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp, type QuickKind } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
+import { useItemTypes, allTypes, typeName, typeOf } from '@/state/itemTypeStore';
 import { usePlanner, startOfDay, addDays, DAY_NAMES } from '@/state/plannerStore';
 import { useGoals } from '@/state/goalStore';
 import { useGame, gameContext } from '@/state/gameStore';
@@ -13,19 +14,15 @@ import { Modal, Select } from '../ui';
 import { Button, Segmented, Sheet, useIsPhone } from '../kit';
 import { Icon } from '../Icon';
 
-const KIND_TITLE: Record<Exclude<QuickKind, null>, { bg: string; en: string }> = {
-  task: { bg: 'Нова задача', en: 'New task' },
-  exam: { bg: 'Нов изпит', en: 'New exam' },
-  goal: { bg: 'Нова цел', en: 'New goal' },
-  event: { bg: 'Нов час в програмата', en: 'New timetable slot' },
-};
+const DURATIONS = [0, 15, 30, 45, 60, 90, 120];
 
 /**
  * One create dialog for the whole product.
  *
- * Making a task, an exam, a goal or a lesson used to mean finding the right
- * screen first. Here the kind is a switch at the top, the fields follow it,
- * and ⌘↵ saves — so capturing something takes about as long as thinking of it.
+ * It used to have four modes — task, exam, goal, timetable slot — and three of
+ * them were the same record. Now there is one "entry" whose *type* is a row of
+ * chips at the top, which is what lets a person file a rehearsal without the
+ * app having to ship a rehearsal feature.
  */
 export function QuickCreate() {
   const kind = useApp((s) => s.quick);
@@ -35,14 +32,20 @@ export function QuickCreate() {
 
   if (!kind) return null;
   const body = <QuickForm kind={kind} onDone={close} />;
-  const title = t(KIND_TITLE[kind]);
+  const title = t(
+    kind === 'goal'
+      ? L('Нова цел', 'New goal')
+      : kind === 'event'
+        ? L('Нов час в програмата', 'New timetable slot')
+        : L('Нов запис', 'New entry'),
+  );
 
   return phone ? (
     <Sheet open onClose={close} title={title}>
       {body}
     </Sheet>
   ) : (
-    <Modal open onClose={close} title={title} width={520}>
+    <Modal open onClose={close} title={title} width={560}>
       {body}
     </Modal>
   );
@@ -53,12 +56,18 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
   const lang = useLang();
   const allSubjects = useWorkspace((s) => s.subjects);
   const subjects = useMemo(() => allSubjects.filter((x) => !x.archived), [allSubjects]);
+  const custom = useItemTypes((s) => s.custom);
+  const types = useMemo(() => allTypes(custom), [custom]);
   const filterSubject = useApp((s) => s.filterSubjectId);
+  const startKind = useApp((s) => s.quickKind);
 
+  const [itemKind, setItemKind] = useState(startKind);
   const [title, setTitle] = useState('');
   const [subjectId, setSubjectId] = useState<string | null>(filterSubject);
-  const [due, setDue] = useState<string>(kind === 'exam' ? isoDay(addDays(7)) : '');
-  const [priority, setPriority] = useState<0 | 1 | 2>(kind === 'exam' ? 1 : 0);
+  const [due, setDue] = useState<string>(startKind === 'exam' ? isoDay(addDays(7)) : '');
+  const [time, setTime] = useState('');
+  const [duration, setDuration] = useState(0);
+  const [priority, setPriority] = useState<0 | 1 | 2>(startKind === 'exam' ? 1 : 0);
   const [notes, setNotes] = useState('');
   /* goals */
   const [metric, setMetric] = useState<GoalMetric>('minutes');
@@ -67,6 +76,8 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
   const [day, setDay] = useState(new Date().getDay() || 1);
   const [start, setStart] = useState('08:00');
   const [end, setEnd] = useState('08:45');
+
+  const type = typeOf(itemKind, custom);
 
   const subjectOptions = useMemo(
     () => [
@@ -98,15 +109,19 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
       notify.ok(t(L('Часът е добавен в програмата', 'Added to your timetable')));
     } else {
       const patch: Partial<PlannerItem> = {
-        kind: kind === 'exam' ? 'exam' : 'task',
+        kind: itemKind,
         title: title.trim(),
         notes,
         subjectId,
         priority,
         due: due ? startOfDay(new Date(due)) : null,
+        time: due && time ? time : null,
+        duration,
       };
       await usePlanner.getState().addItem(patch);
-      notify.ok(kind === 'exam' ? t(L('Изпитът е добавен', 'Exam added')) : t(L('Задачата е добавена', 'Task added')));
+      notify.ok(
+        t(L(`${typeName(type, 'bg')} е добавен${type.id === 'task' ? 'а' : ''}`, `${typeName(type, 'en')} added`)),
+      );
     }
     void useGame.getState().refresh();
     onDone();
@@ -125,10 +140,41 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
 
   return (
     <div className="space-y-4">
+      {/* ------------------------------------------------------ the type */}
+      {kind === 'item' && (
+        <div>
+          <label className="t-label mb-1.5 block">{t(L('Какво е това?', 'What is it?'))}</label>
+          <div className="flex flex-wrap gap-1.5">
+            {types.map((x) => {
+              const on = x.id === itemKind;
+              const tint = x.color ?? 'var(--c-accent)';
+              return (
+                <button
+                  key={x.id}
+                  onClick={() => setItemKind(x.id)}
+                  aria-pressed={on}
+                  className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-colors"
+                  style={{
+                    borderColor: on ? 'transparent' : 'var(--c-line)',
+                    background: on ? `color-mix(in srgb, ${tint} 15%, transparent)` : 'var(--c-surface)',
+                    color: on ? tint : 'var(--c-muted)',
+                  }}
+                >
+                  <Icon name={x.icon} size={13} />
+                  {typeName(x, lang)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {kind !== 'event' && (
         <div>
           <label className="t-label mb-1.5 block">
-            {kind === 'goal' ? t(L('Какво искаш да постигнеш?', 'What do you want to reach?')) : t(L('Какво трябва да се направи?', 'What needs doing?'))}
+            {kind === 'goal'
+              ? t(L('Какво искаш да постигнеш?', 'What do you want to reach?'))
+              : t(L('Какво трябва да се направи?', 'What needs doing?'))}
           </label>
           <input
             autoFocus
@@ -136,10 +182,10 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={
-              kind === 'exam'
-                ? t(L('Контролно по алгебра', 'Algebra test'))
-                : kind === 'goal'
-                  ? t(L('20 часа математика този месец', '20 hours of maths this month'))
+              kind === 'goal'
+                ? t(L('20 часа математика този месец', '20 hours of maths this month'))
+                : itemKind === 'exam'
+                  ? t(L('Контролно по алгебра', 'Algebra test'))
                   : t(L('Реши задачи 12–20', 'Solve problems 12–20'))
             }
           />
@@ -161,14 +207,9 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
         {kind !== 'event' && (
           <div>
             <label className="t-label mb-1.5 block">
-              {kind === 'goal' ? t(S.deadline) : kind === 'exam' ? t(L('Дата', 'Date')) : t(L('Срок', 'Due'))}
+              {kind === 'goal' ? t(S.deadline) : t(L('Срок', 'Due'))}
             </label>
-            <input
-              type="date"
-              className="field"
-              value={due}
-              onChange={(e) => setDue(e.target.value)}
-            />
+            <input type="date" className="field" value={due} onChange={(e) => setDue(e.target.value)} />
             <div className="mt-1.5 flex flex-wrap gap-1">
               {[
                 { label: t(S.today), value: isoDay(new Date()) },
@@ -181,7 +222,9 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
                   className={`chip cursor-pointer transition-colors ${
                     due === chip.value ? 'btn-ghost-active' : 'hover:bg-surface-3'
                   }`}
-                  style={due === chip.value ? undefined : { background: 'var(--c-surface-2)', color: 'var(--c-muted)' }}
+                  style={
+                    due === chip.value ? undefined : { background: 'var(--c-surface-2)', color: 'var(--c-muted)' }
+                  }
                 >
                   {chip.label}
                 </button>
@@ -191,7 +234,38 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
         )}
       </div>
 
-      {kind === 'task' || kind === 'exam' ? (
+      {/* ------------------------------------ when, and for how long */}
+      {kind === 'item' && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="t-label mb-1.5 block">{t(L('Час', 'Time'))}</label>
+            <input
+              type="time"
+              className="field t-num"
+              disabled={!due}
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+            <p className="mt-1 text-[11px] text-faint">
+              {t(L('Появява се в календара.', 'It shows up on the calendar.'))}
+            </p>
+          </div>
+          <div>
+            <label className="t-label mb-1.5 block">{t(L('Колко ще отнеме', 'How long it takes'))}</label>
+            <Select
+              value={String(duration)}
+              width={200}
+              options={DURATIONS.map((m) => ({
+                value: String(m),
+                label: m === 0 ? t(L('Не знам', 'Not sure')) : t(L(`${m} мин`, `${m} min`)),
+              }))}
+              onChange={(v) => setDuration(Number(v))}
+            />
+          </div>
+        </div>
+      )}
+
+      {kind === 'item' && (
         <div>
           <label className="t-label mb-1.5 block">{t(S.priority)}</label>
           <Segmented
@@ -204,7 +278,7 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
             ]}
           />
         </div>
-      ) : null}
+      )}
 
       {kind === 'goal' && (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -269,7 +343,7 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
         </div>
       )}
 
-      {kind === 'task' && (
+      {kind === 'item' && (
         <div>
           <label className="t-label mb-1.5 block">{t(L('Бележки', 'Notes'))}</label>
           <textarea
