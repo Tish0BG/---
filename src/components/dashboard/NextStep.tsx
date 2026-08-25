@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useApp } from '@/state/appStore';
+import { useApp, navigateTo } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { usePlanner, upcomingExams } from '@/state/plannerStore';
 import { useLibrary } from '@/state/libraryStore';
@@ -71,7 +71,7 @@ export function NextStep() {
           'Put the date in and Plauvia starts working out your readiness from the tasks, cards and hours you have actually done.',
         ),
         action: L('Добави изпит', 'Add the exam'),
-        run: () => go('exams'),
+        run: () => navigateTo('exams'),
       };
     }
 
@@ -103,7 +103,7 @@ export function NextStep() {
           `${minutes} minutes with the timer on and the statistics, goals and levels stop being empty — they are made of those.`,
         ),
         action: L('Започни фокус', 'Start a focus session'),
-        run: () => useTimer.getState().setView('full'),
+        run: () => useApp.getState().go('focus'),
       };
     }
 

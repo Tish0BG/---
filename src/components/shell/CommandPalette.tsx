@@ -1,17 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { VIEW_TITLES, useApp, type AppView } from '@/state/appStore';
+import { VIEW_TITLES, useApp, navigateTo, type AppView } from '@/state/appStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { usePlanner, openItems, daysUntil } from '@/state/plannerStore';
 import { useGoals } from '@/state/goalStore';
-import { useViewer } from '@/state/viewerStore';
+import { useItemTypes } from '@/state/itemTypeStore';
 import { useTimer } from '@/state/timerStore';
 import { useCards } from '@/state/cardStore';
 import { useSettings } from '@/state/settingsStore';
 import { useT, L, type Msg } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Icon } from '../Icon';
+import { openDoc } from '@/services/openDoc';
+import { newNote } from './AppHeader';
 
 type Group = 'action' | 'task' | 'exam' | 'goal' | 'material' | 'subject' | 'screen';
 
@@ -53,6 +55,7 @@ export function CommandPalette() {
   const subjects = useWorkspace((s) => s.subjects);
   const items = usePlanner((s) => s.items);
   const goals = useGoals((s) => s.goals);
+  const customTypes = useItemTypes((s) => s.custom);
   const [query, setQuery] = useState('');
   const [index, setIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -79,7 +82,7 @@ export function CommandPalette() {
         label: t(L('Нова задача', 'New task')),
         icon: 'listTodo',
         shortcut: 'T',
-        run: () => app.setQuick('task'),
+        run: () => app.setQuick('item', 'task'),
       },
       {
         id: 'act-exam',
@@ -87,7 +90,7 @@ export function CommandPalette() {
         label: t(L('Нов изпит', 'New exam')),
         icon: 'graduation',
         shortcut: 'E',
-        run: () => app.setQuick('exam'),
+        run: () => app.setQuick('item', 'exam'),
       },
       {
         id: 'act-goal',
@@ -98,12 +101,20 @@ export function CommandPalette() {
         run: () => app.setQuick('goal'),
       },
       {
+        id: 'act-note',
+        group: 'action',
+        label: t(L('Нов текстов документ', 'New text document')),
+        icon: 'notebook',
+        shortcut: 'D',
+        run: () => void newNote(),
+      },
+      {
         id: 'act-focus',
         group: 'action',
         label: t(L('Започни фокус сесия', 'Start a focus session')),
         icon: 'timer',
         run: () => {
-          useTimer.getState().setView('full');
+          app.go('focus');
           useTimer.getState().start();
         },
       },
@@ -149,7 +160,20 @@ export function CommandPalette() {
           .join(' · '),
         icon: item.kind === 'exam' ? 'graduation' : 'listTodo',
         color: subject?.color,
-        run: () => app.go(item.kind === 'exam' ? 'exams' : 'tasks', item.id),
+        run: () => navigateTo(item.kind === 'exam' ? 'exams' : 'tasks', item.id),
+      });
+    }
+
+    /* A type somebody invented is a thing they make often. The palette
+       should offer it by name rather than making them find the picker. */
+    for (const type of customTypes) {
+      out.push({
+        id: `act-type-${type.id}`,
+        group: 'action',
+        label: t(L(`Нов запис: ${type.name}`, `New entry: ${type.name}`)),
+        icon: type.icon,
+        color: type.color ?? undefined,
+        run: () => app.setQuick('item', type.id),
       });
     }
 
@@ -162,7 +186,7 @@ export function CommandPalette() {
         hint: subjects.find((s) => s.id === goal.subjectId)?.name,
         icon: 'target',
         color: goal.color ?? subjects.find((s) => s.id === goal.subjectId)?.color,
-        run: () => app.go('goals', goal.id),
+        run: () => navigateTo('goals', goal.id),
       });
     }
 
@@ -176,7 +200,7 @@ export function CommandPalette() {
         hint: subject?.name ?? (doc.kind === 'board' ? t(L('дъска', 'board')) : t(L('материал', 'material'))),
         icon: doc.kind === 'board' ? 'board' : 'file',
         color: subject?.color,
-        run: () => void useViewer.getState().openDocument(doc.id),
+        run: () => void openDoc(doc.id),
       });
     }
 
@@ -205,7 +229,7 @@ export function CommandPalette() {
     }
 
     return out;
-  }, [documents, subjects, items, goals, t]);
+  }, [documents, subjects, items, goals, customTypes, t]);
 
   const results = useMemo(() => {
     const q = query.trim().toLowerCase();

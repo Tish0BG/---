@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
+import { useItemTypes, typeName, typeOf } from '@/state/itemTypeStore';
 import { usePlanner } from '@/state/plannerStore';
 import { useCards } from '@/state/cardStore';
 import { useSettings } from '@/state/settingsStore';
@@ -38,6 +39,7 @@ const DAY = 86_400_000;
 export function StatsScreen() {
   const t = useT();
   const lang = useLang();
+  const customTypes = useItemTypes((s) => s.custom);
   const sessions = useTimer((s) => s.sessions);
   const items = usePlanner((s) => s.items);
   const cards = useCards((s) => s.cards);
@@ -93,6 +95,28 @@ export function StatsScreen() {
       taskDelta: prevTasks ? Math.round(((tasksDone - prevTasks) / prevTasks) * 100) : null,
     };
   }, [sessions, items, cards, from, prevFrom]);
+
+  /** Finished entries in the window, grouped by the type they were filed as. */
+  const byType = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const item of items) {
+      if (!item.done || (item.completedAt ?? 0) < from) continue;
+      map.set(item.kind, (map.get(item.kind) ?? 0) + 1);
+    }
+    return [...map.entries()]
+      .map(([kind, value]) => {
+        const type = typeOf(kind, customTypes);
+        return {
+          id: kind,
+          label: typeName(type, lang),
+          value,
+          icon: type.icon,
+          color: type.color ?? 'var(--c-brand)',
+        };
+      })
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [items, customTypes, from, lang]);
 
   const bySubject = useMemo(() => {
     const map = new Map<string, number>();
@@ -176,7 +200,7 @@ export function StatsScreen() {
               label: t(L('Започни фокус', 'Start focus')),
               icon: 'timer',
               onClick: () => {
-                useTimer.getState().setView('full');
+                useApp.getState().go('focus');
                 useTimer.getState().start();
               },
             }}
@@ -215,7 +239,7 @@ export function StatsScreen() {
               icon="checkCircle"
               tone="var(--c-success)"
               delta={totals.taskDelta === null ? null : { value: totals.taskDelta }}
-              onClick={() => useApp.getState().go('tasks')}
+              onClick={() => useApp.getState().goPlan('work')}
             />
           </div>
 
@@ -324,6 +348,45 @@ export function StatsScreen() {
           </div>
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+            {/* Types are something a person invents, so the statistics have to
+                be able to count them — otherwise "I did nine rehearsals this
+                month" is a fact the app holds and never says. */}
+            <Card
+              title={t(L('Завършено по вид', 'Completed by type'))}
+              subtitle={t(L(`за последните ${days} дни`, `over the last ${days} days`))}
+              icon="checkCircle"
+            >
+              {byType.length === 0 ? (
+                <p className="text-[12.5px] text-muted">
+                  {t(
+                    L(
+                      'Отметни нещо и то се появява тук, разделено по вида си.',
+                      'Tick something off and it lands here, split by its type.',
+                    ),
+                  )}
+                </p>
+              ) : (
+                <ul className="space-y-3">
+                  {byType.map((row) => (
+                    <li key={row.id}>
+                      <div className="mb-1 flex items-baseline justify-between gap-2 text-[12.5px]">
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Icon name={row.icon} size={13} style={{ color: row.color }} className="shrink-0" />
+                          <span className="truncate">{row.label}</span>
+                        </span>
+                        <span className="t-num shrink-0 font-medium">{row.value}</span>
+                      </div>
+                      <ProgressBar
+                        value={row.value / Math.max(1, byType[0].value)}
+                        color={row.color}
+                        height={6}
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </Card>
+
             <Card title={t(L('Време по предмети', 'Time per subject'))} icon="layers">
               {bySubject.length === 0 ? (
                 <p className="text-[12.5px] text-muted">

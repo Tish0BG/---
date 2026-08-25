@@ -3,7 +3,6 @@ import { createPortal } from 'react-dom';
 import { useApp } from '@/state/appStore';
 import { useAuth } from '@/state/authStore';
 import { useSettings } from '@/state/settingsStore';
-import { useTimer } from '@/state/timerStore';
 import { useWorkspace, SUBJECT_COLORS } from '@/state/workspaceStore';
 import { requestPersistence, storageEstimate } from '@/services/db';
 import { createBackup, inspectBackup, restoreBackup, type BackupSummary } from '@/services/backupService';
@@ -555,55 +554,47 @@ function StudySection() {
 
   return (
     <div className="space-y-7">
+      {/* The lengths and the daily goal used to live here, three clicks from
+          the clock they belong to. They are on the focus screen now, beside
+          the ring — a number you change because today feels like a
+          fifty-minute day should not be behind a settings dialog. What is left
+          here is the pointer, so somebody who goes looking in the old place
+          finds the new one instead of an absence. */}
       <Group
         title={t(L('Фокус сесия', 'Focus session'))}
-        hint={t(L('Дължините важат за всяка следваща сесия — текущата не се променя.', 'These lengths apply to the next session; a running one is left alone.'))}
+        hint={t(
+          L(
+            'Дължините на блоковете и дневната цел вече се нагласят на екрана „Фокус“, до самия часовник.',
+            'Block lengths and the daily goal are set on the Focus screen now, next to the clock itself.',
+          ),
+        )}
       >
-        <div className="grid gap-3 sm:grid-cols-2">
-          {(
-            [
-              { key: 'work', label: L('Учене', 'Focus'), min: 5, max: 90 },
-              { key: 'break', label: L('Почивка', 'Break'), min: 1, max: 30 },
-              { key: 'long', label: L('Дълга почивка', 'Long break'), min: 5, max: 45 },
-              { key: 'cycles', label: L('Сесии до дълга почивка', 'Sessions per long break'), min: 2, max: 8 },
-            ] as const
-          ).map((row) => (
-            <Slider
-              key={row.key}
-              label={t(row.label)}
-              min={row.min}
-              max={row.max}
-              value={timer[row.key]}
-              suffix={row.key === 'cycles' ? '' : ' min'}
-              onChange={(v) => {
-                s.setTimer({ [row.key]: v } as never);
-                useTimer.getState().syncDuration();
-              }}
-            />
-          ))}
-        </div>
-      </Group>
-
-      <Group title={t(L('Дневна цел', 'Daily goal'))}>
-        <Slider
-          label={t(L('Минути на ден', 'Minutes a day'))}
-          min={15}
-          max={480}
-          step={15}
-          value={timer.goal}
-          onChange={(v) => s.setTimer({ goal: v })}
-        />
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {[30, 60, 90, 120, 180].map((v) => (
-            <button
-              key={v}
-              className={`btn btn-sm ${timer.goal === v ? 'btn-ghost-active' : 'btn-outline'}`}
-              onClick={() => s.setTimer({ goal: v })}
-            >
-              {v} {t(L('мин', 'min'))}
-            </button>
-          ))}
-        </div>
+        <button
+          onClick={() => {
+            useApp.getState().setSettings(false);
+            useApp.getState().go('focus');
+          }}
+          className="flex w-full cursor-pointer items-center gap-3 rounded-[12px] border border-line p-3 text-left transition-colors hover:border-line-strong hover:bg-surface-2"
+        >
+          <span
+            className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px]"
+            style={{ background: 'var(--c-accent-soft)', color: 'var(--c-accent)' }}
+          >
+            <Icon name="timer" size={18} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[13.5px] font-medium">{t(L('Отвори „Фокус“', 'Open Focus'))}</span>
+            <span className="t-num block text-[12px] text-muted">
+              {t(
+                L(
+                  `Сега: ${timer.work} / ${timer.break} / ${timer.long} мин · цел ${timer.goal} мин`,
+                  `Now: ${timer.work} / ${timer.break} / ${timer.long} min · goal ${timer.goal} min`,
+                ),
+              )}
+            </span>
+          </span>
+          <Icon name="arrowRight" size={16} className="shrink-0 text-faint" />
+        </button>
       </Group>
 
       <Group title={t(L('Поведение', 'Behaviour'))}>

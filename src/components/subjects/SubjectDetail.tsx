@@ -3,7 +3,6 @@ import type { Grade } from '@/types';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useLibrary, progressOf } from '@/state/libraryStore';
-import { useViewer } from '@/state/viewerStore';
 import { useCards, dueCount } from '@/state/cardStore';
 import { useSettings } from '@/state/settingsStore';
 import {
@@ -22,6 +21,7 @@ import { DueChip } from '../planner/DueChip';
 import { useT, useLang, tr, L, formatDuration, weekdayNames, type Msg } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Button, Card, EmptyState, Tabs } from '../kit';
+import { openDoc } from '@/services/openDoc';
 
 type Tab = 'overview' | 'materials' | 'grades' | 'schedule';
 
@@ -196,7 +196,7 @@ export function SubjectDetail({ id }: { id: string }) {
               materials.map((d) => (
                 <button
                   key={d.id}
-                  onClick={() => void useViewer.getState().openDocument(d.id)}
+                  onClick={() => void openDoc(d.id)}
                   className="card flex w-full cursor-pointer items-center gap-3 p-3 text-left transition-colors hover:bg-surface-2"
                 >
                   <Icon

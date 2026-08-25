@@ -14,7 +14,16 @@ import { MobileNav } from './MobileNav';
  * between exists only for tablets, where there is room for a sidebar but not
  * for it to be permanent.
  */
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  onNewBoard,
+  onUpload,
+}: {
+  children: React.ReactNode;
+  /** the create menu reaches back into App for the two things it cannot make alone */
+  onNewBoard?: () => void;
+  onUpload?: () => void;
+}) {
   const compact = useIsCompact();
   const phone = useIsPhone();
   const [drawer, setDrawer] = useState(false);
@@ -38,13 +47,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       <div className="flex min-w-0 flex-1 flex-col">
         <ConnectionBar />
-        <AppHeader onMenu={compact ? () => setDrawer(true) : undefined} />
+        <AppHeader
+          onMenu={compact ? () => setDrawer(true) : undefined}
+          onNewBoard={onNewBoard}
+          onUpload={onUpload}
+        />
         <main className="scroll-thin min-h-0 flex-1 overflow-y-auto" style={{ paddingBottom: phone ? 66 : 0 }}>
           {children}
         </main>
       </div>
 
-      {phone && <MobileNav />}
+      {phone && <MobileNav onNewBoard={onNewBoard} onUpload={onUpload} />}
     </div>
   );
 }

@@ -34,8 +34,29 @@ export interface Folder {
 
 export type StudyStatus = 'not_started' | 'in_progress' | 'completed' | 'review';
 
-/** What backs the pages of a document. */
-export type DocKind = 'pdf' | 'board';
+/**
+ * What backs a document.
+ *
+ * `pdf` and `board` are pages you draw on; `note` is a written document with
+ * no pages at all — a rich-text body that lives in the record itself. They
+ * share the library, the subjects, the bin and the links because from the
+ * reader's side they are all "something I keep and open".
+ */
+export type DocKind = 'pdf' | 'board' | 'note';
+
+/**
+ * A written document.
+ *
+ * The body is HTML, produced by the editor's own toolbar rather than by
+ * pasting arbitrary markup, and it is stored on the document record so it
+ * syncs with everything else without a second machinery for text.
+ */
+export interface NoteDoc {
+  html: string;
+  /** the same content as plain text, for search, previews and the word count */
+  text: string;
+  words: number;
+}
 
 /* --------------------------------------------------------------- whiteboard */
 
@@ -97,6 +118,16 @@ export interface DocumentMeta {
   cover?: string | null;
   /** present only when kind === 'board' */
   board?: BoardConfig | null;
+  /** present only when kind === 'note' */
+  note?: NoteDoc | null;
+  /**
+   * Other documents this one is tied to, in either direction.
+   *
+   * Kept on both records rather than in a join table: a link is a property of
+   * the pair, and two records that each know about the other survive one of
+   * them being restored from an older device without the connection vanishing.
+   */
+  links?: string[];
   /** subject this material belongs to */
   subjectId?: string | null;
   /** pinned to the top of the library */
@@ -315,6 +346,13 @@ export interface TimerSettings {
   autoStart: boolean;
   sound: boolean;
   notify: boolean;
+  /**
+   * Whether pressing play takes over the whole screen.
+   *
+   * Off by default, and it stays off unless somebody turns it on: a timer
+   * that swallows the window the moment it is touched is a timer people stop
+   * touching. Full screen is a button on the focus screen instead.
+   */
   fullscreenOnStart: boolean;
 }
 
@@ -357,6 +395,25 @@ export type Accent = 'brand' | 'cyan' | 'green' | 'amber' | 'rose' | 'violet';
 /** Follow the operating system, or override it in one direction. */
 export type MotionPreference = 'system' | 'reduced' | 'full';
 
+/* ------------------------------------------------------------- dashboard */
+
+/**
+ * How wide a dashboard panel sits on the twelve-column grid.
+ *
+ * Four sizes rather than free resizing: a grid that can be dragged to any
+ * width is a grid that ends up misaligned, and none of the panels here have
+ * anything useful to do with 7/12 of a screen.
+ */
+export type WidgetSize = 'quarter' | 'third' | 'half' | 'full';
+
+export interface DashboardPanel {
+  /** id from the widget registry */
+  id: string;
+  size: WidgetSize;
+  /** kept in the list rather than removed, so re-adding restores the size */
+  hidden?: boolean;
+}
+
 export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   accent: Accent;
@@ -396,6 +453,8 @@ export interface AppSettings {
   gradeScale: { min: number; max: number; pass: number };
   /** collapse the navigation rail to icons only */
   railCollapsed: boolean;
+  /** the panels on the dashboard, in the order they are drawn */
+  dashboard: DashboardPanel[];
 }
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -509,12 +568,46 @@ export interface Subject {
 
 /* ------------------------------------------------------------------ planner */
 
-export type PlannerKind = 'task' | 'homework' | 'exam';
+/**
+ * What an entry is.
+ *
+ * The three built-in ids are spelled out because the rest of the app has
+ * opinions about them — an exam gets a countdown, homework gets a subject by
+ * default. Everything else is a string id pointing at an `ItemType` the person
+ * made themselves, which is what stops the planner from being only for
+ * schoolwork: a rehearsal, a shift, a deadline at work are all just types.
+ */
+export const BUILTIN_KINDS = ['task', 'homework', 'exam'] as const;
+export type BuiltinKind = (typeof BUILTIN_KINDS)[number];
+export type PlannerKind = BuiltinKind | (string & {});
 
 /**
- * One entry in the planner. Homework and exams are tasks with a due date and
- * a different weight in the UI, not separate machinery — the timer, the
- * dashboard and the subject page all read the same list.
+ * A kind of entry, built-in or invented.
+ *
+ * Types are deliberately thin — a name, an icon, a colour — because the
+ * moment a type carries behaviour it stops being something a person can
+ * safely make up on a Tuesday afternoon.
+ */
+export interface ItemType {
+  id: string;
+  name: string;
+  /** the English name, only ever set on the three built-ins */
+  nameEn?: string;
+  icon: string;
+  /** hex; null means "wear the subject's colour" */
+  color: string | null;
+  /** the three that ship with the app and cannot be deleted */
+  builtin?: boolean;
+  /** hidden from the pickers without losing the entries already using it */
+  archived?: boolean;
+  order: number;
+  updatedAt: ISODate;
+}
+
+/**
+ * One entry in the planner. Homework, exams and anything a person invents are
+ * the same record with a different `kind`, not separate machinery — the timer,
+ * the dashboard, the calendar and the subject page all read one list.
  */
 export interface PlannerItem {
   id: string;
@@ -526,6 +619,16 @@ export interface PlannerItem {
   docId: string | null;
   /** epoch ms, null = someday */
   due: ISODate | null;
+  /**
+   * Time of day, `"14:30"`, or null for "some time that day".
+   *
+   * A deadline with an hour on it belongs in the calendar's time grid beside
+   * the lessons; one without belongs in the all-day strip. Storing the hour
+   * apart from `due` keeps every existing "is it due today" test working.
+   */
+  time?: string | null;
+  /** minutes the entry is expected to take; 0 = unknown */
+  duration?: number;
   done: boolean;
   completedAt: ISODate | null;
   /** 0 normal, 1 important, 2 urgent */

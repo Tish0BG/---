@@ -17,10 +17,11 @@ import {
   useTimer,
 } from '@/state/timerStore';
 import { Icon } from '../Icon';
-import { tr } from '@/i18n';
+import { tr, L } from '@/i18n';
 import { Toggle, useConfirm } from '../ui';
 import { Ring } from './Ring';
 import { useApp } from '@/state/appStore';
+import { openDoc } from '@/services/openDoc';
 
 export const MODE_COLOR: Record<TimerMode, string> = {
   work: 'var(--c-timer-focus)',
@@ -106,23 +107,26 @@ function CycleDots({ done, of, color }: { done: number; of: number; color: strin
 }
 
 function FocusLine() {
-  const activeTaskId = useTimer((s) => s.activeTaskId);
-  const task = usePlanner((s) => s.items.find((t) => t.id === activeTaskId));
-  if (!activeTaskId || !task) {
+  const ids = useTimer((s) => s.activeTaskIds);
+  const items = usePlanner((s) => s.items);
+  const picked = ids.map((id) => items.find((t) => t.id === id)).filter(Boolean) as typeof items;
+
+  if (picked.length === 0) {
     return (
       <button
-        className="text-[12px] text-faint transition-colors hover:text-muted cursor-pointer"
+        className="cursor-pointer text-[12px] text-faint transition-colors hover:text-muted"
         onClick={() => useTimer.getState().setTab('tasks')}
       >
-        Избери задача, върху която да се фокусираш
+        {tr(L('Избери върху какво работиш', 'Pick what you are working on'))}
       </button>
     );
   }
   return (
     <div className="flex max-w-full items-center gap-1.5 text-[12px] text-muted">
       <Icon name="target" size={13} className="shrink-0" />
-      <span className="truncate font-medium text-ink">{task.title}</span>
-      <button className="icon-btn h-5 w-5" onClick={() => useTimer.getState().setActiveTask(null)}>
+      <span className="truncate font-medium text-ink">{picked[0].title}</span>
+      {picked.length > 1 && <span className="t-num shrink-0 text-faint">+{picked.length - 1}</span>}
+      <button className="icon-btn h-5 w-5" onClick={() => useTimer.getState().clearTasks()}>
         <Icon name="x" size={12} />
       </button>
     </div>
@@ -133,7 +137,7 @@ function FocusLine() {
 
 export function TasksTab() {
   const items = usePlanner((s) => s.items);
-  const activeTaskId = useTimer((s) => s.activeTaskId);
+  const activeTaskIds = useTimer((s) => s.activeTaskIds);
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
   const [draft, setDraft] = useState('');
@@ -160,7 +164,7 @@ export function TasksTab() {
             e.stopPropagation();
             if (e.key === 'Enter') add();
           }}
-          placeholder="Нова задача"
+          placeholder={tr(L('Нова задача', 'New entry'))}
           className="field"
           maxLength={140}
         />
@@ -172,12 +176,15 @@ export function TasksTab() {
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-1.5 py-1.5">
         {list.length === 0 && (
           <p className="px-2 py-8 text-center text-[12px] leading-relaxed text-faint">
-            Няма отворени задачи. Каквото добавиш тук, се появява и в Планера.
+            {tr(L(
+              'Няма отворени задачи. Каквото добавиш тук, се появява и в плана.',
+              'Nothing open. Whatever you add here shows up in the plan too.',
+            ))}
           </p>
         )}
         {list.map((t) => {
           const subject = subjects.find((s) => s.id === t.subjectId) ?? null;
-          const active = activeTaskId === t.id;
+          const active = activeTaskIds.includes(t.id);
           return (
             <div
               key={t.id}
@@ -191,7 +198,7 @@ export function TasksTab() {
               />
               <button
                 className="min-w-0 flex-1 cursor-pointer text-left"
-                onClick={() => useTimer.getState().setActiveTask(active ? null : t.id)}
+                onClick={() => useTimer.getState().toggleTask(t.id)}
               >
                 <span
                   className="block truncate text-[13px]"
@@ -213,12 +220,15 @@ export function TasksTab() {
       </div>
 
       <div className="flex items-center justify-between border-t border-line px-3 py-2 text-[11px] text-muted">
-        <span>{list.length ? `${list.length} отворени` : ''}</span>
-        <button
-          className="cursor-pointer text-accent"
-          onClick={() => useApp.getState().go('tasks')}
-        >
-          Отвори Планера
+        <span>
+          {activeTaskIds.length
+            ? tr(L(`${activeTaskIds.length} избрани`, `${activeTaskIds.length} selected`))
+            : list.length
+              ? tr(L(`${list.length} отворени`, `${list.length} open`))
+              : ''}
+        </span>
+        <button className="cursor-pointer text-accent" onClick={() => useApp.getState().goPlan('work')}>
+          {tr(L('Отвори плана', 'Open the plan'))}
         </button>
       </div>
     </div>
@@ -304,7 +314,7 @@ export function StatsTab() {
                 <button
                   key={row.docId}
                   className="flex w-full cursor-pointer items-center gap-2 rounded-lg px-1.5 py-1 text-left transition-colors hover:bg-surface-2"
-                  onClick={() => void useViewer.getState().openDocument(row.docId)}
+                  onClick={() => void openDoc(row.docId)}
                 >
                   <Icon name={doc.kind === 'board' ? 'board' : 'file'} size={13} className="shrink-0 text-faint" />
                   <span className="min-w-0 flex-1 truncate text-[12px]">{doc.name}</span>

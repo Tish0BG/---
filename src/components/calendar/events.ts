@@ -1,5 +1,6 @@
-import type { ClassSlot, FocusSession, PlannerItem, Subject } from '@/types';
+import type { ClassSlot, FocusSession, ItemType, PlannerItem, Subject } from '@/types';
 import { toMinutes } from '@/state/plannerStore';
+import { typeOf } from '@/state/itemTypeStore';
 
 export type EventKind = 'class' | 'task' | 'exam' | 'session';
 
@@ -19,6 +20,9 @@ export interface CalEvent {
   priority?: 0 | 1 | 2;
   room?: string;
   minutes?: number;
+  /** the planner type this came from, so the chip can wear its icon */
+  typeId?: string;
+  icon?: string;
 }
 
 export const dayStart = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
@@ -61,10 +65,17 @@ export function weekDays(anchor: Date): Date[] {
  */
 export function eventsForRange(
   days: Date[],
-  input: { items: PlannerItem[]; schedule: ClassSlot[]; sessions: FocusSession[]; subjects: Subject[] },
+  input: {
+    items: PlannerItem[];
+    schedule: ClassSlot[];
+    sessions: FocusSession[];
+    subjects: Subject[];
+    /** the invented types; the built-ins are constants */
+    types?: ItemType[];
+  },
   options: { includeSessions?: boolean } = {},
 ): Map<string, CalEvent[]> {
-  const { items, schedule, sessions, subjects } = input;
+  const { items, schedule, sessions, subjects, types = [] } = input;
   const out = new Map<string, CalEvent[]>();
   const subjectOf = (id: string | null | undefined) => subjects.find((s) => s.id === id) ?? null;
   const push = (key: string, event: CalEvent) => out.set(key, [...(out.get(key) ?? []), event]);
@@ -96,18 +107,27 @@ export function eventsForRange(
   for (const item of items) {
     if (item.due === null || item.due < from || item.due >= to) continue;
     const subject = subjectOf(item.subjectId);
+    const type = typeOf(item.kind, types);
+    // An entry with an hour on it belongs in the time grid beside the
+    // lessons; one without belongs in the all-day strip above it. That is
+    // the whole difference — everything else about the two is identical.
+    const minutes = item.time ? toMinutes(item.time) : null;
+    const start = minutes === null ? item.due : dayStart(new Date(item.due)) + minutes * 60_000;
+    const length = item.duration && item.duration > 0 ? item.duration : 45;
     push(keyOf(item.due), {
       id: `pl-${item.id}`,
       kind: item.kind === 'exam' ? 'exam' : 'task',
       title: item.title,
-      color: item.kind === 'exam' ? 'var(--c-warn)' : (subject?.color ?? 'var(--c-brand)'),
+      color: type.color ?? subject?.color ?? 'var(--c-brand)',
       subjectName: subject?.name ?? null,
-      start: item.due,
-      end: null,
-      allDay: true,
+      start,
+      end: minutes === null ? null : start + length * 60_000,
+      allDay: minutes === null,
       done: item.done,
       refId: item.id,
       priority: item.priority,
+      typeId: type.id,
+      icon: type.icon,
     });
   }
 

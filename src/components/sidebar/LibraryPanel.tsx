@@ -5,6 +5,7 @@ import { useViewer } from '@/state/viewerStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
 import { useT, L } from '@/i18n';
+import { openDoc } from '@/services/openDoc';
 
 /** Folder + document tree shown in the sidebar while reading. */
 export function LibraryPanel() {
@@ -210,7 +211,6 @@ function DocRow({
   confirm: (m: string, cb: () => void) => void;
 }) {
   const t = useT();
-  const openDocument = useViewer((s) => s.openDocument);
   const activeId = useViewer((s) => s.docId);
   const { renameDocument, deleteDocument, folders, moveDocument } = useLibrary();
   const active = activeId === doc.id;
@@ -225,7 +225,7 @@ function DocRow({
     >
       <button
         className="flex min-w-0 flex-1 cursor-pointer items-center gap-1.5 py-1.5"
-        onClick={() => void openDocument(doc.id)}
+        onClick={() => void openDoc(doc.id)}
         title={doc.name}
       >
         <Icon name="file" size={14} className={`shrink-0 ${active ? 'text-accent' : 'text-faint'}`} />

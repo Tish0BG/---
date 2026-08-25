@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useApp } from '@/state/appStore';
+import { navigateTo } from '@/state/appStore';
 import { usePlanner } from '@/state/plannerStore';
 import { useGoals } from '@/state/goalStore';
 import { useCards } from '@/state/cardStore';
@@ -106,7 +106,7 @@ export function NoticeBell() {
                   <button
                     className="flex w-full cursor-pointer items-start gap-2.5 rounded-[10px] p-2 text-left transition-colors hover:bg-surface-2"
                     onClick={() => {
-                      if (n.target) useApp.getState().go(n.target.view, n.target.id);
+                      if (n.target) navigateTo(n.target.view, n.target.id);
                       close();
                     }}
                   >

@@ -1132,3 +1132,221 @@ h3 {
     display: none;
   }
 }
+
+/* ------------------------------------------------- written documents */
+
+/**
+ * The sheet a text document is written on.
+ *
+ * The rules here are the document's typography, not the app's: a longer
+ * measure, a taller line, real space between paragraphs. Everything is scoped
+ * under `.note-sheet` so the editor's own markup — which comes out of
+ * `execCommand` and cannot be given classes — still lands somewhere designed.
+ */
+.note-sheet {
+  outline: none;
+  color: var(--c-text);
+  font-size: 15px;
+  line-height: 1.72;
+  caret-color: var(--c-accent);
+  min-height: 60vh;
+}
+.note-sheet > * + * {
+  margin-top: 0.85em;
+}
+.note-sheet p {
+  margin: 0;
+}
+.note-sheet h1,
+.note-sheet h2,
+.note-sheet h3 {
+  font-weight: 650;
+  letter-spacing: -0.018em;
+  line-height: 1.28;
+  margin-top: 1.5em;
+}
+.note-sheet h1 {
+  font-size: 27px;
+}
+.note-sheet h2 {
+  font-size: 21px;
+}
+.note-sheet h3 {
+  font-size: 17px;
+}
+.note-sheet ul,
+.note-sheet ol {
+  padding-left: 1.35em;
+}
+.note-sheet li {
+  margin: 0.25em 0;
+}
+.note-sheet blockquote {
+  margin: 0;
+  padding: 0.15em 0 0.15em 1.1em;
+  border-left: 3px solid var(--c-line-strong);
+  color: var(--c-muted);
+  font-style: italic;
+}
+.note-sheet pre {
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: var(--c-surface-3);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+  white-space: pre-wrap;
+}
+.note-sheet a {
+  color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.note-sheet .note-image {
+  max-width: 100%;
+  height: auto;
+  border-radius: 10px;
+  display: block;
+}
+.note-sheet .note-rule {
+  border: 0;
+  border-top: 1px solid var(--c-line);
+  margin: 1.6em 0;
+}
+
+/* Tables: a header row that reads as one, and cells you can actually aim at. */
+.note-sheet .note-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 13.5px;
+}
+.note-sheet .note-table th,
+.note-sheet .note-table td {
+  border: 1px solid var(--c-line);
+  padding: 7px 10px;
+  text-align: left;
+  vertical-align: top;
+  min-width: 60px;
+}
+.note-sheet .note-table th {
+  background: var(--c-surface-2);
+  font-weight: 600;
+}
+
+/**
+ * Checklists.
+ *
+ * The box is drawn rather than an `<input>`: a real checkbox inside a
+ * contentEditable can be selected, dragged and deleted halfway, and its state
+ * does not survive being written into a string.
+ */
+.note-sheet .note-todo {
+  list-style: none;
+  padding-left: 0;
+}
+.note-sheet .note-todo > li {
+  position: relative;
+  padding-left: 26px;
+}
+.note-sheet .note-todo > li::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.42em;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  border: 1.5px solid var(--c-line-strong);
+  cursor: pointer;
+  transition:
+    background 0.14s var(--ease),
+    border-color 0.14s var(--ease);
+}
+.note-sheet .note-todo > li[data-done='true']::before {
+  background: var(--c-success);
+  border-color: var(--c-success);
+}
+.note-sheet .note-todo > li[data-done='true']::after {
+  content: '';
+  position: absolute;
+  left: 4.5px;
+  top: 0.62em;
+  width: 5px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.note-sheet .note-todo > li[data-done='true'] {
+  color: var(--c-muted);
+  text-decoration: line-through;
+}
+
+/* Callouts: a coloured margin, not a coloured block — the text stays readable. */
+.note-sheet .note-callout {
+  border-radius: 12px;
+  padding: 12px 14px;
+  border-left: 3px solid var(--c-info);
+  background: var(--c-info-soft);
+}
+.note-sheet .note-callout[data-tone='warn'] {
+  border-left-color: var(--c-warn);
+  background: var(--c-warn-soft);
+}
+.note-sheet .note-callout[data-tone='good'] {
+  border-left-color: var(--c-success);
+  background: var(--c-success-soft);
+}
+.note-sheet .note-callout > * + * {
+  margin-top: 0.6em;
+}
+
+/**
+ * A link to another document.
+ *
+ * It reads as a chip rather than as underlined text: it does not go to a web
+ * page, it opens something in this app, and the difference is worth showing.
+ */
+.note-sheet .note-doclink {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 1px 8px 2px;
+  border-radius: 7px;
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+  font-size: 0.92em;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  vertical-align: baseline;
+  transition: background 0.14s var(--ease);
+}
+.note-sheet .note-doclink::before {
+  content: '↗';
+  font-size: 0.85em;
+  opacity: 0.7;
+}
+.note-sheet .note-doclink:hover {
+  background: color-mix(in srgb, var(--c-accent) 18%, transparent);
+}
+
+/**
+ * An empty document should say what it is for, not sit there blank.
+ *
+ * `:empty` is not enough on its own: the editor seeds itself with a paragraph
+ * holding a single `<br>`, which is what a contentEditable needs in order to
+ * have a caret at all — and which is not empty as far as CSS is concerned.
+ * `:has()` covers that case, and the bare `:empty` covers a body that has been
+ * selected and deleted outright.
+ */
+.note-sheet:empty::before,
+.note-sheet:has(> p:only-child > br:only-child)::before {
+  content: attr(data-placeholder);
+  color: var(--c-faint);
+  pointer-events: none;
+  position: absolute;
+}

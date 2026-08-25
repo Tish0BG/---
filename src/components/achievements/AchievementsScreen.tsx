@@ -7,6 +7,7 @@ import {
   xpBreakdown,
   xpForLevel,
   TIER_COLOR,
+  TIER_LABEL,
   type AchievementState,
 } from '@/services/gameService';
 import { useT, L, useLang, formatDate, formatDuration } from '@/i18n';
@@ -177,7 +178,7 @@ function AchievementCard({ achievement }: { achievement: AchievementState }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <h3 className="truncate text-[14px] font-semibold">{t(achievement.title)}</h3>
-            <Badge color={color}>{achievement.tier}</Badge>
+            <Badge color={color}>{t(TIER_LABEL[achievement.tier])}</Badge>
           </div>
           <p className="mt-1 text-[12px] leading-snug text-muted">{t(achievement.body)}</p>
         </div>

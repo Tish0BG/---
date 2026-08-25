@@ -1,23 +1,25 @@
 import { useMemo, useState } from 'react';
-import type { Subject } from '@/types';
+import type { PlannerItem, Subject } from '@/types';
 import { useApp } from '@/state/appStore';
 import { useWorkspace, suggestedSubjects, SUBJECT_COLORS } from '@/state/workspaceStore';
 import { useLibrary } from '@/state/libraryStore';
-import { usePlanner, averageFor, openItems } from '@/state/plannerStore';
+import { usePlanner, averageFor, openItems, sortByDue } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
 import { minutesBySubject, useTimer } from '@/state/timerStore';
 import { Screen } from '../shell/Screen';
 import { Icon } from '../Icon';
 import { useConfirm } from '../ui';
-import { useT, L, formatDuration } from '@/i18n';
+import { useT, useLang, L, formatDuration } from '@/i18n';
 import { S } from '@/i18n/strings';
-import { Button, Card, EmptyState } from '../kit';
+import { Button, Card, EmptyState, StatCard } from '../kit';
+import { DueChip } from '../planner/DueChip';
 import { SubjectDialog } from './SubjectDialog';
 import { SubjectDetail } from './SubjectDetail';
 
 /** Grid of subjects, each showing how much of it is on your plate right now. */
 export function SubjectsScreen() {
   const t = useT();
+  const lang = useLang();
   const subjectId = useApp((s) => s.subjectId);
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
@@ -34,6 +36,32 @@ export function SubjectsScreen() {
     for (const row of minutesBySubject(sessions, 7)) map.set(row.subjectId, row.minutes);
     return map;
   }, [sessions]);
+
+  /** The soonest thing still open for each subject, for the card's chip. */
+  const nextDue = useMemo(() => {
+    const map = new Map<string, PlannerItem>();
+    for (const item of sortByDue(openItems(items))) {
+      if (!item.subjectId || item.due === null) continue;
+      if (!map.has(item.subjectId)) map.set(item.subjectId, item);
+    }
+    return map;
+  }, [items]);
+
+  const totals = useMemo(() => {
+    const live = subjects.filter((s) => !s.archived);
+    const minutes = [...weekMinutes.values()].reduce((sum, m) => sum + m, 0);
+    const open = openItems(items).filter((i) => i.subjectId).length;
+    const marked = live.map((s) => averageFor(grades, s.id)).filter((a) => a.count > 0);
+    const average = marked.length ? marked.reduce((sum, a) => sum + a.average, 0) / marked.length : 0;
+    const busiest = [...weekMinutes.entries()].sort((a, b) => b[1] - a[1])[0];
+    return {
+      minutes,
+      open,
+      average,
+      peak: Math.max(1, ...weekMinutes.values()),
+      busiest: busiest ? (live.find((s) => s.id === busiest[0])?.name ?? null) : null,
+    };
+  }, [subjects, weekMinutes, items, grades]);
 
   if (subjectId) return <SubjectDetail id={subjectId} />;
 
@@ -97,13 +125,57 @@ export function SubjectsScreen() {
             />
           </Card>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <>
+            {/* Subjects came out of the navigation rail and into a screen of
+                their own, so the screen owes the reader more than a list: the
+                three numbers that say how the week actually went. */}
+            <div className="mb-4 grid gap-3 sm:grid-cols-3">
+              <StatCard
+                label={t(L('Учене тази седмица', 'Studied this week'))}
+                value={formatDuration(totals.minutes, lang)}
+                icon="timer"
+                tone="var(--c-accent)"
+                hint={
+                  totals.busiest
+                    ? t(L(`Най-много: ${totals.busiest}`, `Most of it: ${totals.busiest}`))
+                    : t(L('Все още няма записани сесии.', 'No sessions logged yet.'))
+                }
+                onClick={() => useApp.getState().go('stats')}
+              />
+              <StatCard
+                label={t(L('Отворена работа', 'Open work'))}
+                value={totals.open}
+                unit={t(L('записа', 'entries'))}
+                icon="listTodo"
+                tone={totals.open ? 'var(--c-brand)' : 'var(--c-success)'}
+                hint={
+                  totals.open
+                    ? t(L('Разпределена по предметите отдолу.', 'Spread across the subjects below.'))
+                    : t(L('Нищо не чака.', 'Nothing waiting.'))
+                }
+                onClick={() => useApp.getState().goPlan('work')}
+              />
+              <StatCard
+                label={t(L('Среден успех', 'Average mark'))}
+                value={totals.average ? totals.average.toFixed(2) : '—'}
+                icon="medal"
+                tone="var(--c-ember)"
+                hint={
+                  totals.average
+                    ? t(L('Средно от предметите с оценки.', 'Averaged over subjects that have marks.'))
+                    : t(L('Оценките се въвеждат в предмета.', 'Marks are entered inside a subject.'))
+                }
+              />
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {subjects.map((s) => {
               const materials = documents.filter((d) => d.subjectId === s.id && !d.deletedAt).length;
               const open = openItems(items).filter((i) => i.subjectId === s.id).length;
               const due = dueCount(cards.filter((c) => c.subjectId === s.id));
               const avg = averageFor(grades, s.id);
               const minutes = weekMinutes.get(s.id) ?? 0;
+              const next = nextDue.get(s.id);
 
               return (
                 <div key={s.id} className="card card-hover group relative overflow-hidden p-4">
@@ -141,16 +213,29 @@ export function SubjectsScreen() {
                       <Mini value={due} label={t(L('карти', 'cards'))} accent={due > 0} />
                     </span>
 
-                    {minutes > 0 && (
-                      <span className="mt-2.5 block text-[11.5px] text-muted">
-                        {t(
-                          L(
-                            `${formatDuration(minutes, 'bg')} тази седмица`,
-                            `${formatDuration(minutes, 'en')} this week`,
-                          ),
-                        )}
+                    {/* How much of the week this subject took, against the
+                        busiest one — a share, not an absolute nobody can place. */}
+                    <span className="mt-3 block">
+                      <span className="flex items-baseline justify-between text-[11.5px] text-muted">
+                        <span>
+                          {minutes > 0
+                            ? t(
+                                L(
+                                  `${formatDuration(minutes, 'bg')} тази седмица`,
+                                  `${formatDuration(minutes, 'en')} this week`,
+                                ),
+                              )
+                            : t(L('няма учене тази седмица', 'no study this week'))}
+                        </span>
+                        {next && <DueChip due={next.due!} compact />}
                       </span>
-                    )}
+                      <span className="mt-1.5 block h-1 w-full overflow-hidden rounded-full bg-surface-3">
+                        <span
+                          className="block h-full rounded-full transition-[width] duration-500"
+                          style={{ width: `${(minutes / totals.peak) * 100}%`, background: s.color }}
+                        />
+                      </span>
+                    </span>
                   </button>
 
                   <div className="absolute right-2 top-2.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
@@ -185,7 +270,8 @@ export function SubjectsScreen() {
                 </div>
               );
             })}
-          </div>
+            </div>
+          </>
         )}
       </Screen>
 

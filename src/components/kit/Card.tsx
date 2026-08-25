@@ -1,5 +1,6 @@
 import type { CSSProperties, ReactNode } from 'react';
 import { Icon } from '../Icon';
+import { ProgressRing } from './Progress';
 
 /* ------------------------------------------------------------------- card */
 
@@ -98,6 +99,16 @@ export interface StatCardProps {
   /** 0..1 — draws a hairline meter under the value. */
   progress?: number | null;
   delta?: { value: number; suffix?: string } | null;
+  /**
+   * A ring in place of the icon square, showing the same 0–1 as `progress`.
+   *
+   * The dashboard's first tile used to be hand-built so it could carry one:
+   * a ring, then the label, then the number — a different anatomy from the
+   * three tiles beside it, which read as a row assembled from two different
+   * products. A row of tiles has one shape; the ring is a variation inside
+   * it, not an exception to it.
+   */
+  ring?: number | null;
   onClick?: () => void;
   className?: string;
 }
@@ -115,6 +126,7 @@ export function StatCard({
   tone = 'var(--c-accent)',
   progress = null,
   delta = null,
+  ring = null,
   onClick,
   className = '',
 }: StatCardProps) {
@@ -129,13 +141,19 @@ export function StatCard({
     >
       <div className="flex items-start justify-between gap-2">
         <span className="t-label">{label}</span>
-        {icon && (
-          <span
-            className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px]"
-            style={{ background: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}
-          >
-            <Icon name={icon} size={15} strokeWidth={1.9} />
-          </span>
+        {ring !== null ? (
+          <ProgressRing value={ring} size={34} stroke={3.5} color={tone} colorTo="var(--c-brand-lift)">
+            <span className="t-num text-[9.5px] font-semibold">{Math.round(ring * 100)}%</span>
+          </ProgressRing>
+        ) : (
+          icon && (
+            <span
+              className="grid h-7 w-7 shrink-0 place-items-center rounded-[8px]"
+              style={{ background: `color-mix(in srgb, ${tone} 14%, transparent)`, color: tone }}
+            >
+              <Icon name={icon} size={15} strokeWidth={1.9} />
+            </span>
+          )
         )}
       </div>
 

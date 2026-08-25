@@ -3,6 +3,7 @@ import type { ToolId } from '@/types';
 import { useViewer } from '@/state/viewerStore';
 import { useApp } from '@/state/appStore';
 import { insertImage } from '@/services/imageService';
+import { newNote } from '@/components/shell/AppHeader';
 
 const TOOL_KEYS: Record<string, ToolId> = {
   v: 'select',
@@ -25,7 +26,15 @@ const isTyping = (el: EventTarget | null) => {
 };
 
 /** Global keyboard map. Skipped whenever the focus is in a text field. */
-export function useShortcuts({ onSearch, onExport }: { onSearch: () => void; onExport: () => void }) {
+export function useShortcuts({
+  onSearch,
+  onExport,
+  onNewBoard,
+}: {
+  onSearch: () => void;
+  onExport: () => void;
+  onNewBoard?: () => void;
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const store = useViewer.getState();
@@ -92,13 +101,21 @@ export function useShortcuts({ onSearch, onExport }: { onSearch: () => void; onE
         const key = e.key.toLowerCase();
         if (key === 't') {
           e.preventDefault();
-          app.setQuick('task');
+          app.setQuick('item', 'task');
         } else if (key === 'e') {
           e.preventDefault();
-          app.setQuick('exam');
+          app.setQuick('item', 'exam');
         } else if (key === 'g') {
           e.preventDefault();
           app.setQuick('goal');
+        } else if (key === 'd') {
+          // A written document is made and opened in one keystroke: it is the
+          // thing this app is for, and it should be the cheapest to reach.
+          e.preventDefault();
+          void newNote();
+        } else if (key === 'b') {
+          e.preventDefault();
+          onNewBoard?.();
         } else if (key === '/') {
           e.preventDefault();
           app.setPalette(true);
@@ -164,5 +181,5 @@ export function useShortcuts({ onSearch, onExport }: { onSearch: () => void; onE
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('paste', onPaste);
     };
-  }, [onSearch, onExport]);
+  }, [onSearch, onExport, onNewBoard]);
 }

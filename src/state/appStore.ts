@@ -1,15 +1,24 @@
 import { create } from 'zustand';
 import { L, type Msg } from '@/i18n';
 
-/** Top-level destinations in the sidebar. */
+/**
+ * Top-level destinations, in the order the sidebar draws them.
+ *
+ * The list used to be nine entries long and arranged by when each feature was
+ * built: tasks, calendar, goals, exams, library, cards, focus, statistics.
+ * Three of those — tasks, goals, exams — were the same record seen through
+ * three filters, and all three were about school, which is a guess about the
+ * person holding the app. They are one screen now, `plan`, and the order below
+ * follows the day rather than the changelog: where you are, what you keep,
+ * what you owe, when it happens, how you revise, how you concentrate.
+ */
 export type AppView =
   | 'dashboard'
-  | 'tasks'
-  | 'calendar'
-  | 'goals'
-  | 'exams'
   | 'drive'
+  | 'plan'
+  | 'calendar'
   | 'cards'
+  | 'focus'
   | 'subjects'
   | 'stats'
   | 'achievements'
@@ -17,23 +26,32 @@ export type AppView =
 
 export const VIEW_TITLES: Record<AppView, Msg> = {
   dashboard: L('Табло', 'Dashboard'),
-  tasks: L('Задачи', 'Tasks'),
-  calendar: L('Календар', 'Calendar'),
-  goals: L('Цели', 'Goals'),
-  exams: L('Изпити', 'Exams'),
   drive: L('Библиотека', 'Library'),
+  plan: L('План', 'Plan'),
+  calendar: L('Календар', 'Calendar'),
   cards: L('Флашкарти', 'Flashcards'),
+  focus: L('Фокус', 'Focus'),
   subjects: L('Предмети', 'Subjects'),
   stats: L('Статистика', 'Statistics'),
   achievements: L('Постижения', 'Achievements'),
   profile: L('Профил', 'Profile'),
 };
 
-/** Old links, shortcuts and `?go=` parameters keep working. */
+/**
+ * Old links, shortcuts and `?go=` parameters keep working.
+ *
+ * `tasks`, `goals` and `exams` were three screens until the plan absorbed
+ * them; the addresses people bookmarked still have to land somewhere sensible,
+ * and the tab they open on is decided by `PLAN_TAB_FOR` below.
+ */
 const ALIASES: Record<string, AppView> = {
-  planner: 'tasks',
+  planner: 'plan',
+  tasks: 'plan',
+  goals: 'plan',
+  exams: 'plan',
   library: 'drive',
   home: 'dashboard',
+  timer: 'focus',
 };
 
 export const resolveView = (raw: string): AppView | null => {
@@ -41,8 +59,17 @@ export const resolveView = (raw: string): AppView | null => {
   return ALIASES[raw] ?? null;
 };
 
+/** Which half of the plan an old address was asking for. */
+export type PlanTab = 'work' | 'goals';
+
+export const PLAN_TAB_FOR: Record<string, PlanTab> = {
+  tasks: 'work',
+  exams: 'work',
+  goals: 'goals',
+};
+
 /** What the quick-create control is currently making. */
-export type QuickKind = 'task' | 'exam' | 'goal' | 'event' | null;
+export type QuickKind = 'item' | 'goal' | 'event' | null;
 
 interface AppStore {
   view: AppView;
@@ -50,6 +77,10 @@ interface AppStore {
   subjectId: string | null;
   /** deep link into a screen: the row to open once it mounts */
   focusId: string | null;
+  /** which half of the plan screen is showing */
+  planTab: PlanTab;
+  /** the plan screen filtered to one kind of entry; null = every kind */
+  planKind: string | null;
   paletteOpen: boolean;
   settingsOpen: boolean;
   /** which room of the settings to open on; null means "wherever it was" */
@@ -67,18 +98,27 @@ interface AppStore {
   authMode: 'signin' | 'signup';
   /** the create sheet, opened from the top bar, ⌘N or the mobile plus */
   quick: QuickKind;
-  /** filters the dashboard, library and tasks down to one subject */
+  /** the kind an entry being created starts on */
+  quickKind: string;
+  /** filters the dashboard, library and plan down to one subject */
   filterSubjectId: string | null;
+  /** the dashboard is being rearranged rather than read */
+  editingDashboard: boolean;
 
   go(view: AppView, focusId?: string): void;
+  /** the plan screen, opened on a particular tab and kind */
+  goPlan(tab?: PlanTab, kind?: string | null, focusId?: string): void;
   openSubject(id: string | null): void;
   setPalette(open: boolean): void;
   setSettings(open: boolean, section?: string): void;
   setAuth(open: boolean, mode?: 'signin' | 'signup'): void;
   /** which half of the door is showing, without deciding whether it is open */
   setAuthMode(mode: 'signin' | 'signup'): void;
-  setQuick(kind: QuickKind): void;
+  setQuick(kind: QuickKind, itemKind?: string): void;
   setFilter(subjectId: string | null): void;
+  setPlanTab(tab: PlanTab): void;
+  setPlanKind(kind: string | null): void;
+  setEditingDashboard(on: boolean): void;
   clearFocus(): void;
 }
 
@@ -90,16 +130,36 @@ export const useApp = create<AppStore>((set) => ({
   view: 'dashboard',
   subjectId: null,
   focusId: null,
+  planTab: 'work',
+  planKind: null,
   paletteOpen: false,
   settingsOpen: false,
   settingsSection: null,
   authOpen: false,
   authMode: 'signin',
   quick: null,
+  quickKind: 'task',
   filterSubjectId: null,
+  editingDashboard: false,
 
   go(view, focusId) {
-    set({ view, paletteOpen: false, subjectId: null, focusId: focusId ?? null });
+    set({
+      view,
+      paletteOpen: false,
+      subjectId: null,
+      focusId: focusId ?? null,
+      editingDashboard: false,
+    });
+  },
+  goPlan(tab = 'work', kind = null, focusId) {
+    set({
+      view: 'plan',
+      planTab: tab,
+      planKind: kind,
+      paletteOpen: false,
+      subjectId: null,
+      focusId: focusId ?? null,
+    });
   },
   openSubject(id) {
     set({ view: 'subjects', subjectId: id, paletteOpen: false });
@@ -117,13 +177,42 @@ export const useApp = create<AppStore>((set) => ({
   setAuth(open, mode) {
     set({ authOpen: open, ...(mode ? { authMode: mode } : {}) });
   },
-  setQuick(kind) {
-    set({ quick: kind });
+  setQuick(kind, itemKind) {
+    set({ quick: kind, ...(itemKind ? { quickKind: itemKind } : {}) });
   },
   setFilter(subjectId) {
     set({ filterSubjectId: subjectId });
+  },
+  setPlanTab(tab) {
+    set({ planTab: tab });
+  },
+  setPlanKind(kind) {
+    set({ planKind: kind });
+  },
+  setEditingDashboard(on) {
+    set({ editingDashboard: on });
   },
   clearFocus() {
     set({ focusId: null });
   },
 }));
+
+/**
+ * "Take me to X", where X may be a name from before the plan absorbed three
+ * screens.
+ *
+ * Notifications written last week, links in the command palette and the
+ * "next step" card all still say `tasks`, `exams` or `goals`. They are all
+ * the plan; which half and which filter is the only thing that differs, and
+ * one function is a better home for that than four call sites guessing.
+ */
+export function navigateTo(target: string, id?: string): void {
+  const view = resolveView(target);
+  if (!view) return;
+  const app = useApp.getState();
+  if (view === 'plan') {
+    app.goPlan(PLAN_TAB_FOR[target] ?? 'work', target === 'exams' ? 'exam' : null, id);
+    return;
+  }
+  app.go(view, id);
+}

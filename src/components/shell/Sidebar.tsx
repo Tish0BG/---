@@ -2,9 +2,8 @@ import { useMemo, type ReactNode } from 'react';
 import { VIEW_TITLES, useApp, type AppView } from '@/state/appStore';
 import { useSettings } from '@/state/settingsStore';
 import { useWorkspace } from '@/state/workspaceStore';
-import { usePlanner, dueToday, overdue, upcomingExams } from '@/state/plannerStore';
+import { usePlanner, dueToday, overdue } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
-import { useGoals, activeGoals } from '@/state/goalStore';
 import { useTimer } from '@/state/timerStore';
 import { useGame, useGameContext } from '@/state/gameStore';
 import { currentStreak, levelState, levelTitle, totalXp } from '@/services/gameService';
@@ -15,7 +14,7 @@ import { Icon } from '../Icon';
 import { Tooltip, ProgressRing } from '../kit';
 
 interface NavEntry {
-  id: AppView | 'focus';
+  id: AppView;
   icon: string;
   badge?: number;
   /** amber instead of violet — something is late */
@@ -23,12 +22,20 @@ interface NavEntry {
 }
 
 /**
- * The spine of the product.
+ * ──────────────────────────────────────────────────── the spine ──
  *
- * Nine destinations is more than a rail of icons can carry, so this is a real
- * sidebar: named sections, live counters on the three that can be behind, the
- * subject list underneath, and the person's own level at the bottom. Collapsed
- * it becomes the icon rail again for people who want the width back.
+ * The order is the day, not the changelog.
+ *
+ * It used to run tasks, calendar, goals, exams, library, cards, focus,
+ * statistics — nine entries arranged by the order the features were built,
+ * three of which were the same records under different filters, with the
+ * subject list stacked underneath so the rail scrolled on a laptop.
+ *
+ * Now: where you are, what you keep, what you owe, when it happens, how you
+ * revise, how you concentrate, what it is all filed under, how it is going.
+ * The subjects moved into their own screen, which is where a list of ten
+ * things with colours and averages actually belongs — a navigation rail is
+ * not a filing cabinet.
  */
 export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; expanded?: boolean }) {
   const t = useT();
@@ -38,25 +45,20 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
   // purpose, and a drawer of unlabelled icons helps nobody.
   const collapsed = useSettings((s) => s.railCollapsed) && !expanded;
   const setSetting = useSettings((s) => s.set);
-  const subjects = useWorkspace((s) => s.subjects);
   const profile = useWorkspace((s) => s.profile);
   const items = usePlanner((s) => s.items);
   const cards = useCards((s) => s.cards);
-  const goals = useGoals((s) => s.goals);
-  const timerView = useTimer((s) => s.view);
   const running = useTimer((s) => s.running);
   const ctx = useGameContext();
   const unlocked = useGame((s) => s.unlocked);
 
   const counts = useMemo(
     () => ({
-      tasks: dueToday(items).length + overdue(items).length,
-      lateTasks: overdue(items).length > 0,
-      exams: upcomingExams(items, 14).length,
+      plan: dueToday(items).length + overdue(items).length,
+      late: overdue(items).length > 0,
       cards: dueCount(cards),
-      goals: activeGoals(goals).length,
     }),
-    [items, cards, goals],
+    [items, cards],
   );
 
   const level = useMemo(() => levelState(totalXp(ctx)), [ctx]);
@@ -65,37 +67,27 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
 
   const primary: NavEntry[] = [
     { id: 'dashboard', icon: 'dashboard' },
-    { id: 'tasks', icon: 'listTodo', badge: counts.tasks, alert: counts.lateTasks },
-    { id: 'calendar', icon: 'calendar' },
-    { id: 'goals', icon: 'target', badge: counts.goals },
-    { id: 'exams', icon: 'graduation', badge: counts.exams },
     { id: 'drive', icon: 'drive' },
+    { id: 'plan', icon: 'listTodo', badge: counts.plan, alert: counts.late },
+    { id: 'calendar', icon: 'calendar' },
     { id: 'cards', icon: 'cards', badge: counts.cards },
     { id: 'focus', icon: 'timer' },
+    { id: 'subjects', icon: 'layers' },
     { id: 'stats', icon: 'chartLine' },
   ];
 
-  const secondary: NavEntry[] = [
-    { id: 'achievements', icon: 'trophy', badge: earned || undefined },
-    { id: 'subjects', icon: 'layers' },
-  ];
+  const secondary: NavEntry[] = [{ id: 'achievements', icon: 'trophy', badge: earned || undefined }];
 
   const go = (entry: NavEntry) => {
-    if (entry.id === 'focus') {
-      useTimer.getState().setView('full');
-      if (!useTimer.getState().running) useTimer.getState().start();
-    } else {
-      useApp.getState().go(entry.id);
-    }
+    useApp.getState().go(entry.id);
     onNavigate?.();
   };
 
-  const isActive = (entry: NavEntry) =>
-    entry.id === 'focus' ? timerView === 'full' : view === entry.id && !activeSubject;
+  const isActive = (entry: NavEntry) => view === entry.id && !activeSubject;
 
   const renderItem = (entry: NavEntry) => {
     const active = isActive(entry);
-    const label = entry.id === 'focus' ? t(S.focus) : t(VIEW_TITLES[entry.id]);
+    const label = t(VIEW_TITLES[entry.id]);
     const node = (
       <button
         key={entry.id}
@@ -108,11 +100,13 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
             ? 'bg-surface-3 font-medium text-ink'
             : 'font-normal text-muted hover:bg-surface-2 hover:text-ink'
         }`}
+        /* The marker is an inset shadow rather than a positioned bar: the rail
+           scrolls, and a scrolling box clips anything hanging outside it — an
+           earlier version drew the bar three pixels to the left of the row,
+           where nobody ever saw it. */
+        style={active ? { boxShadow: 'inset 2px 0 0 var(--c-accent)' } : undefined}
       >
-        <span
-          className="relative shrink-0"
-          style={active ? { color: 'var(--c-accent)' } : undefined}
-        >
+        <span className="relative shrink-0" style={active ? { color: 'var(--c-accent)' } : undefined}>
           <Icon name={entry.icon} size={17} strokeWidth={active ? 1.9 : 1.7} />
           {entry.id === 'focus' && running && (
             <span
@@ -134,6 +128,12 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
           >
             {entry.badge}
           </span>
+        )}
+        {collapsed && !!entry.badge && (
+          <span
+            className="absolute right-2 top-1.5 h-[6px] w-[6px] rounded-full"
+            style={{ background: entry.alert ? 'var(--c-danger)' : 'var(--c-accent)' }}
+          />
         )}
       </button>
     );
@@ -187,45 +187,6 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
         <div className="my-3 h-px" style={{ background: 'var(--c-line)' }} />
 
         <div className="flex flex-col gap-0.5">{secondary.map(renderItem)}</div>
-
-        {!collapsed && subjects.filter((s) => !s.archived).length > 0 && (
-          <div className="mt-5">
-            <div className="mb-1.5 flex items-center justify-between px-2.5">
-              <span className="t-label">{t(S.subjects)}</span>
-              <button
-                className="icon-btn h-5 w-5"
-                aria-label={t(L('Нов предмет', 'New subject'))}
-                onClick={() => {
-                  useApp.getState().go('subjects');
-                  onNavigate?.();
-                }}
-              >
-                <Icon name="plus" size={12} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-0.5">
-              {subjects
-                .filter((s) => !s.archived)
-                .map((subject) => (
-                  <button
-                    key={subject.id}
-                    onClick={() => {
-                      useApp.getState().openSubject(subject.id);
-                      onNavigate?.();
-                    }}
-                    className={`flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-[8px] px-2.5 text-[12.5px] transition-colors ${
-                      activeSubject === subject.id
-                        ? 'bg-surface-3 font-medium text-ink'
-                        : 'text-muted hover:bg-surface-2 hover:text-ink'
-                    }`}
-                  >
-                    <span className="badge-dot" style={{ background: subject.color }} />
-                    <span className="truncate text-left">{subject.name}</span>
-                  </button>
-                ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {/* ----------------------------------------------------------- profile */}
