@@ -38,6 +38,17 @@ const BLOB_KIND = 'blobs';
 
 const PULL_PAGE = 500;
 const PUSH_CHUNK = 200;
+/**
+ * How much JSON one upsert may carry.
+ *
+ * A row used to be a few hundred bytes — a task, a bookmark, an annotation's
+ * points. Written documents changed that: a document record now holds the
+ * whole body of a text document, and two hundred of those in one request is a
+ * payload measured in megabytes, which gateways drop rather than deliver.
+ * Chunks are counted in bytes as well as in rows now, so one long essay makes
+ * a request of its own instead of taking two hundred rows down with it.
+ */
+const PUSH_BYTES = 2 * 1024 * 1024;
 const STATE_KEY = 'sync.state';
 
 /** Upload cap per blob — the free Supabase tier gives 1 GB in total. */
@@ -47,12 +58,30 @@ interface SyncPointer {
   userId: string;
   /** highest `updated_at` seen from the cloud */
   lastPulledAt: number;
+  /**
+   * The id of the last row read at exactly `lastPulledAt`.
+   *
+   * A timestamp alone is not a position in the list. One bulk operation —
+   * deleting a document, which marks every annotation, bookmark and image
+   * hanging off it in a single statement — writes hundreds of rows carrying
+   * the identical millisecond. Paging with "greater than this timestamp"
+   * steps over every one of them that happened to sit past the page boundary,
+   * and they never come back, because the next run starts from a timestamp
+   * that is already beyond them. The pair is the position.
+   */
+  lastPulledId: string;
   /** local rows newer than this still have to go up */
   lastPushedAt: number;
   lastSyncAt: number;
 }
 
-const EMPTY_POINTER: SyncPointer = { userId: '', lastPulledAt: 0, lastPushedAt: 0, lastSyncAt: 0 };
+const EMPTY_POINTER: SyncPointer = {
+  userId: '',
+  lastPulledAt: 0,
+  lastPulledId: '',
+  lastPushedAt: 0,
+  lastSyncAt: 0,
+};
 
 export interface SyncProgress {
   phase: 'checking' | 'pulling' | 'pushing' | 'files' | 'done';
@@ -155,16 +184,32 @@ async function doSync(onProgress?: (p: SyncProgress) => void): Promise<SyncResul
   step('pulling', 'Изтегляне на промените…');
   let pulled = 0;
   let cursor = pointer.lastPulledAt;
+  let cursorId = pointer.lastPulledId;
   const remoteBlobs: BlobMeta[] = [];
 
   for (;;) {
-    const { data, error } = await client
-      .from(RECORDS_TABLE)
-      .select('kind,id,updated_at,deleted,data')
-      .eq('user_id', userId)
-      .gt('updated_at', cursor)
-      .order('updated_at', { ascending: true })
-      .limit(PULL_PAGE);
+    // Keyset pagination on `(updated_at, id)`. See `lastPulledId` above for
+    // why the id has to be part of the position.
+    const page = (keyset: boolean) => {
+      let q = client
+        .from(RECORDS_TABLE)
+        .select('kind,id,updated_at,deleted,data')
+        .eq('user_id', userId);
+      q =
+        keyset && cursorId
+          ? q.or(`updated_at.gt.${cursor},and(updated_at.eq.${cursor},id.gt."${cursorId}")`)
+          : q.gt('updated_at', cursor);
+      return q.order('updated_at', { ascending: true }).order('id', { ascending: true }).limit(PULL_PAGE);
+    };
+
+    let { data, error } = await page(true);
+    // The compound filter is the only part of this engine that depends on
+    // PostgREST's `or(...)` grammar. If a deployment does not take it, the
+    // sync falls back to paging by timestamp alone — which is what it did
+    // before, edge case and all — rather than refusing to sync at all.
+    if (error && cursorId) {
+      ({ data, error } = await page(false));
+    }
     if (error) throw new Error(humanError(error));
     const rows = (data ?? []) as {
       kind: string;
@@ -211,11 +256,14 @@ async function doSync(onProgress?: (p: SyncProgress) => void): Promise<SyncResul
       pulled += writes.length + drops.length;
     }
 
-    cursor = rows[rows.length - 1].updated_at;
+    const last = rows[rows.length - 1];
+    cursor = last.updated_at;
+    cursorId = last.id;
     step('pulling', `Изтеглени ${pulled} записа…`);
     if (rows.length < PULL_PAGE) break;
   }
   pointer.lastPulledAt = cursor;
+  pointer.lastPulledId = cursorId;
 
   /* -------------------------------------------------------------- delete */
 
@@ -235,16 +283,7 @@ async function doSync(onProgress?: (p: SyncProgress) => void): Promise<SyncResul
       (r) => r.updatedAt > pointer.lastPushedAt && !justPulled.has(`${kind}:${r.id}`),
     );
     if (!rows.length) continue;
-    for (let at = 0; at < rows.length; at += PUSH_CHUNK) {
-      const chunk = rows.slice(at, at + PUSH_CHUNK).map((r) => ({
-        user_id: userId,
-        kind,
-        id: r.id,
-        doc_id: r.docId ?? null,
-        updated_at: r.updatedAt,
-        deleted: false,
-        data: r.data,
-      }));
+    for (const chunk of chunksOf(rows, userId, kind)) {
       const { error } = await client.from(RECORDS_TABLE).upsert(chunk, { onConflict: 'user_id,kind,id' });
       if (error) throw new Error(humanError(error));
       pushed += chunk.length;
@@ -261,6 +300,50 @@ async function doSync(onProgress?: (p: SyncProgress) => void): Promise<SyncResul
   await writePointer(pointer);
   step('done', 'Готово');
   return { pulled, pushed, filesUp, filesDown, at: pointer.lastSyncAt, warning };
+}
+
+/** Rows grouped into upserts small enough to survive the trip. */
+function* chunksOf(
+  rows: SyncRow[],
+  userId: string,
+  kind: SyncKind,
+): Generator<Record<string, unknown>[]> {
+  let batch: Record<string, unknown>[] = [];
+  let bytes = 0;
+  for (const r of rows) {
+    const row = {
+      user_id: userId,
+      kind,
+      id: r.id,
+      doc_id: r.docId ?? null,
+      updated_at: r.updatedAt,
+      deleted: false,
+      data: r.data,
+    };
+    // A single row over the cap still goes, alone: refusing to send it would
+    // strand the document on this device with no way to ever catch up.
+    const size = approxBytes(r.data);
+    if (batch.length && (batch.length >= PUSH_CHUNK || bytes + size > PUSH_BYTES)) {
+      yield batch;
+      batch = [];
+      bytes = 0;
+    }
+    batch.push(row);
+    bytes += size;
+  }
+  if (batch.length) yield batch;
+}
+
+/** Cheap enough to run per row; `JSON.stringify` on every record is not. */
+function approxBytes(data: Record<string, unknown>): number {
+  let n = 0;
+  for (const value of Object.values(data)) {
+    if (typeof value === 'string') n += value.length * 2;
+    else if (Array.isArray(value)) n += value.length * 8;
+    else if (value && typeof value === 'object') n += JSON.stringify(value).length * 2;
+    else n += 8;
+  }
+  return n + 64;
 }
 
 /* ------------------------------------------------------------ tombstones */
