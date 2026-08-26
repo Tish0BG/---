@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '@/state/authStore';
 import { useApp } from '@/state/appStore';
-import { AuthLayout, AuthNote as Banner, AuthPanel as Panel, AuthTitle, AuthTitle as Title } from './Shell';
+import { AuthLayout, AuthNote as Banner, AuthPanel as Panel, AuthTitle as Title } from './Shell';
 import { Icon } from '../Icon';
 import { SETUP_SQL } from './schema';
-import { useT, useLang, L } from '@/i18n';
+import { useT, L, type Msg } from '@/i18n';
 import { GoogleButton, PasswordField } from './PasswordField';
-import { RouteLink } from '../public/PublicChrome';
-import { PUBLIC_ROUTES } from '@/seo/routes';
-
-type Tab = 'signin' | 'signup';
+import { CodeInput, ResendButton } from './CodeInput';
+import { SignUpFlow } from './SignUpFlow';
+import { readPendingSignUp } from '@/state/signupHandoff';
 
 /**
  * How long an e-mailed code is.
@@ -47,42 +46,52 @@ const emailCodeLooksComplete = (raw: string): boolean => {
 export function AuthScreen({ onClose }: { onClose: () => void }) {
   const configured = useAuth((s) => s.configured);
   const awaiting = useAuth((s) => s.awaitingConfirm);
+  const mode = useApp((s) => s.authMode);
+
+  // A sign-up in progress outranks the tab: somebody who has just been sent a
+  // code and reloaded the tab is still signing up, whatever `authMode` says.
+  const registering = mode === 'signup' || !!awaiting || !!readPendingSignUp();
 
   return (
     <AuthLayout onClose={onClose}>
-      {awaiting ? <ConfirmStep email={awaiting} /> : configured ? <Forms onClose={onClose} /> : <Setup />}
+      {!configured ? <Setup /> : registering ? <SignUpFlow /> : <SignIn onClose={onClose} />}
     </AuthLayout>
   );
 }
 
 /* ------------------------------------------------------------------ forms */
 
-function Forms({ onClose }: { onClose: () => void }) {
+/**
+ * ────────────────────────────────────────────────────────────── signing in ──
+ *
+ * Only signing in. Creating an account is four steps and lives in
+ * `SignUpFlow`; the two used to share one component with a `tab` and a pile
+ * of conditionals, and the result was a form where half the fields were
+ * hidden at any moment and nothing on screen was quite the shape of either
+ * job.
+ *
+ * Three doors, though, because signing in genuinely has three: a password, a
+ * code instead of a password, and a code that leads to setting a new one.
+ */
+function SignIn({ onClose }: { onClose: () => void }) {
   const t = useT();
-  const [tab, setTab] = useState<Tab>(() => useApp.getState().authMode);
-  // The address says which half of the door is open, so switching halves has
-  // to reach it: "create an account" is /register whether it was opened from
-  // the button on the site or from the link at the bottom of this form.
-  useEffect(() => {
-    useApp.getState().setAuthMode(tab);
-  }, [tab]);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [confirm, setConfirm] = useState('');
-  const [name, setName] = useState('');
   const [busy, setBusy] = useState(false);
   const [google, setGoogle] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  /** the "set a new password" journey rather than the "let me in" one */
   const [forgot, setForgot] = useState(false);
+  /** a one-time code instead of a password */
+  const [byCode, setByCode] = useState(false);
   /** true once a code has been sent and the form is waiting for it back */
   const [codeSent, setCodeSent] = useState(false);
+  const [sentAt, setSentAt] = useState(0);
   const [code, setCode] = useState('');
-  /** sign in with a one-time code instead of a password */
-  const [byCode, setByCode] = useState(false);
+  const [resending, setResending] = useState(false);
   const notice = useAuth((s) => s.notice);
   const user = useAuth((s) => s.user);
   const mfaPending = useAuth((s) => s.mfaPending);
-  const emailTaken = useAuth((s) => s.emailTaken);
   const remember = useAuth((s) => s.remember);
 
   // Signing in is the whole point of this screen; once it happens, leave —
@@ -92,36 +101,38 @@ function Forms({ onClose }: { onClose: () => void }) {
     if (user && !mfaPending) onClose();
   }, [user, mfaPending, onClose]);
 
+  const sendCode = async (): Promise<string | null> =>
+    forgot
+      ? useAuth.getState().resetPassword(email.trim())
+      : useAuth.getState().sendSignInCode(email.trim());
+
   const submit = async () => {
     setBusy(true);
     setError(null);
-    const store = useAuth.getState();
 
     // Second leg of either code journey: the code is in the box.
     if (codeSent) {
-      const problem = await store.verifyCode(email, code, forgot ? 'recovery' : 'signin');
+      const refusal = await useAuth
+        .getState()
+        .verifyCode(email, code, forgot ? 'recovery' : 'signin');
       setBusy(false);
-      if (problem) {
-        setError(problem);
+      if (refusal) {
+        setError(refusal);
         setCode('');
       }
       return;
     }
 
-    const problem = forgot
-      ? await store.resetPassword(email)
-      : byCode
-        ? await store.sendSignInCode(email)
-        : tab === 'signin'
-          ? await store.signIn(email, password)
-          : await store.signUp(email, password, name);
+    const refusal = forgot || byCode ? await sendCode() : await useAuth.getState().signIn(email.trim(), password);
     setBusy(false);
-    if (problem) {
-      setError(problem);
+    if (refusal) {
+      setError(refusal);
       return;
     }
-    // Both the reset and the passwordless door now wait for six digits.
-    if (forgot || byCode) setCodeSent(true);
+    if (forgot || byCode) {
+      setCodeSent(true);
+      setSentAt(Date.now());
+    }
   };
 
   /** Back to the beginning, whichever branch we wandered down. */
@@ -132,24 +143,27 @@ function Forms({ onClose }: { onClose: () => void }) {
     useAuth.getState().clearNotice();
   };
 
-  const mismatch = tab === 'signup' && !forgot && !byCode && confirm.length > 0 && confirm !== password;
   const needsPassword = !forgot && !byCode;
-  const ready = codeSent
-    ? emailCodeLooksComplete(code) && !busy
-    : email.includes('@') &&
-      (!needsPassword || password.length >= 8) &&
-      (tab !== 'signup' || !needsPassword || confirm === password) &&
-      !busy;
+
+  const problem = (): Msg | null => {
+    if (codeSent) {
+      return emailCodeLooksComplete(code) ? null : L('Въведи кода от пощата.', 'Enter the code from your inbox.');
+    }
+    if (!email.trim()) return L('Трябва имейл адрес.', 'An e-mail address is needed.');
+    if (!email.includes('@')) return L('Този имейл не изглежда пълен.', 'That e-mail does not look complete.');
+    if (needsPassword && !password) return L('Трябва парола.', 'A password is needed.');
+    return null;
+  };
 
   const withGoogle = async () => {
     setGoogle(true);
     setError(null);
-    const problem = await useAuth.getState().signInWithGoogle();
+    const refusal = await useAuth.getState().signInWithGoogle();
     // On success the tab is already on its way to Google, so there is nothing
     // to switch back; only a refusal comes back here.
-    if (problem) {
+    if (refusal) {
       setGoogle(false);
-      setError(problem);
+      setError(refusal);
     }
   };
 
@@ -159,80 +173,60 @@ function Forms({ onClose }: { onClose: () => void }) {
       ? L('Нова парола', 'New password')
       : byCode
         ? L('Влез с код', 'Sign in with a code')
-        : tab === 'signin'
-          ? L('Влез в профила си', 'Welcome back')
-          : L('Създай профил', 'Create an account');
+        : L('Влез в профила си', 'Welcome back');
 
   const hint = codeSent
-    ? L(
-        `Изпратихме код на ${email}. Валиден е за около час.`,
-        `We sent a code to ${email}. It is good for about an hour.`,
-      )
+    ? L(`Изпратихме код на ${email}.`, `We sent a code to ${email}.`)
     : forgot
       ? L('Ще ти пратим код, с който да смениш паролата.', 'We will send you a code to set a new password with.')
       : byCode
         ? L('Без парола — код от пощата и си вътре.', 'No password — a code from your inbox and you are in.')
-        : tab === 'signin'
-          ? L('За да намериш библиотеката си и тук.', 'So your library is here too.')
-          : L('Отнема минута и иска само имейл.', 'It takes a minute and asks for nothing but an e-mail.');
+        : L('За да намериш библиотеката си и тук.', 'So your library is here too.');
 
   return (
     <>
       <Panel>
-        <Title title={t(title)} hint={t(hint)} />
+        <Title title={t(title)} hint={t(hint)} icon={codeSent ? 'mail' : undefined} />
 
         <form
-          className="space-y-3.5"
+          className="space-y-4"
+          noValidate
           onSubmit={(e) => {
             e.preventDefault();
-            if (ready) void submit();
+            const missing = problem();
+            if (missing) {
+              setError(t(missing));
+              return;
+            }
+            if (!busy) void submit();
           }}
         >
           {codeSent && (
-            <>
-              <input
-                autoFocus
-                className="field field-lg t-num text-center"
-                // Tracking loosens for short codes and tightens for long ones, so
-                // ten digits still fit the box instead of scrolling inside it.
-                style={{
-                  fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
-                  letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
-                }}
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                // Six is the common length, but it is a per-project setting and
-                // can be anything up to ten. Hard-coding six meant an eight-digit
-                // code could be typed and never submitted.
-                maxLength={EMAIL_CODE_MAX}
-                placeholder="······"
-                aria-label={t(L('Код от пощата', 'Code from your inbox'))}
-              />
-              <button type="button" className="link-quiet text-[12.5px]" onClick={restart}>
-                {t(L('← Друг адрес, или нов код', '← A different address, or a new code'))}
-              </button>
-            </>
-          )}
-
-          {!codeSent && tab === 'signup' && needsPassword && (
-            <Field label={t(L('Име', 'Name'))}>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="field field-lg"
-                placeholder={t(L('Как да ти казвам', 'What should we call you'))}
-                autoComplete="name"
-              />
-            </Field>
+            <CodeInput
+              value={code}
+              onChange={(next) => {
+                setCode(next);
+                if (error) setError(null);
+              }}
+              invalid={!!error}
+              disabled={busy}
+              onComplete={(value) => {
+                if (!busy) {
+                  setCode(value);
+                  void submit();
+                }
+              }}
+            />
           )}
 
           {!codeSent && (
             <Field label={t(L('Имейл', 'E-mail'))}>
               <input
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (error) setError(null);
+                }}
                 className="field field-lg"
                 type="email"
                 placeholder="ime@example.com"
@@ -245,49 +239,30 @@ function Forms({ onClose }: { onClose: () => void }) {
           {!codeSent && needsPassword && (
             <div>
               <div className="mb-1.5 flex items-baseline justify-between gap-3">
-                <label htmlFor="plauvia-password" className="t-label">
+                <label htmlFor="plauvia-password" className="text-[12.5px] font-medium text-muted">
                   {t(L('Парола', 'Password'))}
                 </label>
-                {tab === 'signin' && (
-                  <button
-                    type="button"
-                    className="link-quiet text-[12.5px]"
-                    onClick={() => {
-                      setForgot(true);
-                      setByCode(false);
-                      setError(null);
-                    }}
-                  >
-                    {t(L('Забравена?', 'Forgotten?'))}
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="link-quiet text-[12.5px]"
+                  onClick={() => {
+                    setForgot(true);
+                    setByCode(false);
+                    setError(null);
+                  }}
+                >
+                  {t(L('Забравена?', 'Forgotten?'))}
+                </button>
               </div>
               <PasswordField
                 id="plauvia-password"
                 value={password}
-                onChange={setPassword}
-                autoComplete={tab === 'signup' ? 'new-password' : 'current-password'}
-                placeholder={t(L('Поне 8 знака', 'At least 8 characters'))}
-                showMeter={tab === 'signup'}
+                onChange={(v) => {
+                  setPassword(v);
+                  if (error) setError(null);
+                }}
+                autoComplete="current-password"
               />
-            </div>
-          )}
-
-          {!codeSent && tab === 'signup' && needsPassword && (
-            <div>
-              <PasswordField
-                id="plauvia-confirm"
-                label={t(L('Повтори паролата', 'Repeat the password'))}
-                value={confirm}
-                onChange={setConfirm}
-                autoComplete="new-password"
-              />
-              {mismatch && (
-                <p className="mt-1.5 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
-                  <Icon name="alert" size={12} />
-                  {t(L('Двете полета не съвпадат.', 'The two do not match.'))}
-                </p>
-              )}
             </div>
           )}
 
@@ -296,7 +271,7 @@ function Forms({ onClose }: { onClose: () => void }) {
               device — and off is the answer that matters on the computer in a
               school library, which is why it is a visible choice and not a
               setting three menus deep. */}
-          {!codeSent && tab === 'signin' && (
+          {!codeSent && needsPassword && (
             <label className="flex cursor-pointer items-start gap-2.5 text-[13px]">
               <input
                 type="checkbox"
@@ -326,49 +301,40 @@ function Forms({ onClose }: { onClose: () => void }) {
           )}
 
           {error && <Banner tone="danger" text={error} />}
+          {!error && notice && <Banner tone="ok" text={notice} />}
 
-          {/* An answer with nothing to do next is only half an answer. */}
-          {emailTaken && (
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="btn btn-outline"
-                onClick={() => {
-                  setTab('signin');
-                  setError(null);
-                  setPassword('');
-                  setConfirm('');
-                }}
-              >
-                {t(L('Влез с този имейл', 'Sign in with this e-mail'))}
-              </button>
-              <button
-                type="button"
-                className="btn"
-                onClick={() => {
-                  setForgot(true);
-                  setError(null);
-                }}
-              >
-                {t(L('Забравена парола', 'Forgotten password'))}
-              </button>
-            </div>
-          )}
-          {notice && <Banner tone="ok" text={notice} />}
-
-          <button className="btn btn-primary btn-lg w-full" disabled={!ready} type="submit">
+          <button className="btn btn-primary btn-lg w-full" disabled={busy} type="submit">
             {busy && <Icon name="refresh" size={15} className="animate-spin" />}
             {t(
               codeSent
                 ? L('Потвърди', 'Confirm')
                 : forgot || byCode
                   ? L('Изпрати код', 'Send the code')
-                  : tab === 'signin'
-                    ? L('Влез', 'Sign in')
-                    : L('Създай профил', 'Create the account'),
+                  : L('Влез', 'Sign in'),
             )}
           </button>
         </form>
+
+        {codeSent && (
+          <div className="mt-4 space-y-3">
+            <ResendButton
+              startedAt={sentAt}
+              busy={resending}
+              onResend={() => {
+                setResending(true);
+                setError(null);
+                void sendCode().then((refusal) => {
+                  setResending(false);
+                  if (refusal) setError(refusal);
+                  else setSentAt(Date.now());
+                });
+              }}
+            />
+            <button type="button" className="link-quiet mx-auto block text-[12.5px]" onClick={restart}>
+              {t(L('← Друг адрес, или нов код', '← A different address, or a new code'))}
+            </button>
+          </div>
+        )}
 
         {!forgot && !codeSent && (
           <>
@@ -378,19 +344,17 @@ function Forms({ onClose }: { onClose: () => void }) {
               busy={google}
               label={t(L('Продължи с Google', 'Continue with Google'))}
             />
-            {tab === 'signin' && (
-              <button
-                type="button"
-                className="btn btn-lg mt-2 w-full"
-                onClick={() => {
-                  setByCode(!byCode);
-                  setError(null);
-                }}
-              >
-                <Icon name="mail" size={16} />
-                {t(byCode ? L('Влез с парола', 'Use a password instead') : L('Изпрати ми код', 'E-mail me a code'))}
-              </button>
-            )}
+            <button
+              type="button"
+              className="btn btn-lg mt-2 w-full"
+              onClick={() => {
+                setByCode(!byCode);
+                setError(null);
+              }}
+            >
+              <Icon name="mail" size={16} />
+              {t(byCode ? L('Влез с парола', 'Use a password instead') : L('Изпрати ми код', 'E-mail me a code'))}
+            </button>
           </>
         )}
 
@@ -405,143 +369,27 @@ function Forms({ onClose }: { onClose: () => void }) {
             {t(L('← Назад към входа', '← Back to sign in'))}
           </button>
         )}
-
-        {tab === 'signup' && needsPassword && !codeSent && <TermsNote />}
       </Panel>
 
       {/* -------------------------------------------------------- switch */}
 
       {!codeSent && !forgot && (
-        <p className="mt-5 text-center text-[13px] text-muted">
-          {t(tab === 'signin' ? L('Нямаш профил?', 'No account yet?') : L('Вече имаш профил?', 'Already have one?'))}{' '}
+        <p className="mt-6 text-center text-[13px] text-muted">
+          {t(L('Нямаш профил?', 'No account yet?'))}{' '}
           <button
             className="font-medium underline-offset-2 hover:underline"
             style={{ color: 'var(--c-accent)' }}
             onClick={() => {
-              setTab(tab === 'signin' ? 'signup' : 'signin');
               setByCode(false);
               setError(null);
+              useApp.getState().setAuthMode('signup');
             }}
           >
-            {t(tab === 'signin' ? L('Създай профил', 'Create one') : L('Влез', 'Sign in'))}
+            {t(L('Създай профил', 'Create one'))}
           </button>
         </p>
       )}
-
     </>
-  );
-}
-
-/* ------------------------------------------------------------ confirm step */
-
-/**
- * The step after signing up, when the project asks for a confirmed address.
- *
- * It used to say "open the link in the e-mail" and offer nothing but a resend
- * button — which was true while the templates sent links. They send a code
- * now, so this is where the code goes in. A screen that describes a letter the
- * person is not holding is worse than no screen at all.
- */
-function ConfirmStep({ email }: { email: string }) {
-  const t = useT();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<string | null>(null);
-  const [code, setCode] = useState('');
-  const notice = useAuth((s) => s.notice);
-
-  const submit = async () => {
-    setBusy(true);
-    setMessage(null);
-    const problem = await useAuth.getState().verifyCode(email, code, 'signup');
-    setBusy(false);
-    if (problem) {
-      setMessage(problem);
-      setCode('');
-    }
-  };
-
-  return (
-    <Panel>
-      <AuthTitle
-        icon="send"
-        title={t(L('Провери пощата си', 'Check your inbox'))}
-        hint={t(
-          L(
-            `Изпратихме код на ${email}. Въведи го, за да активираш профила си.`,
-            `We sent a code to ${email}. Enter it to activate your account.`,
-          ),
-        )}
-      />
-
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (emailCodeLooksComplete(code) && !busy) void submit();
-        }}
-      >
-        <input
-          autoFocus
-          className="field field-lg t-num text-center"
-          style={{
-            fontSize: code.replace(/\D/g, '').length > 7 ? 21 : 24,
-            letterSpacing: code.replace(/\D/g, '').length > 7 ? '0.2em' : '0.34em',
-          }}
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={EMAIL_CODE_MAX}
-          placeholder="······"
-          aria-label={t(L('Код от пощата', 'Code from your inbox'))}
-        />
-        <button
-          className="btn btn-primary btn-lg mt-3 w-full"
-          type="submit"
-          disabled={!emailCodeLooksComplete(code) || busy}
-        >
-          {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {t(L('Потвърди профила', 'Confirm the account'))}
-        </button>
-      </form>
-
-      <div className="mt-2 space-y-2">
-        <button
-          className="btn btn-lg w-full"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void useAuth
-              .getState()
-              .resendConfirmation(email)
-              .then((err) => {
-                setMessage(err);
-                setBusy(false);
-              });
-          }}
-        >
-          {busy && <Icon name="refresh" size={15} className="animate-spin" />}
-          {t(L('Изпрати нов код', 'Send a new code'))}
-        </button>
-        <button className="link-quiet block w-full text-[12.5px]" onClick={() => useAuth.getState().clearNotice()}>
-          {t(L('Назад към входа', 'Back to sign in'))}
-        </button>
-      </div>
-
-      {(message || notice) && (
-        <p className="mt-3 text-[12px]" style={{ color: message ? 'var(--c-danger)' : 'var(--c-success)' }}>
-          {message ?? notice}
-        </p>
-      )}
-
-      <p className="mt-5 text-[12px] leading-relaxed text-faint">
-        {t(
-          L(
-            'Не идва ли? Провери и в спама. Писмото тръгва веднага, но понякога се бави минута-две.',
-            'Not arriving? Check your spam folder too. It is sent immediately, but sometimes takes a minute or two.',
-          ),
-        )}
-      </p>
-    </Panel>
   );
 }
 
@@ -677,20 +525,14 @@ function Setup() {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="t-label mb-1.5 block">{label}</span>
+      <span className="mb-1.5 block text-[12.5px] font-medium text-muted">{label}</span>
       {children}
     </label>
   );
 }
 
 function Divider({ label }: { label: string }) {
-  return (
-    <div className="my-4 flex items-center gap-3">
-      <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
-      <span className="text-[12px] text-faint">{label}</span>
-      <span className="h-px flex-1" style={{ background: 'var(--c-line)' }} />
-    </div>
-  );
+  return <div className="divider-label my-5">{label}</div>;
 }
 
 function Step({ n, children }: { n: number; children: React.ReactNode }) {
@@ -704,32 +546,5 @@ function Step({ n, children }: { n: number; children: React.ReactNode }) {
       </span>
       <span className="flex-1 leading-relaxed">{children}</span>
     </li>
-  );
-}
-
-/**
- * The line that has to be on a sign-up form and nowhere else.
- *
- * Not a checkbox: a tick box that everybody ticks without reading is a dark
- * pattern dressed as consent. A sentence with two links, shown at the moment
- * the account is created, is the honest version of the same thing.
- */
-function TermsNote() {
-  const t = useT();
-  const lang = useLang();
-  const terms = PUBLIC_ROUTES.find((r) => r.id === 'terms')!;
-  const privacy = PUBLIC_ROUTES.find((r) => r.id === 'privacy')!;
-  return (
-    <p className="mt-4 text-[11.5px] leading-relaxed text-faint">
-      {t(L('Като създадеш профил, приемаш', 'By creating an account you accept the'))}{' '}
-      <RouteLink to={terms.path} className="underline underline-offset-2 hover:text-muted">
-        {terms.label[lang]}
-      </RouteLink>{' '}
-      {t(L('и', 'and the'))}{' '}
-      <RouteLink to={privacy.path} className="underline underline-offset-2 hover:text-muted">
-        {privacy.label[lang]}
-      </RouteLink>
-      .
-    </p>
   );
 }

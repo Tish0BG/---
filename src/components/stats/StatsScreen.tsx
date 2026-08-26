@@ -171,7 +171,7 @@ export function StatsScreen() {
   return (
     <Screen
       title={t(S.stats)}
-      subtitle={t(L('Само това, което наистина си учил — без ръчно въвеждане.', 'Only what you actually did — nothing here is typed in by hand.'))}
+      subtitle={t(L('Само това, което наистина си направил — без ръчно въвеждане.', 'Only what you actually did — nothing here is typed in by hand.'))}
       actions={
         <Segmented
           value={range}
@@ -210,7 +210,7 @@ export function StatsScreen() {
         <>
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
-              label={t(L('Учене за периода', 'Studied in range'))}
+              label={t(L('Фокус за периода', 'Focus in range'))}
               value={formatDuration(totals.minutes, lang)}
               icon="timer"
               delta={totals.delta === null ? null : { value: totals.delta }}
@@ -239,7 +239,7 @@ export function StatsScreen() {
               icon="checkCircle"
               tone="var(--c-success)"
               delta={totals.taskDelta === null ? null : { value: totals.taskDelta }}
-              onClick={() => useApp.getState().goPlan('work')}
+              onClick={() => useApp.getState().goPlan('board')}
             />
           </div>
 
@@ -291,7 +291,7 @@ export function StatsScreen() {
 
           <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
             <Card
-              title={t(L('Кога учиш', 'When you study'))}
+              title={t(L('Кога работиш', 'When you work'))}
               subtitle={
                 byHour[bestHour] > 0
                   ? t(

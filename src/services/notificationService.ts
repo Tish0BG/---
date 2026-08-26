@@ -3,7 +3,15 @@ import { L, type Msg } from '@/i18n';
 import { goalProgress, daysLeft, type GoalContext } from './goalService';
 import { currentStreak, studiedToday, type GameContext, ACHIEVEMENTS } from './gameService';
 
-export type NoticeKind = 'exam' | 'deadline' | 'overdue' | 'streak' | 'goal' | 'achievement' | 'review';
+export type NoticeKind =
+  | 'exam'
+  | 'deadline'
+  | 'overdue'
+  | 'streak'
+  | 'goal'
+  | 'achievement'
+  | 'review'
+  | 'reminder';
 
 export interface Notice {
   /** Stable across rebuilds, so "read" survives a reload. */
@@ -108,6 +116,35 @@ export function buildNotices(input: {
       weight: 70,
       at: today,
       target: { view: 'tasks' },
+    });
+  }
+
+  /* -------------------------------------------------------- reminders */
+  /**
+   * A reminder whose hour has come, and one that is about to.
+   *
+   * The device notification is the loud half of this and it only reaches
+   * somebody who turned notifications on. The panel is the quiet half, and it
+   * has to work for everybody — including the person who keeps the browser
+   * silent on purpose.
+   */
+  for (const item of items) {
+    if (item.done || typeof item.remindAt !== 'number') continue;
+    const at = item.remindAt;
+    if (at > now + 2 * 60 * 60 * 1000) continue;
+    if (at < now - 12 * 60 * 60 * 1000) continue;
+    const late = at <= now;
+    const minutes = Math.max(1, Math.round(Math.abs(at - now) / 60000));
+    out.push({
+      id: `remind-${item.id}-${at}`,
+      kind: 'reminder',
+      title: late ? L('Напомняне', 'Reminder') : L(`Напомняне след ${minutes} мин`, `Reminder in ${minutes} min`),
+      body: L(item.title, item.title),
+      icon: late ? 'bellRing' : 'bell',
+      tone: late ? 'warn' : 'brand',
+      weight: late ? 95 : 75,
+      at,
+      target: { view: 'tasks', id: item.id },
     });
   }
 

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { VIEW_TITLES, useApp, type AppView } from '@/state/appStore';
 import { useSettings } from '@/state/settingsStore';
 import { useWorkspace } from '@/state/workspaceStore';
@@ -11,7 +11,24 @@ import { useT, L } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { PlauviaTile, PlauviaWordmark } from '../brand/Logo';
 import { Icon } from '../Icon';
-import { Tooltip, ProgressRing } from '../kit';
+import { Tooltip } from '../kit';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
+
+/**
+ * The two widths, and why the narrow one keeps its ground.
+ *
+ * The reference design animates the rail from 60 px to 300 px in the document
+ * flow, so the page beside it is pushed across on every hover. That is fine
+ * over four placeholder rectangles and wrong over this dashboard: the content
+ * is a responsive grid of cards, a chart and a timeline, so pushing it would
+ * re-flow and re-render the whole screen every time a pointer drifted near the
+ * left edge — and drift back the moment it left.
+ *
+ * So the narrow rail keeps its 68 px of layout and the open panel floats over
+ * the content instead. Same gesture, same reveal, and nothing behind it moves.
+ */
+const RAIL_NARROW = 68;
+const RAIL_WIDE = 240;
 
 interface NavEntry {
   id: AppView;
@@ -43,8 +60,17 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
   const activeSubject = useApp((s) => s.subjectId);
   // Inside the drawer the sidebar is always expanded: it was opened on
   // purpose, and a drawer of unlabelled icons helps nobody.
-  const collapsed = useSettings((s) => s.railCollapsed) && !expanded;
+  const pinnedNarrow = useSettings((s) => s.railCollapsed);
   const setSetting = useSettings((s) => s.set);
+  /**
+   * Temporarily open because the pointer is on the rail, or because somebody
+   * tabbed into it. Keyboard counts: a rail that only opens for a mouse is a
+   * rail whose labels a keyboard user never sees.
+   */
+  const [peeking, setPeeking] = useState(false);
+  const collapsed = pinnedNarrow && !expanded && !peeking;
+  /** The space the rail actually takes in the layout, which never changes on hover. */
+  const footprint = pinnedNarrow && !expanded ? RAIL_NARROW : RAIL_WIDE;
   const profile = useWorkspace((s) => s.profile);
   const items = usePlanner((s) => s.items);
   const cards = useCards((s) => s.cards);
@@ -93,18 +119,34 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
         key={entry.id}
         onClick={() => go(entry)}
         aria-current={active ? 'page' : undefined}
+        /* Named even while narrow. The label is not rendered then, and the
+           tooltip beside it is a floating div that no `aria-describedby`
+           points at — so without this a screen reader announced eight
+           unlabelled buttons. */
+        aria-label={label}
         className={`group relative flex h-9 w-full cursor-pointer items-center gap-2.5 rounded-[8px] text-[13.5px] transition-colors duration-150 ${
           collapsed ? 'justify-center px-0' : 'px-2.5'
         } ${
           active
-            ? 'bg-surface-3 font-medium text-ink'
+            ? 'font-medium'
             : 'font-normal text-muted hover:bg-surface-2 hover:text-ink'
         }`}
         /* The marker is an inset shadow rather than a positioned bar: the rail
            scrolls, and a scrolling box clips anything hanging outside it — an
            earlier version drew the bar three pixels to the left of the row,
            where nobody ever saw it. */
-        style={active ? { boxShadow: 'inset 2px 0 0 var(--c-accent)' } : undefined}
+        style={
+          active
+            ? {
+                // Selected reads in the accent, not in grey. A grey highlight
+                // says "hovered"; this rail is where a person answers "which
+                // screen am I on", and the answer should be unmistakable.
+                background: 'var(--c-accent-soft)',
+                color: 'var(--c-accent)',
+                boxShadow: 'inset 2px 0 0 var(--c-accent)',
+              }
+            : undefined
+        }
       >
         <span className="relative shrink-0" style={active ? { color: 'var(--c-accent)' } : undefined}>
           <Icon name={entry.icon} size={17} strokeWidth={active ? 1.9 : 1.7} />
@@ -146,14 +188,52 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
     );
   };
 
+  const floating = peeking && pinnedNarrow && !expanded;
+
   return (
+    /* The footprint. Its width follows the pinned preference and nothing
+       else, which is what keeps the page still while the panel opens. */
+    <div className="relative h-full shrink-0" style={{ width: footprint }}>
     <nav
       aria-label={t(L('Основна навигация', 'Main navigation'))}
-      className="flex h-full shrink-0 flex-col border-r border-line"
+      onPointerEnter={(e) => {
+        // Touch is not hover: on a phone a tap would open the panel and leave
+        // it open with no obvious way to shut it. Those devices get the
+        // drawer instead.
+        if (e.pointerType !== 'touch') setPeeking(true);
+      }}
+      onPointerLeave={() => setPeeking(false)}
+      onFocusCapture={() => setPeeking(true)}
+      onBlurCapture={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPeeking(false);
+      }}
+      className="absolute inset-y-0 left-0 flex flex-col border-r border-line"
       style={{
-        width: collapsed ? 68 : 240,
+        width: collapsed ? RAIL_NARROW : RAIL_WIDE,
         background: 'var(--c-surface)',
-        transition: 'width 0.22s var(--ease)',
+        /**
+         * One property, and a short one.
+         *
+         * It used to animate the shadow alongside the width over 0.22s, which
+         * read as sluggish for a panel that opens because a pointer arrived —
+         * the reveal has to feel like a consequence of the movement, not like
+         * something loading. The shadow now lands at once (nobody watches a
+         * shadow fade in) and the width is quick enough to be over before the
+         * eye settles.
+         */
+        transition: 'width 0.15s var(--ease-out)',
+        boxShadow: floating ? 'var(--shadow-float)' : undefined,
+        /**
+         * Above the header, which is the bug this replaces.
+         *
+         * The header is `z-30` and this was `z-30` too, so the header — later
+         * in the document — painted over the open panel. And because the
+         * header is glass, the panel showed *through* it: two interfaces
+         * interleaved in the same strip. Anything that floats over the page
+         * has to clear the chrome it floats over.
+         */
+        zIndex: floating ? 50 : undefined,
+        overflow: 'hidden',
       }}
     >
       {/* ------------------------------------------------------------ brand */}
@@ -201,9 +281,7 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
               }}
               aria-label={t(S.profile)}
             >
-              <ProgressRing value={level.progress} size={34} stroke={2.5} color="var(--c-brand)">
-                <span className="text-[14px]">{profile.avatar || '🦉'}</span>
-              </ProgressRing>
+              <ProfileAvatar size={28} ring={level.progress} />
             </button>
           </Tooltip>
         ) : (
@@ -214,9 +292,7 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
             }}
             className="flex w-full cursor-pointer items-center gap-2.5 rounded-[10px] p-2 text-left transition-colors hover:bg-surface-2"
           >
-            <ProgressRing value={level.progress} size={36} stroke={2.5} color="var(--c-brand)">
-              <span className="text-[15px]">{profile.avatar || '🦉'}</span>
-            </ProgressRing>
+            <ProfileAvatar size={30} ring={level.progress} />
             <span className="min-w-0 flex-1">
               <span className="block truncate text-[13px] font-medium">
                 {profile.name || t(L('Твоят профил', 'Your profile'))}
@@ -248,8 +324,20 @@ export function Sidebar({ onNavigate, expanded }: { onNavigate?: () => void; exp
             <Icon name="chevronsRight" size={15} />
           </button>
         )}
+        {/* Open only because the pointer is here. The button pins it that way,
+            so the reveal is a preview and this is how you keep it. */}
+        {!collapsed && pinnedNarrow && !expanded && (
+          <button
+            className="mt-1 flex w-full cursor-pointer items-center gap-2 rounded-[8px] px-2 py-1.5 text-[11.5px] text-muted transition-colors hover:bg-surface-2"
+            onClick={() => setSetting('railCollapsed', false)}
+          >
+            <Icon name="pin" size={13} />
+            {t(L('Задръж отворена', 'Keep it open'))}
+          </button>
+        )}
       </div>
     </nav>
+    </div>
   );
 }
 

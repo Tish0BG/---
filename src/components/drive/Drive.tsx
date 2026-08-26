@@ -543,7 +543,7 @@ function FolderCard({
         width={180}
         align="end"
         trigger={({ toggle, ref }) => (
-          <button ref={ref} className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={toggle}>
+          <button ref={ref} className="icon-btn h-6 w-6 hover-reveal" onClick={toggle}>
             <Icon name="dots" size={14} />
           </button>
         )}
@@ -682,7 +682,7 @@ function DocCard({ doc, trashed, selected, onSelect, confirm }: ItemProps) {
         </span>
       </button>
 
-      <div className="absolute right-1.5 top-1.5 flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute right-1.5 top-1.5 flex gap-1 hover-reveal">
         <DocMenu doc={doc} trashed={trashed} confirm={confirm} onSelect={onSelect} />
       </div>
     </div>

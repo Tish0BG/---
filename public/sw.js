@@ -7,7 +7,7 @@
  * hashed assets, fonts, cmaps and wasm are cache-first — they never change
  * under the same URL.
  */
-const VERSION = 'plauvia-v9';
+const VERSION = 'plauvia-v10';
 const SHELL = [
   // `/` is a redirect now, and `cache.addAll` refuses a redirected response —
   // asking for it would throw away the whole shell, silently, on install.
@@ -100,6 +100,32 @@ self.addEventListener('fetch', (event) => {
         }
         return response;
       });
+    }),
+  );
+});
+
+/**
+ * Clicking a notification.
+ *
+ * A reminder is only useful if it takes you to the thing it is about. If the
+ * app is already open somewhere it is focused and told where to go; otherwise
+ * a window is opened on the plan.
+ */
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const data = event.notification.data || {};
+  const target = data.target || 'plan';
+  const id = data.id || null;
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ('focus' in client) {
+          client.postMessage({ type: 'notification-click', target, id });
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(`/app/${target}`);
     }),
   );
 });

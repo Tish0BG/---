@@ -46,8 +46,8 @@ const EN: LandingCopy = {
     ],
   },
   hero: {
-    eyebrow: 'Plan · Study · Focus · Track · Improve',
-    lead: 'Plauvia keeps your textbooks, tasks, flashcards and study time in one place — so the work you plan is the work that actually gets done.',
+    eyebrow: 'Plan · Do · Focus · Track · Improve',
+    lead: 'Plauvia holds your day and your long game on one screen — tasks, reminders, goals, documents and the hours you actually put in, so the work you plan is the work that gets done.',
     primary: 'Get started',
     secondary: 'See how it works',
     trust: ['Works offline', 'No ads, no profiling', 'Your data stays yours'],
@@ -62,7 +62,7 @@ const EN: LandingCopy = {
     {
       key: 'plan',
       title: 'Plan',
-      body: 'Tasks, homework and exams with real deadlines, next to the week you actually have.',
+      body: 'Today on one side, the long haul on the other. Drag what you will actually do into today.',
       icon: 'calendarCheck',
     },
     {
@@ -74,7 +74,7 @@ const EN: LandingCopy = {
     {
       key: 'track',
       title: 'Track',
-      body: 'Hours per subject, progress per book, and how your cards are holding up.',
+      body: 'Hours per area, progress per document, and how your cards are holding up.',
       icon: 'chartLine',
     },
     {
@@ -89,19 +89,19 @@ const EN: LandingCopy = {
     lead: 'Nothing here is typed in twice, and no number on any screen was entered by hand.',
     steps: [
       {
-        title: 'Name your subjects',
-        body: 'Everything — materials, tasks, cards, hours — hangs off a subject, so every screen can be narrowed to just maths.',
+        title: 'Name the parts of your life',
+        body: 'Work, home, training, a subject at school — everything hangs off one of them, so any screen can be narrowed to just that.',
         icon: 'layers',
       },
       {
-        title: 'Put the week in',
-        body: 'Deadlines, exams and your timetable. The dashboard turns it into what is burning today.',
+        title: 'Fill today, and the long list',
+        body: 'The plan is one screen: today on the left, everything with a longer rope beside it, your goals on the right. You drag between them.',
         icon: 'calendar',
       },
       {
-        title: 'Work with the timer on',
-        body: 'A focus session logs itself against the subject and the book that was open. That log is what every statistic is made of.',
-        icon: 'timer',
+        title: 'Work it however it wants to be worked',
+        body: 'A tick, a checklist, a counter or a focus block — and a reminder when something has to reach you at a particular hour.',
+        icon: 'bell',
       },
       {
         title: 'Watch it add up',
@@ -132,7 +132,7 @@ const EN: LandingCopy = {
       {
         kind: 'page',
         label: 'The page',
-        body: 'Solve on the textbook itself, with a ruler, a calculator and the periodic table docked beside it.',
+        body: 'Work on the document itself, with a ruler, a calculator and the periodic table docked beside it.',
       },
       {
         kind: 'cards',
@@ -161,10 +161,20 @@ const EN: LandingCopy = {
       },
     ],
   },
-  featuresTitle: 'Built for the way studying actually goes',
+  featuresTitle: 'Built for the way a day actually goes',
   features: [
     {
-      title: 'Textbooks and boards, one surface',
+      title: 'Four ways to finish a thing',
+      body: 'A tick for the small ones, a checklist for the ones with steps, a counter for repetitions, a focus block for the deep work. The timer is an option, not the only road.',
+      icon: 'checkCircle',
+    },
+    {
+      title: 'Reminders that arrive',
+      body: 'Give an entry an hour and it reaches you then — as a real notification, even when the app is behind another window. An evening check says what is still open.',
+      icon: 'bell',
+    },
+    {
+      title: 'Documents and boards, one surface',
       body: 'Open a PDF or start on blank paper. Writing, erasing, shapes and export work the same on both.',
       icon: 'book',
     },
@@ -184,8 +194,8 @@ const EN: LandingCopy = {
       icon: 'tools',
     },
     {
-      title: 'Everything hangs off the subject',
-      body: 'Materials, cards, tasks, grades and hours all carry a subject, so "how much maths did I do" is one glance.',
+      title: 'Everything hangs off one area',
+      body: 'Work, home, training, a subject at school — materials, cards, tasks and hours all carry one, so "where did this month go" is one glance.',
       icon: 'layers',
     },
     {
@@ -240,12 +250,12 @@ const EN: LandingCopy = {
     ],
   },
   cta: {
-    title: 'Start with the next thing you have to study.',
+    title: 'Start with the next thing you have to do.',
     body: 'It takes a minute, and nothing has to be organised first.',
     button: 'Create your account',
     note: 'Free to start · no card · works offline',
   },
-  footer: { rights: 'All rights reserved.', madeFor: 'Made for people who study.' },
+  footer: { rights: 'All rights reserved.', madeFor: 'Made for people who run their own day.' },
 };
 
 const BG: LandingCopy = {
@@ -259,8 +269,8 @@ const BG: LandingCopy = {
     ],
   },
   hero: {
-    eyebrow: 'Планирай · Учи · Фокус · Следи · Подобри',
-    lead: 'Plauvia държи учебниците, задачите, картите и учебното време на едно място — така че планираното наистина да се случва.',
+    eyebrow: 'Планирай · Върши · Фокус · Следи · Подобри',
+    lead: 'Plauvia държи деня и дългия път на един екран — задачи, напомняния, цели, документи и часовете, които наистина си вложил, за да се случва планираното.',
     primary: 'Започни',
     secondary: 'Виж как работи',
     trust: ['Работи офлайн', 'Без реклами и профилиране', 'Данните остават твои'],
@@ -275,7 +285,7 @@ const BG: LandingCopy = {
     {
       key: 'plan',
       title: 'Планирай',
-      body: 'Задачи, домашни и контролни с истински срокове, до седмицата, с която реално разполагаш.',
+      body: 'Днес от едната страна, дългият план от другата. Дърпаш в днес това, което наистина ще направиш.',
       icon: 'calendarCheck',
     },
     {
@@ -287,7 +297,7 @@ const BG: LandingCopy = {
     {
       key: 'track',
       title: 'Следи',
-      body: 'Часове по предмет, напредък по учебник и как се държат картите ти.',
+      body: 'Часове по направление, напредък по документ и как се държат картите ти.',
       icon: 'chartLine',
     },
     {
@@ -302,19 +312,19 @@ const BG: LandingCopy = {
     lead: 'Нищо тук не се въвежда два пъти и никое число на никой екран не е писано на ръка.',
     steps: [
       {
-        title: 'Назови предметите си',
-        body: 'Всичко — материали, задачи, карти, часове — виси на предмет, затова всеки екран се свива до „само математика“.',
+        title: 'Назови частите от деня си',
+        body: 'Работа, дом, тренировки, предмет в училище — всичко виси на някоя от тях, затова всеки екран се свива до точно нея.',
         icon: 'layers',
       },
       {
-        title: 'Сложи седмицата вътре',
-        body: 'Срокове, изпити и програма. Таблото превръща това в „какво гори днес“.',
+        title: 'Напълни днес и дългия списък',
+        body: 'Планът е един екран: днес отляво, всичко с по-дълъг срок до него, целите отдясно. Дърпаш между тях с ръка.',
         icon: 'calendar',
       },
       {
-        title: 'Учи с включен таймер',
-        body: 'Фокус сесията се записва сама към предмета и учебника, който е бил отворен. Този запис е материалът на цялата статистика.',
-        icon: 'timer',
+        title: 'Върши го както иска да бъде свършено',
+        body: 'Отметка, списък, брояч или фокус блок — и напомняне, когато нещо трябва да те намери в точен час.',
+        icon: 'bell',
       },
       {
         title: 'Гледай как се трупа',
@@ -345,7 +355,7 @@ const BG: LandingCopy = {
       {
         kind: 'page',
         label: 'Страницата',
-        body: 'Решаваш върху самия учебник, с линийка, калкулатор и периодична таблица до него.',
+        body: 'Работиш върху самия документ — с линийка, калкулатор и периодична таблица до него.',
       },
       {
         kind: 'cards',
@@ -374,10 +384,20 @@ const BG: LandingCopy = {
       },
     ],
   },
-  featuresTitle: 'Направено за начина, по който ученето наистина върви',
+  featuresTitle: 'Направено за начина, по който денят наистина върви',
   features: [
     {
-      title: 'Учебници и дъски — една повърхност',
+      title: 'Четири начина да свършиш нещо',
+      body: 'Отметка за дребните, списък за многостъпковите, брояч за повторенията, фокус блок за дълбоката работа. Таймерът е опция, не единственият път.',
+      icon: 'checkCircle',
+    },
+    {
+      title: 'Напомняния, които идват',
+      body: 'Дай на записа час и той те намира тогава — с истинско известие, дори когато приложението е зад друг прозорец. Вечерна проверка казва какво е останало.',
+      icon: 'bell',
+    },
+    {
+      title: 'Документи и дъски — една повърхност',
       body: 'Отваряш PDF или започваш на празна хартия. Писането, гумата, фигурите и експортът работят еднакво и на двете.',
       icon: 'book',
     },
@@ -397,8 +417,8 @@ const BG: LandingCopy = {
       icon: 'tools',
     },
     {
-      title: 'Всичко виси на предмета',
-      body: 'Материали, карти, задачи, оценки и часове носят предмет — затова „колко математика учих“ е един поглед.',
+      title: 'Всичко виси на едно направление',
+      body: 'Работа, дом, тренировки, предмет в училище — материалите, картите, задачите и часовете носят по едно, затова „къде отиде месецът“ е един поглед.',
       icon: 'layers',
     },
     {
@@ -453,12 +473,12 @@ const BG: LandingCopy = {
     ],
   },
   cta: {
-    title: 'Започни със следващото, което трябва да научиш.',
+    title: 'Започни със следващото, което трябва да направиш.',
     body: 'Отнема минута и нищо не е нужно да е подредено предварително.',
     button: 'Създай профил',
     note: 'Безплатно за начало · без карта · работи офлайн',
   },
-  footer: { rights: 'Всички права запазени.', madeFor: 'Направено за хора, които учат.' },
+  footer: { rights: 'Всички права запазени.', madeFor: 'Направено за хора, които водят деня си сами.' },
 };
 
 export const landingCopy = (lang: Lang): LandingCopy => (lang === 'bg' ? BG : EN);

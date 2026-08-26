@@ -373,7 +373,7 @@ function GoalDetail({ goal, onClose }: { goal: Goal; onClose: () => void }) {
                   {m.title}
                 </span>
                 <button
-                  className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100"
+                  className="icon-btn h-6 w-6 hover-reveal"
                   onClick={() => void useGoals.getState().removeMilestone(live.id, m.id)}
                   aria-label={t(S.delete)}
                 >

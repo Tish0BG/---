@@ -52,8 +52,8 @@ export function NextStep() {
         icon: 'layers',
         title: L(`Още не си добавил ${missing[0]}`, `${missing[0]} is not in here yet`),
         body: L(
-          'Каза, че учиш това. Предметите подреждат материалите, задачите и часовете — всичко останало виси на тях.',
-          'You said you are studying it. Subjects organise the materials, the tasks and the hours — everything else hangs off them.',
+          'Каза, че се занимаваш с това. Предметите подреждат материалите, задачите и часовете — всичко останало виси на тях.',
+          'You said you spend time on it. Subjects organise the materials, the tasks and the hours — everything else hangs off them.',
         ),
         action: L('Добави предмет', 'Add the subject'),
         run: () => go('subjects'),
@@ -82,8 +82,8 @@ export function NextStep() {
         icon: 'book',
         title: L('Библиотеката е празна', 'The library is empty'),
         body: L(
-          'Пусни един учебник в PDF или започни на празна дъска — решаването става направо върху страницата.',
-          'Drop in a PDF textbook or start on a blank board — the solving happens straight on the page.',
+          'Пусни един PDF или започни на празна дъска — писането става направо върху страницата.',
+          'Drop in a PDF or start on a blank board — the writing happens straight on the page.',
         ),
         action: L('Отвори библиотеката', 'Open the library'),
         run: () => go('drive'),

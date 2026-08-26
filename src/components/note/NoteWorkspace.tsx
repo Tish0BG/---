@@ -216,8 +216,8 @@ export function NoteWorkspace() {
               <Icon name="link" size={17} />
               {linkCount > 0 && (
                 <span
-                  className="t-num absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-1 text-[9.5px] font-semibold text-white"
-                  style={{ background: 'var(--c-accent)' }}
+                  className="t-num absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-1 text-[9.5px] font-semibold"
+                  style={{ background: 'var(--c-accent)', color: 'var(--c-accent-text)' }}
                 >
                   {linkCount}
                 </span>
@@ -563,7 +563,7 @@ function LinksPanel({ meta, editor }: { meta: DocumentMeta | null; editor: HTMLE
                 </button>
                 <Tip label={t(L('Вмъкни в текста', 'Insert into the text'))}>
                   <button
-                    className="icon-btn h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="icon-btn h-6 w-6 shrink-0 hover-reveal"
                     onClick={() => {
                       editor?.focus();
                       insertDocLink(doc.id, doc.name, iconOf(doc) as 'book' | 'board' | 'notebook');
@@ -577,7 +577,7 @@ function LinksPanel({ meta, editor }: { meta: DocumentMeta | null; editor: HTMLE
                 </Tip>
                 <Tip label={t(L('Премахни връзката', 'Remove the link'))}>
                   <button
-                    className="icon-btn h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                    className="icon-btn h-6 w-6 shrink-0 hover-reveal"
                     onClick={() => void useNotes.getState().unlink(doc.id)}
                     aria-label={t(L('Премахни', 'Remove'))}
                   >

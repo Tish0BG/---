@@ -85,8 +85,8 @@ export function SubjectsScreen() {
         title={t(S.subjects)}
         subtitle={t(
           L(
-            'Всеки материал, карта, задача и минута учене се води към предмет.',
-            'Every material, card, task and minute of study belongs to a subject.',
+            'Работа, дом, тренировки, предмет в училище — всеки материал, карта, задача и минута се води към някой от тях.',
+            'Work, home, training, a school subject — every material, card, task and minute belongs to one of them.',
           ),
         )}
         actions={
@@ -109,11 +109,11 @@ export function SubjectsScreen() {
               title={t(L('Още няма предмети', 'No subjects yet'))}
               body={t(
                 L(
-                  'Добави ги веднъж и цялото приложение се подрежда по тях — библиотеката, картите, задачите и статистиката.',
-                  'Add them once and the whole app organises itself around them — the library, the cards, the tasks and the statistics.',
+                  'Предмет, проект, част от живота — добави ги веднъж и цялото приложение се подрежда по тях: библиотеката, картите, задачите и статистиката.',
+                  'A school subject, a project, a part of your life — add them once and the whole app organises itself around them: the library, the cards, the tasks and the statistics.',
                 ),
               )}
-              action={{ label: t(L('Добави училищните', 'Add the school ones')), icon: 'sparkles', onClick: () => void addSuggested() }}
+              action={{ label: t(L('Вземи готовите', 'Use the suggestions')), icon: 'sparkles', onClick: () => void addSuggested() }}
               secondary={{
                 label: t(L('Свой предмет', 'My own subject')),
                 icon: 'plus',
@@ -153,7 +153,7 @@ export function SubjectsScreen() {
                     ? t(L('Разпределена по предметите отдолу.', 'Spread across the subjects below.'))
                     : t(L('Нищо не чака.', 'Nothing waiting.'))
                 }
-                onClick={() => useApp.getState().goPlan('work')}
+                onClick={() => useApp.getState().goPlan('board')}
               />
               <StatCard
                 label={t(L('Среден успех', 'Average mark'))}
@@ -238,7 +238,7 @@ export function SubjectsScreen() {
                     </span>
                   </button>
 
-                  <div className="absolute right-2 top-2.5 flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute right-2 top-2.5 flex gap-0.5 hover-reveal">
                     <button
                       className="icon-btn h-7 w-7"
                       onClick={() => {

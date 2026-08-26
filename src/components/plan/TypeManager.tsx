@@ -171,7 +171,7 @@ export function TypeManager() {
           </span>
         </span>
         {!locked && (
-          <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+          <span className="flex shrink-0 items-center gap-0.5 hover-reveal">
             {onUp && <IconButton icon="chevronUp" size="sm" label={t(L('Нагоре', 'Move up'))} onClick={onUp} />}
             {onDown && (
               <IconButton icon="chevronDown" size="sm" label={t(L('Надолу', 'Move down'))} onClick={onDown} />

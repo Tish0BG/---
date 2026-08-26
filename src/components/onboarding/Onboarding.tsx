@@ -40,13 +40,13 @@ const LEVELS: { id: LearningLevel; label: Msg; note: Msg }[] = [
 ];
 
 const GOALS: { id: LearningGoal; label: Msg; icon: string }[] = [
-  { id: 'foundations', label: L('Здрави основи', 'Build strong foundations'), icon: 'layers' },
-  { id: 'exam', label: L('Подготовка за изпит', 'Prepare for an exam'), icon: 'target' },
-  { id: 'grades', label: L('По-добри оценки', 'Improve my grades'), icon: 'chartLine' },
-  { id: 'university', label: L('Кандидатстване', 'Prepare for university'), icon: 'trophy' },
-  { id: 'new-subject', label: L('Нов предмет', 'Learn a new subject'), icon: 'sparkles' },
+  { id: 'foundations', label: L('Ред в ежедневието', 'Order in my day'), icon: 'layers' },
+  { id: 'exam', label: L('Голям срок или изпит', 'A big deadline or exam'), icon: 'target' },
+  { id: 'grades', label: L('По-добри резултати', 'Better results'), icon: 'chartLine' },
+  { id: 'university', label: L('Голяма цел напред', 'A big goal ahead'), icon: 'trophy' },
+  { id: 'new-subject', label: L('Нещо ново за научаване', 'Something new to learn'), icon: 'sparkles' },
   { id: 'curiosity', label: L('От интерес', 'For my own interest'), icon: 'lightbulb' },
-  { id: 'skills', label: L('Умения за работа', 'Improve my skills'), icon: 'tools' },
+  { id: 'skills', label: L('Умения за работа', 'Skills for work'), icon: 'tools' },
 ];
 
 const STYLES: { id: LearningStyle; label: Msg; icon: string }[] = [
@@ -122,6 +122,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   const names = useMemo(() => SUGGESTED_SUBJECTS.map((s) => s[lang]), [lang]);
   const usernameProblem = username.trim() ? validateUsername(username) : null;
+  /** Settled during registration, and not worth asking about twice. */
+  const hasHandle = !!profile.username.trim();
 
   /** Written on every change, so a refresh resumes rather than restarts. */
   useEffect(() => {
@@ -140,7 +142,9 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     await workspace.saveProfile({
       name: name.trim(),
       lastName: lastName.trim(),
-      username: normaliseUsername(username),
+      // An empty box on a screen that never showed the field is not an
+      // instruction to clear the handle somebody already reserved.
+      username: hasHandle ? profile.username : normaliseUsername(username),
       avatar,
       color,
       createdAt: Date.now(),
@@ -149,7 +153,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     // Claimed after the local save, and never allowed to hold setup up: an
     // account with no `usernames` table, or no network, must not be a reason
     // somebody cannot finish signing up.
-    if (username.trim() && !usernameProblem) {
+    if (!hasHandle && username.trim() && !usernameProblem) {
       void import('@/services/usernameService').then((m) => m.claimUsername(username));
     }
 
@@ -232,8 +236,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
           <ul className="mt-8 space-y-3 text-[13.5px]">
             {[
-              L('Планираш седмицата и виждаш какво гори днес', 'Plan the week and see what is burning today'),
-              L('Решаваш направо върху страницата на учебника', 'Solve straight on the textbook page'),
+              L('Денят и дългият план стоят на един екран', 'The day and the long plan sit on one screen'),
+              L('Напомняния, които наистина идват навреме', 'Reminders that actually arrive on time'),
               L('Часовете стават напредък, серии и нива', 'Hours turn into progress, streaks and levels'),
             ].map((line, i) => (
               <li key={i} className="flex items-start gap-2.5">
@@ -351,6 +355,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 </label>
               </div>
 
+              {/* Registration asks for the handle and reserves it, so by the
+                  time most people reach this screen it is settled and asking
+                  again is just a field they have to read to ignore. It is
+                  still here for an account made before that flow existed, and
+                  for a workspace that has never had one. */}
+              {!hasHandle && (
               <div className="mt-4">
                 <span className="t-label mb-1.5 block">
                   {t(L('Потребителско име', 'Username'))}{' '}
@@ -397,7 +407,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   )}
                 </p>
               </div>
+              )}
 
+              {/* A photograph outranks an emoji, so the picker only appears
+                  for somebody who has not uploaded one. */}
+              {!profile.photo && (
+              <>
               <p className="t-label mt-6 mb-2">{t(L('Аватар', 'Avatar'))}</p>
               <div className="flex flex-wrap gap-2">
                 {AVATARS.map((emoji) => (
@@ -417,6 +432,8 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   </button>
                 ))}
               </div>
+              </>
+              )}
 
               <p className="t-label mt-6 mb-2">{t(L('Твоят цвят', 'Your colour'))}</p>
               <div className="flex flex-wrap gap-2">
@@ -441,12 +458,12 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
           {/* ---------------------------------------------- 2 · subjects */}
           {step === 2 && (
             <section className="animate-rise">
-              <h1 className="t-h1">{t(L('Какво учиш?', 'What are you studying?'))}</h1>
+              <h1 className="t-h1">{t(L('С какво се занимаваш?', 'What do you spend time on?'))}</h1>
               <p className="mt-2 text-[14px] text-muted">
                 {t(
                   L(
-                    'Предметите подреждат всичко останало — материали, задачи, часове и статистика.',
-                    'Subjects organise everything else — materials, tasks, hours and statistics.',
+                    'Работа, дом, тренировки, предмет — по тях се подрежда всичко останало: материали, задачи, часове и статистика.',
+                    'Work, home, training, a school subject — everything else organises itself around these: materials, tasks, hours and statistics.',
                   ),
                 )}
               </p>
@@ -489,7 +506,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                   className="field"
                   value={custom}
                   onChange={(e) => setCustom(e.target.value)}
-                  placeholder={t(L('Друг предмет…', 'Another subject…'))}
+                  placeholder={t(L('Нещо друго…', 'Something else…'))}
                 />
                 <Button type="submit" icon="plus" disabled={!custom.trim()}>
                   {t(S.add)}
@@ -535,7 +552,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                       style={{
                         borderColor: level === option.id ? 'var(--c-accent)' : 'var(--c-line-strong)',
                         background: level === option.id ? 'var(--c-accent)' : 'transparent',
-                        color: '#fff',
+                        color: 'var(--c-accent-text)',
                       }}
                     >
                       {level === option.id && <Icon name="check" size={12} strokeWidth={3} />}

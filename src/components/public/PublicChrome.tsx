@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BRAND, browserLang, type Lang } from '@/brand';
 import { useLangStore } from '@/i18n';
 import { useAuth } from '@/state/authStore';
@@ -239,19 +239,52 @@ export function PublicHeader({ onStart, onSignIn }: { onStart: () => void; onSig
   const faq = PUBLIC_ROUTES.find((r) => r.id === 'faq')!;
   const about = PUBLIC_ROUTES.find((r) => r.id === 'about')!;
 
+  /**
+   * The rule under the header appears once the page has moved.
+   *
+   * At the top of a hero, a bar with a line under it cuts the page in two
+   * before the visitor has read a word; the moment content starts sliding
+   * beneath it, the same line is what stops the two from mixing. Listening in
+   * the capture phase because the public pages scroll inside a container of
+   * their own rather than on the window.
+   */
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const onScroll = (event: Event) => {
+      const target = event.target as HTMLElement | Document;
+      const top = target instanceof HTMLElement ? target.scrollTop : window.scrollY;
+      setScrolled(top > 8);
+    };
+    window.addEventListener('scroll', onScroll, true);
+    return () => window.removeEventListener('scroll', onScroll, true);
+  }, []);
+
   return (
     <>
       <a href="#content" className="skip-link">
         {lang === 'bg' ? 'Към съдържанието' : 'Skip to content'}
       </a>
-      <header className="glass sticky top-0 z-30 border-b border-line">
-        <div className="mx-auto flex h-16 max-w-[1180px] items-center gap-3 px-5 sm:px-8">
+      <header
+        className={`sticky top-0 z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-200 ${
+          scrolled ? 'glass border-line' : 'border-transparent'
+        }`}
+      >
+        <div className="relative mx-auto flex h-[68px] max-w-[1180px] items-center gap-3 px-5 sm:px-8">
           <RouteLink to={HOME} className="flex items-center gap-2.5" aria-label={BRAND.name}>
             <PlauviaTile size={30} title={BRAND.name} />
             <PlauviaWordmark size={17} />
           </RouteLink>
 
-          <nav className="ml-8 hidden items-center gap-6 lg:flex" aria-label={lang === 'bg' ? 'Основна' : 'Main'}>
+          {/* Centred, not left-shunted against the mark.
+              With the logo at one edge and the account controls at the other,
+              a nav that starts immediately after the wordmark leaves a wide
+              empty stretch in the middle of the bar. Absolute centring puts
+              the links on the page's optical axis and keeps them there
+              regardless of how long the wordmark or the buttons get. */}
+          <nav
+            className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-7 lg:flex"
+            aria-label={lang === 'bg' ? 'Основна' : 'Main'}
+          >
             {SECTION_LINKS.map((link) => (
               <SectionLink
                 key={link.hash}

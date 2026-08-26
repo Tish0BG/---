@@ -59,11 +59,17 @@ export const resolveView = (raw: string): AppView | null => {
   return ALIASES[raw] ?? null;
 };
 
-/** Which half of the plan an old address was asking for. */
-export type PlanTab = 'work' | 'goals';
+/**
+ * Which face of the plan an address was asking for.
+ *
+ * `board` is the day-to-day one: three lanes side by side. `work` is the same
+ * records as one filtered list, for the days when you want to see everything
+ * at once rather than only what is next. `goals` is the long view in full.
+ */
+export type PlanTab = 'board' | 'work' | 'goals';
 
 export const PLAN_TAB_FOR: Record<string, PlanTab> = {
-  tasks: 'work',
+  tasks: 'board',
   exams: 'work',
   goals: 'goals',
 };
@@ -130,7 +136,7 @@ export const useApp = create<AppStore>((set) => ({
   view: 'dashboard',
   subjectId: null,
   focusId: null,
-  planTab: 'work',
+  planTab: 'board',
   planKind: null,
   paletteOpen: false,
   settingsOpen: false,
@@ -151,7 +157,7 @@ export const useApp = create<AppStore>((set) => ({
       editingDashboard: false,
     });
   },
-  goPlan(tab = 'work', kind = null, focusId) {
+  goPlan(tab = 'board', kind = null, focusId) {
     set({
       view: 'plan',
       planTab: tab,
@@ -211,7 +217,7 @@ export function navigateTo(target: string, id?: string): void {
   if (!view) return;
   const app = useApp.getState();
   if (view === 'plan') {
-    app.goPlan(PLAN_TAB_FOR[target] ?? 'work', target === 'exams' ? 'exam' : null, id);
+    app.goPlan(PLAN_TAB_FOR[target] ?? 'board', target === 'exams' ? 'exam' : null, id);
     return;
   }
   app.go(view, id);

@@ -12,7 +12,7 @@ import { Button, IconButton, ProgressRing } from '../kit';
 import { clamp } from '@/lib/util';
 import { Icon } from '../Icon';
 import { Ring } from './Ring';
-import { MODE_COLOR, StatsTab, TasksTab, TimerSettingsTab, TimerTab as TimerScreen } from './TimerPanel';
+import { MODE_COLOR, MODE_INK, StatsTab, TasksTab, TimerSettingsTab, TimerTab as TimerScreen } from './TimerPanel';
 
 const MINI = { w: 132, h: 42 };
 const PANEL = { w: 322, h: 470 };
@@ -214,7 +214,7 @@ const ALL_MODES: TimerMode[] = ['work', 'break', 'long'];
 
 /** The switch at the bottom has room for one word each. */
 const SHORT_MODE: Record<TimerMode, { bg: string; en: string }> = {
-  work: L('Учене', 'Focus'),
+  work: L('Работа', 'Focus'),
   break: L('Почивка', 'Break'),
   long: L('Дълга', 'Long'),
 };
@@ -256,7 +256,8 @@ function FullScreen() {
   const accent = MODE_COLOR[mode];
   const ring = Math.min(340, Math.max(210, Math.round(window.innerWidth * 0.26)));
 
-  if (lastSession) return <SessionComplete minutes={lastSession.minutes} accent={MODE_COLOR.work} />;
+  if (lastSession)
+    return <SessionComplete minutes={lastSession.minutes} accent={MODE_COLOR.work} ink={MODE_INK.work} />;
 
   return (
     <div
@@ -351,8 +352,8 @@ function FullScreen() {
           />
           <button
             onClick={() => store().toggleRun()}
-            className="grid h-[86px] w-[86px] cursor-pointer place-items-center rounded-full text-white transition-transform active:scale-95"
-            style={{ background: accent }}
+            className="grid h-[86px] w-[86px] cursor-pointer place-items-center rounded-full transition-transform active:scale-95"
+            style={{ background: accent, color: MODE_INK[mode] }}
             aria-label={t(running ? L('Пауза', 'Pause') : L('Старт', 'Start'))}
           >
             <Icon name={running ? 'pause' : 'play'} size={32} fill={!running} />
@@ -410,7 +411,7 @@ function FullScreen() {
  * worth and the streak they keep alive — then offers the break, because the
  * break is the part people skip.
  */
-function SessionComplete({ minutes, accent }: { minutes: number; accent: string }) {
+function SessionComplete({ minutes, accent, ink }: { minutes: number; accent: string; ink: string }) {
   const t = useT();
   const lang = useLang();
   const sessions = useTimer((s) => s.sessions);
@@ -436,8 +437,8 @@ function SessionComplete({ minutes, accent }: { minutes: number; accent: string 
 
       <div className="animate-rise relative w-full max-w-[420px] text-center">
         <span
-          className="animate-pop mx-auto grid h-[88px] w-[88px] place-items-center rounded-full text-white"
-          style={{ background: accent }}
+          className="animate-pop mx-auto grid h-[88px] w-[88px] place-items-center rounded-full"
+          style={{ background: accent, color: ink }}
         >
           <Icon name="check" size={40} strokeWidth={2.6} />
         </span>

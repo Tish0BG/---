@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Icon } from '../Icon';
+import { avatarColor, avatarInitial } from '@/services/avatarService';
 
 export type BadgeTone = 'neutral' | 'brand' | 'success' | 'warn' | 'danger' | 'aurora' | 'ember';
 
@@ -51,7 +52,12 @@ export function CountBadge({ count, tone = 'brand' }: { count: number; tone?: Ba
   return (
     <span
       className="t-num inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10.5px] font-semibold"
-      style={{ background: tone === 'brand' ? 'var(--c-accent)' : t.fg, color: '#fff' }}
+      style={{
+        background: tone === 'brand' ? 'var(--c-accent)' : t.fg,
+        // The accent flips between ink and paper across the themes; the other
+        // tones are saturated mid-colours that keep white in both.
+        color: tone === 'brand' ? 'var(--c-accent-text)' : '#fff',
+      }}
     >
       {count > 99 ? '99+' : count}
     </span>
@@ -60,44 +66,88 @@ export function CountBadge({ count, tone = 'brand' }: { count: number; tone?: Ba
 
 /* --------------------------------------------------------------- avatar */
 
+/**
+ * The face, wherever a face is drawn.
+ *
+ * Three ways of having one, in the order a person actually acquires them: a
+ * photograph they uploaded, an emoji they picked, and — for everybody who did
+ * neither — their initial on a colour derived from their own handle.
+ *
+ * That last case is the one that matters. Most people will never upload a
+ * photo, so the fallback is not an error state to be tolerated; it is what the
+ * product looks like. Deriving the colour from the name rather than choosing
+ * one at random is what makes it feel issued rather than left blank: the same
+ * person is the same colour on their laptop and their phone, and two people in
+ * the same class are usually not the same colour as each other.
+ */
 export function Avatar({
+  photo,
   emoji,
   name,
-  color = 'var(--c-accent)',
+  seed,
+  color,
   size = 32,
   ring,
   className = '',
 }: {
+  /** a square image, as a URL or data URL; wins over everything else */
+  photo?: string;
   emoji?: string;
   name?: string;
+  /**
+   * What the fallback colour is derived from — a username, normally. Defaults
+   * to the name, so a caller that has only one of the two still gets a stable
+   * colour rather than the accent for everybody.
+   */
+  seed?: string;
+  /** Overrides the derived colour. Subject tints and the picked profile colour. */
   color?: string;
   size?: number;
   /** Draws the level ring around the avatar. */
   ring?: number;
   className?: string;
 }) {
-  const initials = (name ?? '')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('');
-  const inner = (
+  const initial = avatarInitial(seed, name);
+  const tint = color ?? avatarColor(seed || name || '');
+
+  const inner = photo ? (
+    <img
+      src={photo}
+      alt=""
+      width={size}
+      height={size}
+      loading="lazy"
+      decoding="async"
+      className={`shrink-0 rounded-full object-cover ${className}`}
+      style={{
+        width: size,
+        height: size,
+        // The hairline stops a photo with a pale edge from dissolving into a
+        // white card, and matches what the two drawn variants below carry.
+        border: '1px solid color-mix(in srgb, var(--c-text) 10%, transparent)',
+      }}
+    />
+  ) : (
     <span
       className={`grid shrink-0 place-items-center rounded-full font-semibold select-none ${className}`}
       style={{
         width: size,
         height: size,
-        fontSize: emoji ? size * 0.52 : size * 0.38,
-        background: emoji ? `color-mix(in srgb, ${color} 16%, transparent)` : color,
+        fontSize: emoji ? size * 0.52 : size * 0.4,
+        background: emoji ? `color-mix(in srgb, ${tint} 16%, transparent)` : tint,
         color: emoji ? undefined : '#fff',
-        border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`,
+        border: `1px solid color-mix(in srgb, ${tint} ${emoji ? 30 : 0}%, transparent)`,
+        // Inter's default figures and caps sit slightly high in a circle; the
+        // optical centre is a fraction below the geometric one.
+        lineHeight: 1,
+        letterSpacing: emoji ? undefined : '-0.02em',
       }}
       aria-hidden
     >
-      {emoji || initials || '·'}
+      {emoji || initial}
     </span>
   );
+
   if (ring === undefined) return inner;
   const box = size + 8;
   const r = (box - 3) / 2;

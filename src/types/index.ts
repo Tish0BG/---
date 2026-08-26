@@ -455,6 +455,28 @@ export interface AppSettings {
   railCollapsed: boolean;
   /** the panels on the dashboard, in the order they are drawn */
   dashboard: DashboardPanel[];
+  /** desktop notifications for reminders and for what is still open today */
+  reminders: ReminderSettings;
+}
+
+/**
+ * When the app is allowed to speak.
+ *
+ * Everything here is off until somebody turns it on, and the browser's own
+ * permission prompt is asked for at that moment rather than on first load —
+ * a notification permission dialog on arrival is how an app gets denied.
+ */
+export interface ReminderSettings {
+  /** master switch; false means nothing is ever delivered */
+  enabled: boolean;
+  /** minutes before a reminder's own time to fire it, 0 = exactly then */
+  lead: number;
+  /** a nudge about entries still open today */
+  digest: boolean;
+  /** when that nudge arrives, "18:00" */
+  digestAt: string;
+  /** deadlines with an hour on them also announce themselves */
+  dueTimes: boolean;
 }
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
@@ -479,8 +501,18 @@ export interface Profile {
    * still theirs.
    */
   username: string;
-  /** single emoji shown as the avatar */
+  /** single emoji shown as the avatar when there is no photo */
   avatar: string;
+  /**
+   * A photo, as a square WebP data URL of about 20 KB.
+   *
+   * Inline rather than a file in the bucket on purpose: the profile record
+   * already syncs between devices, so a face carried inside it arrives with
+   * the name instead of needing a second round trip and a signed URL. The
+   * ceiling is 256 px, which is four times the largest place it is ever
+   * drawn. Empty means fall back — to the emoji, then to the initial.
+   */
+  photo: string;
   /** accent tint picked at setup */
   color: string;
   school: string;
@@ -635,10 +667,55 @@ export interface PlannerItem {
   priority: 0 | 1 | 2;
   /** completed focus sessions spent on this item */
   pomodoros: number;
+  /**
+   * How the entry gets finished.
+   *
+   * Not every job is a twenty-five-minute block. Watering the plants is a
+   * tick, packing is a list of small ticks, drinking water is a counter, and
+   * only some of it is worth a timer — so the entry says which of the four it
+   * is and the row draws itself accordingly. `undefined` reads as `check`,
+   * which is what every entry written before this field was a task.
+   */
+  method?: TaskMethod;
+  /** the small ticks inside one entry; only used when method === 'checklist' */
+  steps?: TaskStep[];
+  /** how far a counted entry has got; only used when method === 'count' */
+  count?: number;
+  /** counter target, or the number of focus blocks a timed entry is worth */
+  target?: number;
+  /**
+   * When to be told about it, epoch ms. Independent of `due`: a deadline is
+   * when something must be finished, a reminder is when you want the app to
+   * tap you on the shoulder.
+   */
+  remindAt?: ISODate | null;
+  /** the last reminder actually delivered, so it fires once and not per tick */
+  remindedAt?: ISODate | null;
+  /** how the entry comes back after it is ticked */
+  repeat?: RepeatRule;
   order: number;
   createdAt: ISODate;
   updatedAt: ISODate;
 }
+
+/**
+ * The four ways an entry can be worked.
+ *
+ * `check` is a plain to-do, `checklist` breaks one entry into steps, `count`
+ * is for anything measured in repetitions, and `timer` is the focus block the
+ * app started life with. The timer is one option among four rather than the
+ * only road through the list.
+ */
+export type TaskMethod = 'check' | 'checklist' | 'count' | 'timer';
+
+export interface TaskStep {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
+/** How often a ticked entry returns. `weekdays` is Monday to Friday. */
+export type RepeatRule = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
 
 /* -------------------------------------------------------------------- goals */
 

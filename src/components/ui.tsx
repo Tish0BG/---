@@ -20,6 +20,7 @@ export function Modal({
   children,
   width = 460,
   footer,
+  bare,
 }: {
   open: boolean;
   onClose: () => void;
@@ -27,6 +28,16 @@ export function Modal({
   children: ReactNode;
   width?: number;
   footer?: ReactNode;
+  /**
+   * Drops the header bar and the padding, leaving the panel and nothing else.
+   *
+   * For a dialog that is one field wide, the chrome is most of what is on
+   * screen — a title repeating what the field already says, and a close button
+   * beside an Escape key. The title is still required, and still announced:
+   * it moves to `aria-label`, so the dialog keeps its name for anyone who
+   * cannot see that the field is obvious.
+   */
+  bare?: boolean;
 }) {
   const t = useT();
   const panelRef = useRef<HTMLDivElement>(null);
@@ -95,20 +106,23 @@ export function Modal({
         ref={panelRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby={titleId}
+        aria-labelledby={bare ? undefined : titleId}
+        aria-label={bare && typeof title === 'string' ? title : undefined}
         tabIndex={-1}
         className="panel animate-scale w-full max-h-[85vh] overflow-hidden flex flex-col outline-none"
         style={{ maxWidth: width }}
       >
-        <header className="flex items-center justify-between px-4 h-12 border-b border-line shrink-0">
-          <h2 id={titleId} className="text-[14px] font-semibold">
-            {title}
-          </h2>
-          <button className="icon-btn" onClick={onClose} aria-label={t(L("Затвори", "Close"))}>
-            <Icon name="x" size={16} />
-          </button>
-        </header>
-        <div className="p-4 overflow-auto scroll-thin text-[13px]">{children}</div>
+        {!bare && (
+          <header className="flex items-center justify-between px-4 h-12 border-b border-line shrink-0">
+            <h2 id={titleId} className="text-[14px] font-semibold">
+              {title}
+            </h2>
+            <button className="icon-btn" onClick={onClose} aria-label={t(L("Затвори", "Close"))}>
+              <Icon name="x" size={16} />
+            </button>
+          </header>
+        )}
+        <div className={`overflow-auto scroll-thin ${bare ? 'p-5' : 'p-4 text-[13px]'}`}>{children}</div>
         {footer && <footer className="flex justify-end gap-2 px-4 py-3 border-t border-line shrink-0">{footer}</footer>}
       </div>
     </div>,
@@ -415,20 +429,26 @@ export function Toggle({
   onChange,
   label,
   hint,
+  disabled,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
   hint?: string;
+  /** A switch that depends on another one being on says so by going quiet. */
+  disabled?: boolean;
 }) {
   return (
-    <label className="flex items-start gap-3 cursor-pointer py-1.5">
+    <label
+      className={`flex items-start gap-3 py-1.5 ${disabled ? 'cursor-default opacity-50' : 'cursor-pointer'}`}
+    >
       <button
         type="button"
         role="switch"
         aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className="mt-0.5 h-[18px] w-[32px] shrink-0 rounded-full transition-colors cursor-pointer"
+        disabled={disabled}
+        onClick={() => !disabled && onChange(!checked)}
+        className="mt-0.5 h-[18px] w-[32px] shrink-0 rounded-full transition-colors cursor-pointer disabled:cursor-default"
         style={{ background: checked ? 'var(--c-accent)' : 'var(--c-line-strong)' }}
       >
         <span
@@ -490,7 +510,7 @@ export function Tip({ label, children }: { label: string; children: ReactNode })
       {children}
       <span
         className="pointer-events-none absolute left-1/2 top-full z-40 mt-1.5 -translate-x-1/2 whitespace-nowrap rounded-md px-1.5 py-1
-          text-[11px] opacity-0 transition-opacity group-hover:opacity-100"
+          text-[11px] hover-reveal"
         style={{ background: 'var(--c-text)', color: 'var(--c-surface)' }}
       >
         {label}

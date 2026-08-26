@@ -26,14 +26,14 @@ export const BRAND = {
 
   /** The sentence under the tagline: what it actually does. */
   description: {
-    en: 'Plan your studies, work through them on the page, and watch the hours turn into progress — textbooks, boards, flashcards and focus in one place.',
-    bg: 'Планираш ученето, решаваш направо върху страницата и гледаш как часовете стават резултат — учебници, дъски, флашкарти и фокус на едно място.',
+    en: 'Plan the day and the long haul on one screen, work through it, and watch the hours turn into progress — tasks, reminders, goals, documents and focus in one place.',
+    bg: 'Планираш деня и дългия път на един екран, вършиш ги и гледаш как часовете стават резултат — задачи, напомняния, цели, документи и фокус на едно място.',
   },
 
   /** Shorter, for metadata where length is punished. */
   meta: {
-    en: 'Plan, study, focus and track — Plauvia keeps textbooks, whiteboards, flashcards and your study time in one place, and works offline.',
-    bg: 'Планирай, учи, фокусирай се и следи напредъка — Plauvia държи учебниците, дъските, картите и учебното време на едно място и работи офлайн.',
+    en: 'Plan, do, focus and track — Plauvia holds your day, your goals, your reminders, your documents and your flashcards in one place, and works offline.',
+    bg: 'Планирай, върши, фокусирай се и следи напредъка — Plauvia държи деня, целите, напомнянията, документите и картите на едно място и работи офлайн.',
   },
 } as const;
 

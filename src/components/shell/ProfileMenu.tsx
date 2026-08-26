@@ -7,6 +7,7 @@ import { useTimer, dayKey, statsForDay, streak } from '@/state/timerStore';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover } from '../ui';
 import { useT, L } from '@/i18n';
+import { ProfileAvatar } from '../profile/ProfileAvatar';
 
 /** Avatar plus the two numbers a student checks most: today and the streak. */
 export function ProfileMenu() {
@@ -33,12 +34,7 @@ export function ProfileMenu() {
           className="flex h-9 cursor-pointer items-center gap-2 rounded-full pl-1 pr-2.5 transition-colors hover:bg-surface-3"
         >
           <span className="relative shrink-0">
-            <span
-              className="grid h-7 w-7 place-items-center rounded-full text-[14px]"
-              style={{ background: `color-mix(in srgb, ${profile.color} 20%, transparent)` }}
-            >
-              {profile.avatar}
-            </span>
+            <ProfileAvatar size={28} />
             {user && (
               <span
                 className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full"
@@ -60,12 +56,7 @@ export function ProfileMenu() {
       {(close) => (
         <>
           <div className="flex items-center gap-2.5 px-2 py-2">
-            <span
-              className="grid h-10 w-10 shrink-0 place-items-center rounded-full text-[20px]"
-              style={{ background: `color-mix(in srgb, ${profile.color} 20%, transparent)` }}
-            >
-              {profile.avatar}
-            </span>
+            <ProfileAvatar size={40} />
             <div className="min-w-0">
               <div className="truncate text-[13px] font-medium">{profile.name || t(L("Без име", "Unnamed"))}</div>
               <div className="truncate text-[11px] text-muted">

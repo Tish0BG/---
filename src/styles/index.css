@@ -27,6 +27,39 @@
   unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
 }
 
+/**
+ * Manrope, for the things that are read as shapes rather than as sentences.
+ *
+ * Inter stays the interface face — it is what a dense screen of thirteen-pixel
+ * labels wants, and swapping it would be a change nobody asked for. Manrope
+ * does the headlines only: it has the wider, rounder counters and the taller
+ * x-height that let a 60 px line set at zero leading without the words
+ * collapsing into each other, which is the whole trick of the display type on
+ * a modern marketing page.
+ *
+ * Same two subsets and the same self-hosting rule as Inter, for the same
+ * reason: a brand whose letterforms only arrive when the network does is not
+ * a brand. 39 KB for both, and `swap` means the headline is readable first.
+ */
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope.woff2') format('woff2');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC,
+    U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212,
+    U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Manrope';
+  font-style: normal;
+  font-weight: 200 800;
+  font-display: swap;
+  src: url('/fonts/manrope-cyrillic.woff2') format('woff2');
+  unicode-range: U+0301, U+0400-045F, U+0490-0491, U+04B0-04B1, U+2116;
+}
+
 /* Theme is driven by data-theme on <html> (set before paint by settingsStore). */
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
@@ -50,25 +83,51 @@
  *     that gets changed.
  */
 :root {
-  --c-bg: #f5f7fb;
+  /**
+   * The neutrals carry no hue at all any more.
+   *
+   * They used to be tinted a few degrees towards the brand blue, on the
+   * reasoning that pure grey next to a saturated accent reads as a default
+   * template. That reasoning was sound while there was a saturated accent.
+   * There is not one now — the accent is ink — and a blue-tinted grey beside
+   * a black button reads as a grey that could not decide, which is worse than
+   * one that never tried.
+   */
+  --c-bg: #fafafa;
   --c-surface: #ffffff;
-  --c-surface-2: #f9fafd;
-  --c-surface-3: #eef1f8;
-  --c-line: #e4e8f2;
-  --c-line-strong: #cfd6e6;
-  --c-text: #0e1116;
-  --c-muted: #5a6274;
-  --c-faint: #646d84;
+  --c-surface-2: #f5f5f5;
+  --c-surface-3: #ededed;
+  --c-line: #e5e5e5;
+  --c-line-strong: #d4d4d4;
+  --c-text: #0a0a0a;
+  /**
+   * Both greys are darker than the reference design's, deliberately.
+   *
+   * That page sets its muted text at 18 px, where #737373 is comfortable. The
+   * same grey under a 12 px hint in a dense panel is not, and most of the grey
+   * text in this product is 12 or 12.5 px. So muted lands at 7:1 and faint at
+   * 4.6:1 — still unmistakably a third and a second voice, still legible at
+   * the size they are actually set.
+   */
+  --c-muted: #5c5c5c;
+  --c-faint: #767676;
 
   /**
-   * Plauvia blue. Deeper and cooler than the default SaaS indigo, and chosen
-   * against the contrast table rather than by eye: white sits on it at 6.2:1,
-   * so the primary button can carry ordinary body text instead of being an
-   * accent that every screen has to work around.
+   * The brand is ink.
+   *
+   * Plauvia blue is gone as an accent. What replaces it is the highest-contrast
+   * pairing there is — white on near-black, 18.9:1 — which means the primary
+   * button never has to be designed around, and every screen it lands on can
+   * be planned as black, white and one hairline.
+   *
+   * It costs the product its one recognisable colour, and that is a real cost.
+   * What it buys is that colour now means something everywhere it appears:
+   * nothing is red, amber or green for decoration, so when a row goes red it
+   * is late, and when a ring goes green it is done.
    */
-  --c-brand: #1857d6;
-  --c-brand-lift: #2a66e2;
-  --c-brand-deep: #1245b4;
+  --c-brand: #171717;
+  --c-brand-lift: #000000;
+  --c-brand-deep: #000000;
 
   /**
    * The accent is the brand by default and the one thing a person may change
@@ -78,11 +137,13 @@
    * preference worth offering.
    */
   --c-accent: var(--c-brand);
-  --c-accent-hover: var(--c-brand-lift);
-  --c-accent-active: var(--c-brand-deep);
-  --c-accent-soft: #e9eefc;
+  --c-accent-hover: #000000;
+  --c-accent-active: #262626;
+  /* What a selected row sits on. Grey rather than a tint, because a tint of
+     black is grey — there is no soft version of ink to reach for. */
+  --c-accent-soft: #f0f0f0;
   --c-accent-text: #ffffff;
-  --c-accent-ring: color-mix(in srgb, var(--c-accent) 24%, transparent);
+  --c-accent-ring: color-mix(in srgb, var(--c-accent) 18%, transparent);
   --c-focus: var(--c-accent);
 
   /* progress and growth — used by charts, streaks and completion */
@@ -98,10 +159,21 @@
   --c-info-soft: #e7f1fc;
   --c-canvas: #79808d;
 
-  /* focus timer modes */
-  --c-timer-focus: #1857d6;
+  /**
+   * Focus timer modes, each with the ink that belongs on top of it.
+   *
+   * The pair is the point. A mode colour is used as a solid fill under a
+   * label — the big start button, the mode chip — and which foreground
+   * survives on it is not a property of the theme, it is a property of that
+   * particular colour. Focus is ink in light and paper in dark, so a single
+   * hard-coded white worked in one theme and vanished in the other.
+   */
+  --c-timer-focus: #171717;
+  --c-timer-focus-ink: #ffffff;
   --c-rest: #0a9b8f;
+  --c-rest-ink: #ffffff;
   --c-deep: #0d6ad1;
+  --c-deep-ink: #ffffff;
 
   /**
    * Signature surfaces, now spent in one place only: the mark.
@@ -112,7 +184,7 @@
    * than a flat one. The interface is flat; the logo keeps the gradient,
    * because that is the one thing that is allowed to be a picture.
    */
-  --grad-brand: linear-gradient(135deg, #2a66e2 0%, #1857d6 48%, #1245b4 100%);
+  --grad-brand: linear-gradient(135deg, #3f3f3f 0%, #171717 48%, #000000 100%);
   /**
    * The accent gradient starts as the brand one and is the only one a chosen
    * accent replaces. The logo keeps `--grad-brand`, so picking green tints the
@@ -120,7 +192,7 @@
    * preference is not an identity.
    */
   --grad-accent: var(--grad-brand);
-  --grad-aurora: linear-gradient(135deg, #1857d6 0%, #0d6ad1 50%, #0a9b8f 100%);
+  --grad-aurora: linear-gradient(135deg, #171717 0%, #0d6ad1 50%, #0a9b8f 100%);
   --grad-ember: linear-gradient(135deg, #f0a419 0%, #e08700 55%, #c25a09 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 70%) 0%, rgb(255 255 255 / 0%) 100%);
   /* The coloured glow under the primary button. Kept as a token so nothing
@@ -138,9 +210,22 @@
    * the page — menus, dialogs, the sheet — and the paper shadow in the
    * viewer, where a page really is a sheet lying on a desk.
    */
-  --shadow-sm: 0 1px 2px rgb(14 17 22 / 4%);
-  --shadow-panel: 0 1px 2px rgb(14 17 22 / 3%);
-  --shadow-float: 0 1px 2px rgb(14 17 22 / 6%), 0 12px 28px -12px rgb(14 17 22 / 20%);
+  --shadow-sm: 0 1px 2px rgb(11 16 32 / 5%);
+  /**
+   * The card shadow. Small enough that you would not call it a shadow if
+   * asked, large enough that a white card on a near-white page reads as an
+   * object rather than as a rectangle somebody drew a line around. Two layers:
+   * a contact shadow that sits the card on the page, and a wide, very faint
+   * ambient one that gives the edge somewhere to go.
+   */
+  --shadow-panel: 0 1px 1px rgb(11 16 32 / 4%), 0 2px 6px -2px rgb(11 16 32 / 5%);
+  /** What a card does under the pointer, and what a hero surface does always. */
+  --shadow-raised: 0 1px 1px rgb(11 16 32 / 4%), 0 6px 16px -6px rgb(11 16 32 / 10%);
+  /** A thing that has genuinely left the page: menus, dialogs, the sheet. */
+  --shadow-float: 0 1px 2px rgb(11 16 32 / 6%), 0 14px 34px -14px rgb(11 16 32 / 22%);
+  /** The marketing surfaces, where one big object is allowed to be an object. */
+  --shadow-showcase: 0 2px 4px rgb(11 16 32 / 4%), 0 24px 60px -28px rgb(11 16 32 / 26%),
+    0 60px 120px -60px rgb(11 16 32 / 20%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 14%), 0 10px 26px -16px rgb(0 0 0 / 26%);
 
   /**
@@ -151,11 +236,11 @@
    * fields, buttons, chips. One step down across the scale is the difference
    * between an interface that looks drawn and one that looks inflated.
    */
-  --radius-xs: 6px;
-  --radius-sm: 8px;
-  --radius: 10px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
   --radius-pill: 999px;
 
   /**
@@ -174,11 +259,11 @@
    */
   --type-scale: 1;
   --text-display: calc(40px * var(--type-scale));
-  --track-display: -0.032em;
+  --track-display: -0.035em;
   --text-title: calc(27px * var(--type-scale));
-  --track-title: -0.024em;
+  --track-title: -0.028em;
   --text-h2: calc(19px * var(--type-scale));
-  --track-h2: -0.016em;
+  --track-h2: -0.02em;
   --text-h3: calc(15.5px * var(--type-scale));
   --track-h3: -0.01em;
   /* kept as aliases: several screens still name the old two steps */
@@ -198,30 +283,32 @@
 }
 
 [data-theme='dark'] {
-  --c-bg: #080a0f;
-  --c-surface: #0f1219;
-  --c-surface-2: #161a23;
-  --c-surface-3: #1f2430;
-  --c-line: #222735;
-  --c-line-strong: #323a4c;
-  --c-text: #e9edf6;
-  --c-muted: #98a2b8;
-  --c-faint: #7d8699;
+  --c-bg: #0a0a0a;
+  --c-surface: #141414;
+  --c-surface-2: #1c1c1c;
+  --c-surface-3: #262626;
+  --c-line: #262626;
+  --c-line-strong: #404040;
+  --c-text: #fafafa;
+  --c-muted: #a3a3a3;
+  --c-faint: #8a8a8a;
 
   /**
-   * Dark mode splits the brand in two, because one value cannot do both jobs:
-   * `--c-brand` is the ink (7.1:1 against the surface, so icons and links are
-   * readable), while the gradient underneath white button text stays deep
-   * enough to clear 4.5:1. A single light blue would fail one of the two.
+   * Inverted, not darkened.
+   *
+   * Ink cannot be the accent on a black page, so on this side the primary
+   * button is white with black text — the same 18:1 pairing read the other way
+   * round. It is the one honest translation of a monochrome accent into dark
+   * mode; a dark-grey button on a dark-grey page is a button nobody finds.
    */
-  --c-brand: #6f9dff;
-  --c-brand-lift: #3b6fe8;
-  --c-brand-deep: #2a5bd7;
+  --c-brand: #fafafa;
+  --c-brand-lift: #ffffff;
+  --c-brand-deep: #e5e5e5;
   --c-accent: var(--c-brand);
-  --c-accent-hover: #8ab0ff;
-  --c-accent-active: #5b8cf7;
-  --c-accent-soft: #141c33;
-  --c-accent-text: #ffffff;
+  --c-accent-hover: #ffffff;
+  --c-accent-active: #d4d4d4;
+  --c-accent-soft: #262626;
+  --c-accent-text: #0a0a0a;
   --c-accent-ring: color-mix(in srgb, var(--c-accent) 32%, transparent);
 
   --c-aurora: #2ec6b4;
@@ -235,19 +322,26 @@
   --c-info: #4aa8f0;
   --c-info-soft: #0d1f2e;
   --c-canvas: #05070a;
-  --c-timer-focus: #6f9dff;
+  /* All three lighten for the dark surface, so all three take dark ink —
+     white on a bright teal was 2.3:1 long before the accent changed. */
+  --c-timer-focus: #fafafa;
+  --c-timer-focus-ink: #0a0a0a;
   --c-rest: #2ec6b4;
+  --c-rest-ink: #06201d;
   --c-deep: #4aa8f0;
+  --c-deep-ink: #041526;
 
-  --grad-brand: linear-gradient(135deg, #3b6fe8 0%, #2f62df 48%, #2a5bd7 100%);
+  --grad-brand: linear-gradient(135deg, #525252 0%, #262626 48%, #0a0a0a 100%);
   --grad-accent: var(--grad-brand);
-  --grad-aurora: linear-gradient(135deg, #3b6fe8 0%, #2b7fc4 50%, #17897e 100%);
+  --grad-aurora: linear-gradient(135deg, #fafafa 0%, #2b7fc4 50%, #17897e 100%);
   --grad-sheen: linear-gradient(180deg, rgb(255 255 255 / 7%) 0%, rgb(255 255 255 / 0%) 100%);
   --glow-brand: none;
 
   --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
-  --shadow-panel: 0 1px 2px rgb(0 0 0 / 24%);
-  --shadow-float: 0 1px 2px rgb(0 0 0 / 40%), 0 14px 32px -14px rgb(0 0 0 / 70%);
+  --shadow-panel: 0 1px 1px rgb(0 0 0 / 30%), 0 2px 6px -2px rgb(0 0 0 / 30%);
+  --shadow-raised: 0 1px 1px rgb(0 0 0 / 34%), 0 8px 20px -8px rgb(0 0 0 / 46%);
+  --shadow-float: 0 1px 2px rgb(0 0 0 / 40%), 0 16px 36px -14px rgb(0 0 0 / 72%);
+  --shadow-showcase: 0 2px 6px rgb(0 0 0 / 40%), 0 30px 70px -30px rgb(0 0 0 / 75%);
   --shadow-page: 0 1px 3px rgb(0 0 0 / 45%), 0 12px 28px -16px rgb(0 0 0 / 60%);
 }
 
@@ -377,6 +471,9 @@
   --color-rest: var(--c-rest);
   --color-deep: var(--c-deep);
   --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, system-ui, sans-serif;
+  /* Headlines only. Everything below `--text-h2` stays on Inter, where the
+     narrower forms buy back the space a dense screen needs. */
+  --font-display: Manrope, Inter, -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --radius-card: var(--radius-lg);
 }
 
@@ -460,23 +557,53 @@ section[id] {
    * hierarchy at all. Size and colour do the ranking now; weight only says
    * "this is a title".
    */
+  /**
+   * The top three steps set in Manrope, at weight 700 and effectively zero
+   * leading.
+   *
+   * That leading is the single detail that makes a headline look designed: a
+   * two-line display at 1.05 has a visible gap between the lines, and the same
+   * two lines at 1.0 read as one block of shape. It only works this tight
+   * because Manrope's ascenders are short — trying it with Inter is how you
+   * get descenders touching the line below.
+   *
+   * `.t-h3` and everything under it stays on Inter and stays at 600. Below
+   * about 18 px the two faces are hard to tell apart anyway, and Inter is the
+   * one that was drawn for the job.
+   */
+  /**
+   * Manrope, for a heading that sets its own size.
+   *
+   * The marketing headings are all `clamp()`-ed against the viewport rather
+   * than picked off the type scale, so they cannot use `.t-h1` — but they
+   * still want the display face and the weight that goes with it. This
+   * carries those two things and leaves the size alone.
+   */
+  .t-face {
+    font-family: var(--font-display);
+    font-weight: 700;
+  }
+
   .t-display {
+    font-family: var(--font-display);
     font-size: var(--text-display);
     letter-spacing: var(--track-display);
-    font-weight: 600;
-    line-height: 1.05;
+    font-weight: 700;
+    line-height: 1;
   }
   .t-h1 {
+    font-family: var(--font-display);
     font-size: var(--text-title);
     letter-spacing: var(--track-title);
-    font-weight: 600;
-    line-height: 1.15;
+    font-weight: 700;
+    line-height: 1.08;
   }
   .t-h2 {
+    font-family: var(--font-display);
     font-size: var(--text-h2);
     letter-spacing: var(--track-h2);
-    font-weight: 600;
-    line-height: 1.25;
+    font-weight: 700;
+    line-height: 1.2;
   }
   .t-h3 {
     font-size: var(--text-h3);
@@ -607,20 +734,34 @@ h3 {
   .btn-primary {
     background: var(--c-accent);
     color: var(--c-accent-text);
+    font-weight: 550;
+    /* A hairline of light along the top edge and a contact shadow under it.
+       Not a gradient and not a glow — the two smallest things that stop a
+       filled rectangle from reading as a coloured div. */
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 16%),
+      0 1px 2px color-mix(in srgb, var(--c-accent) 30%, transparent);
   }
   .btn-primary:hover:not(:disabled) {
     background: var(--c-accent-hover);
+    box-shadow:
+      inset 0 1px 0 rgb(255 255 255 / 20%),
+      0 2px 8px -2px color-mix(in srgb, var(--c-accent) 45%, transparent);
   }
   .btn-primary:active:not(:disabled) {
     background: var(--c-accent-active);
+    box-shadow: inset 0 1px 2px rgb(0 0 0 / 12%);
   }
   /** Everything that is a real choice but not the main one. */
   .btn-outline {
     border-color: var(--c-line-strong);
     background: var(--c-surface);
+    box-shadow: var(--shadow-sm);
   }
   .btn-outline:hover:not(:disabled) {
-    background: var(--c-surface-2);
+    background: var(--c-surface);
+    border-color: var(--c-faint);
+    box-shadow: var(--shadow-panel);
   }
   .btn-soft {
     background: var(--c-accent-soft);
@@ -678,12 +819,21 @@ h3 {
     background: var(--c-surface);
     border: 1px solid var(--c-line);
     border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-panel);
   }
+  /** The card without the lift: nested surfaces, and rows inside a card. */
   .card-quiet {
     background: var(--c-surface);
     border: 1px solid var(--c-line);
     border-radius: var(--radius-lg);
     box-shadow: none;
+  }
+  /**
+   * A card that is the subject of its screen rather than one of twelve.
+   * One step of elevation above the rest, and nothing else different.
+   */
+  .card-raised {
+    box-shadow: var(--shadow-raised);
   }
   /** A card that reacts to the pointer — library items, decks, list rows. */
   .panel-hover,
@@ -698,10 +848,11 @@ h3 {
   .panel-hover:hover,
   .card-hover:hover {
     border-color: var(--c-line-strong);
-    background: var(--c-surface-2);
+    box-shadow: var(--shadow-raised);
   }
   .card-hover:active {
-    background: var(--c-surface-3);
+    background: var(--c-surface-2);
+    box-shadow: var(--shadow-panel);
   }
 
   /**
@@ -727,9 +878,9 @@ h3 {
    */
   .field {
     @apply w-full outline-none;
-    height: 36px;
-    padding: 0 11px;
-    border-radius: var(--radius-sm);
+    height: 38px;
+    padding: 0 12px;
+    border-radius: var(--radius);
     font-size: 13.5px;
     background: var(--c-surface);
     border: 1px solid var(--c-line-strong);
@@ -750,9 +901,10 @@ h3 {
     box-shadow: 0 0 0 3px var(--c-accent-ring);
   }
   .field-lg {
-    height: 42px;
-    font-size: 14px;
-    border-radius: var(--radius);
+    height: 44px;
+    font-size: 14.5px;
+    padding: 0 14px;
+    border-radius: var(--radius-lg);
   }
 
   .chip {
@@ -802,7 +954,10 @@ h3 {
   .segmented > :is(button, a)[aria-selected='true'] {
     background: var(--c-surface);
     color: var(--c-text);
-    box-shadow: 0 1px 2px rgb(14 17 22 / 6%);
+    font-weight: 550;
+    box-shadow:
+      0 1px 2px rgb(11 16 32 / 8%),
+      0 0 0 1px rgb(11 16 32 / 4%);
   }
 
   /**
@@ -992,6 +1147,71 @@ h3 {
 }
 .animate-sheet {
   animation: sheet-up 0.3s var(--ease-out);
+}
+
+/**
+ * The refusal.
+ *
+ * Used by the verification code and nowhere else so far. A wrong code is the
+ * one error in the product where the person has almost certainly not made a
+ * conceptual mistake — they mistyped, or the code expired — and a sentence of
+ * explanation is slower to read than the boxes are to notice moving. Short,
+ * small in amplitude, and it settles rather than bouncing: this is a "no",
+ * not a toy. Disabled entirely under reduced motion by the block below, where
+ * the colour and the message still carry it.
+ */
+/**
+ * The hero's product shot, laid back six degrees.
+ *
+ * `rotateX` alone, with the transform origin at the top: rotating about the
+ * centre makes the panel appear to sink into the page, while pinning the top
+ * edge makes it lean away from the reader like a screen tipped back on its
+ * stand, which is the thing being imitated.
+ *
+ * It straightens on hover and — importantly — on focus-within, so that
+ * somebody tabbing into the rail inside it gets a flat, square target rather
+ * than a keyboard focus ring drawn in perspective. The shot is interactive;
+ * a decorative transform is not allowed to be the reason it is hard to use.
+ */
+.hero-tilt {
+  transform: rotateX(6deg) scale(0.985);
+  transform-origin: 50% 0%;
+  transition: transform 0.55s var(--ease-out);
+  will-change: transform;
+}
+.hero-tilt:hover,
+.hero-tilt:focus-within {
+  transform: rotateX(0deg) scale(1);
+}
+
+/* On a phone the shot is nearly as wide as the screen, and six degrees of
+   perspective on a 360 px panel is legibility spent for nothing. */
+@media (max-width: 640px) {
+  .hero-tilt {
+    transform: none;
+  }
+}
+
+@keyframes shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  18% {
+    transform: translateX(-5px);
+  }
+  38% {
+    transform: translateX(4px);
+  }
+  58% {
+    transform: translateX(-3px);
+  }
+  78% {
+    transform: translateX(2px);
+  }
+}
+.animate-shake {
+  animation: shake 0.34s var(--ease);
 }
 
 @keyframes shimmer {
@@ -1349,4 +1569,427 @@ h3 {
   color: var(--c-faint);
   pointer-events: none;
   position: absolute;
+}
+
+/**
+ * ─────────────────────────────────────────────────── the card box ──
+ *
+ * Flashcards used to be rows in a list, which is a fine way to store four
+ * hundred of them and a terrible way to *feel* like you own four hundred of
+ * them. So the deck screen is a box: a real index-card box, with a lip at the
+ * front, ruled cards standing in it, and stiff dividers whose tabs stagger
+ * across the width exactly as they do in a wooden one on a desk.
+ *
+ * All of it is CSS on ordinary elements — no images, no canvas — so it costs
+ * nothing, themes itself from the same tokens as everything else, and stays
+ * crisp at any zoom. The skeuomorphism stops where usefulness stops: the tabs
+ * are real buttons, the cards are real rows, and nothing is decorative enough
+ * to get in the way of finding a card.
+ */
+.card-box {
+  position: relative;
+  border-radius: 16px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-strong);
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 70%, transparent),
+    0 1px 2px color-mix(in srgb, #0b1020 6%, transparent),
+    0 14px 30px -20px color-mix(in srgb, #0b1020 45%, transparent);
+}
+[data-theme='dark'] .card-box {
+  box-shadow:
+    inset 0 1px 0 color-mix(in srgb, #ffffff 6%, transparent),
+    0 14px 30px -20px #000;
+}
+
+/**
+ * The shadow the wall of the box casts over the cards standing in it. It is
+ * what makes the stack read as *inside* something rather than as a list with
+ * a border round it, and it is two gradients rather than an image.
+ */
+.card-box-well {
+  position: relative;
+}
+.card-box-well::before,
+.card-box-well::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 14px;
+  pointer-events: none;
+  z-index: 3;
+}
+.card-box-well::before {
+  left: 0;
+  background: linear-gradient(90deg, color-mix(in srgb, #0b1020 9%, transparent), transparent);
+}
+.card-box-well::after {
+  right: 0;
+  background: linear-gradient(270deg, color-mix(in srgb, #0b1020 7%, transparent), transparent);
+}
+
+/** The front lip: the strip of box you look over to see the cards. */
+.card-box-lip {
+  position: relative;
+  height: 16px;
+  border-radius: 0 0 15px 15px;
+  background: linear-gradient(180deg, var(--c-surface-3), var(--c-surface-2));
+  border-top: 1px solid var(--c-line-strong);
+  box-shadow: inset 0 3px 7px -4px color-mix(in srgb, #0b1020 45%, transparent);
+}
+.card-box-lip::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 44px;
+  height: 3px;
+  border-radius: 2px;
+  transform: translateX(-50%);
+  background: var(--c-line-strong);
+  opacity: 0.55;
+}
+
+/**
+ * A divider. Stiffer stock than a card, a tab standing above the shoulder,
+ * and a rule under the tab so the letter reads as printed on the divider
+ * rather than floating over the cards behind it.
+ */
+.card-divider {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: flex-end;
+  padding-top: 12px;
+}
+.card-divider-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 36px;
+  height: 24px;
+  padding: 0 12px;
+  border: 1px solid var(--c-line-strong);
+  border-bottom: none;
+  border-radius: 9px 9px 0 0;
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-3));
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: var(--c-muted);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 65%, transparent);
+}
+.card-divider-body {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  height: 22px;
+  padding-right: 10px;
+  border-top: 1px solid var(--c-line-strong);
+  background: linear-gradient(180deg, var(--c-surface-3), transparent);
+  font-size: 10.5px;
+  color: var(--c-faint);
+}
+/* The tab and the body of the divider are one sheet of card. */
+.card-divider-tab + .card-divider-body {
+  border-top-left-radius: 0;
+}
+
+/**
+ * The card itself: ruled stock with a margin line down the left, the way an
+ * index card is printed. The rules are a repeating gradient rather than
+ * borders so they survive any row height.
+ */
+.index-card {
+  position: relative;
+  min-height: 44px;
+  margin-left: 10px;
+  border: 1px solid var(--c-line);
+  border-left: 3px solid var(--c-line-strong);
+  border-radius: 2px 10px 10px 2px;
+  background-color: var(--c-surface);
+  background-image: repeating-linear-gradient(
+    180deg,
+    transparent,
+    transparent 20px,
+    color-mix(in srgb, var(--c-line) 75%, transparent) 20px,
+    color-mix(in srgb, var(--c-line) 75%, transparent) 21px
+  );
+  background-position: 0 4px;
+  box-shadow: 0 1px 0 color-mix(in srgb, #0b1020 4%, transparent);
+  transition:
+    transform 0.16s var(--ease),
+    box-shadow 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+.index-card:hover {
+  transform: translateX(4px);
+  border-color: var(--c-line-strong);
+  box-shadow: 0 3px 12px -6px color-mix(in srgb, #0b1020 55%, transparent);
+}
+/** A card waiting to be reviewed leans out of the box in the accent colour. */
+.index-card[data-due='yes'] {
+  border-left-color: var(--c-accent);
+  background-color: color-mix(in srgb, var(--c-accent) 4%, var(--c-surface));
+}
+
+.alpha-rail-key {
+  display: block;
+  width: 100%;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 600;
+  line-height: 17px;
+  color: var(--c-faint);
+  cursor: pointer;
+  transition:
+    background 0.12s var(--ease),
+    color 0.12s var(--ease);
+}
+.alpha-rail-key:hover {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.alpha-rail-key[data-empty='yes'] {
+  opacity: 0.32;
+  cursor: default;
+}
+.alpha-rail-key[data-active='yes'] {
+  background: var(--c-accent-soft);
+  color: var(--c-accent);
+}
+
+/** A deck, drawn as the front of a drawer with a pull under the label. */
+.drawer-front {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px 14px;
+  border: 1px solid var(--c-line-strong);
+  border-radius: 10px;
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
+  cursor: pointer;
+  text-align: left;
+  transition:
+    transform 0.16s var(--ease),
+    box-shadow 0.16s var(--ease),
+    border-color 0.16s var(--ease);
+}
+.drawer-front::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  width: 34px;
+  height: 4px;
+  border-radius: 3px;
+  transform: translateX(-50%);
+  background: var(--c-line-strong);
+  opacity: 0.7;
+}
+.drawer-front:hover {
+  transform: translateY(-1px);
+  border-color: var(--c-accent);
+}
+.drawer-front[data-active='yes'] {
+  border-color: var(--c-accent);
+  box-shadow: 0 0 0 1px var(--c-accent) inset;
+}
+
+
+/**
+ * ───────────────────────────────────────────────── the public surfaces ──
+ *
+ * The marketing pages and the door in front of the app are the only places
+ * where one object is allowed to be *an object* — a screenshot that sits on
+ * the page like a photograph, a brand panel with weather in it. Inside the
+ * app the rule stays what it was: a surface, a hairline, and nothing else.
+ *
+ * These are classes rather than inline styles because the same four
+ * treatments appear on the home page, the login door, the FAQ and the legal
+ * pages, and four copies of a gradient is how two of them end up different.
+ */
+@layer components {
+  /** A framed screenshot: the one thing on the page that is lifted off it. */
+  .showcase {
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--c-line);
+    background: var(--c-surface);
+    box-shadow: var(--shadow-showcase);
+    overflow: hidden;
+  }
+
+  /** The icon tile that opens a feature, a step or a card. */
+  .tile {
+    @apply grid shrink-0 place-items-center;
+    height: 40px;
+    width: 40px;
+    border-radius: var(--radius);
+    background: var(--c-accent-soft);
+    color: var(--c-accent);
+    box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c-accent) 12%, transparent);
+  }
+  .tile-lg {
+    height: 46px;
+    width: 46px;
+    border-radius: var(--radius-lg);
+  }
+
+  /**
+   * The small word above a heading that says which part of the page you are
+   * in. Sentence case and a dot — the tracked-out capitals it replaces are
+   * unreadable in Cyrillic and are the typographic tell of a template.
+   */
+  .eyebrow {
+    @apply inline-flex items-center gap-2 font-medium;
+    font-size: 12.5px;
+    color: var(--c-accent);
+  }
+  .eyebrow::before {
+    content: '';
+    height: 5px;
+    width: 5px;
+    border-radius: 999px;
+    background: currentColor;
+  }
+
+  /** A word you click that is meant to be seen: "all questions", "read more". */
+  .link-accent {
+    @apply inline-flex cursor-pointer items-center gap-1.5 font-medium underline-offset-4 hover:underline;
+    color: var(--c-accent);
+    font-size: 13.5px;
+  }
+
+  /**
+   * Faint page furniture behind a hero: a grid of dots, and ruled lines.
+   * Both fade out downwards so the section they are in has an ending.
+   */
+  .dot-grid {
+    background-image: radial-gradient(
+      circle at 1px 1px,
+      color-mix(in srgb, var(--c-text) 12%, transparent) 1px,
+      transparent 0
+    );
+    background-size: 22px 22px;
+    -webkit-mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+    mask-image: linear-gradient(180deg, #000 0%, transparent 88%);
+  }
+  .grid-lines {
+    background-image:
+      linear-gradient(90deg, color-mix(in srgb, var(--c-text) 6%, transparent) 1px, transparent 0),
+      linear-gradient(color-mix(in srgb, var(--c-text) 6%, transparent) 1px, transparent 0);
+    background-size: 64px 64px;
+    -webkit-mask-image: radial-gradient(70% 60% at 50% 0%, #000, transparent 75%);
+    mask-image: radial-gradient(70% 60% at 50% 0%, #000, transparent 75%);
+  }
+
+  /**
+   * The brand panel: the deep blue half of the door, the CTA band at the
+   * bottom of the home page. A gradient, a soft light source in one corner,
+   * and white text that is legible on every part of it.
+   */
+  .brand-panel {
+    position: relative;
+    overflow: hidden;
+    background: var(--grad-brand);
+    color: #fff;
+    isolation: isolate;
+  }
+  .brand-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(60% 55% at 15% 12%, rgb(255 255 255 / 22%), transparent 70%),
+      radial-gradient(50% 50% at 95% 100%, rgb(0 0 0 / 22%), transparent 70%);
+  }
+  /** The same ruled grid as the hero, in white, for use inside a brand panel. */
+  .brand-panel-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(90deg, rgb(255 255 255 / 7%) 1px, transparent 0),
+      linear-gradient(rgb(255 255 255 / 7%) 1px, transparent 0);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 78%);
+    mask-image: radial-gradient(80% 70% at 30% 20%, #000, transparent 78%);
+  }
+
+  /**
+   * The door.
+   *
+   * The page ground below `lg`, where the form is a card floating on it; the
+   * plain surface above it, where the brand panel already provides the
+   * contrast and a third tone would only make the seam louder.
+   */
+  .auth-shell {
+    background: var(--c-bg);
+  }
+  @media (min-width: 1024px) {
+    .auth-shell {
+      background: var(--c-surface);
+    }
+  }
+
+
+  /**
+   * A control that only shows itself under the pointer.
+   *
+   * The pattern used to be written inline as an opacity that only lifts on
+   * `group-hover`, which is correct on a laptop and a bug on a phone: a touch screen has no
+   * hover, so the delete button, the menu and the drag handle were simply
+   * invisible — permanently, on the device most of them were needed on. The
+   * hiding now happens only where a fine pointer actually exists, and keyboard
+   * focus reveals it too.
+   */
+  .hover-reveal {
+    opacity: 1;
+  }
+  @media (hover: hover) and (pointer: fine) {
+    .hover-reveal {
+      opacity: 0;
+      transition: opacity var(--dur-fast) var(--ease);
+    }
+    .group:hover .hover-reveal,
+    .hover-reveal:focus-within,
+    .hover-reveal:focus-visible {
+      opacity: 1;
+    }
+  }
+
+  /** "или" with a rule either side of it. */
+  .divider-label {
+    @apply flex items-center gap-3;
+    font-size: 12px;
+    color: var(--c-faint);
+  }
+  .divider-label::before,
+  .divider-label::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--c-line);
+  }
+
+  /**
+   * A section of the public pages, alternating between the page ground and
+   * the surface. One class so the rhythm — 96 px of air, a hairline at each
+   * end — is decided once instead of on each of nine sections.
+   */
+  .public-section {
+    padding-block: clamp(56px, 8vw, 104px);
+  }
+  .public-section-alt {
+    background: var(--c-surface);
+    border-block: 1px solid var(--c-line);
+  }
 }

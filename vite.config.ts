@@ -109,7 +109,22 @@ export default defineConfig(({ mode }) => {
       __APP_VERSION__: JSON.stringify(pkg.version),
       __BUILD_DATE__: JSON.stringify(new Date().toISOString().slice(0, 10)),
     },
-    server: { port: 5180, host: true },
+    /**
+     * 5180 unless something outside has already claimed it and said so.
+     *
+     * The number matters for one reason only: every redirect the app hands
+     * Supabase is built from `window.location.origin`, and Supabase will only
+     * send somebody back to a URL on its allow-list. So `http://localhost:5180`
+     * is registered over there, and `npm run dev` keeps landing on it — moving
+     * the default would quietly break Google sign-in and the confirmation
+     * links on this machine.
+     *
+     * `PORT` is the escape hatch, for the case where 5180 is already taken by
+     * another copy of this same server. A second dev server that refuses to
+     * start is worse than one on a port where only the OAuth round-trip is
+     * unavailable; everything else in the app is indifferent to the number.
+     */
+    server: { port: Number(process.env.PORT) || 5180, host: true },
     /**
      * `vite preview` serves the real build under the real policy — no
      * `unsafe-inline`, no exceptions. It is the only way to find out before a

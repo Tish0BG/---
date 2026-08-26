@@ -74,7 +74,7 @@ export function PasswordField({
   return (
     <div>
       {label && (
-        <label htmlFor={id} className="t-label mb-1.5 block">
+        <label htmlFor={id} className="mb-1.5 block text-[12.5px] font-medium text-muted">
           {label}
         </label>
       )}

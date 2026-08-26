@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useApp } from '@/state/appStore';
 import { useAuth } from '@/state/authStore';
 import { useWorkspace, SUBJECT_COLORS } from '@/state/workspaceStore';
@@ -16,6 +16,8 @@ import {
 import { useT, L, useLang, formatDuration, weekdayNames, formatDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Screen } from '../shell/Screen';
+import { ProfileAvatar } from './ProfileAvatar';
+import { ACCEPTED_IMAGE_TYPES, makeAvatar } from '@/services/avatarService';
 import { Icon } from '../Icon';
 import {
   Badge,
@@ -23,7 +25,6 @@ import {
   Card,
   HeatCalendar,
   ProgressBar,
-  ProgressRing,
   StatCard,
   Tooltip,
 } from '../kit';
@@ -97,17 +98,7 @@ export function ProfileScreen() {
         <div className="relative px-5 pb-5 sm:px-6">
           <div className="flex flex-wrap items-end gap-4">
             <span className="relative -mt-11">
-              <ProgressRing value={level.progress} size={84} stroke={4} color="var(--c-brand)">
-                <span
-                  className="grid h-[68px] w-[68px] place-items-center rounded-full text-[30px]"
-                  style={{
-                    background: `color-mix(in srgb, ${profile.color || 'var(--c-brand)'} 16%, var(--c-surface))`,
-                    border: '2px solid var(--c-surface)',
-                  }}
-                >
-                  {profile.avatar || '🦉'}
-                </span>
-              </ProgressRing>
+              <ProfileAvatar size={76} ring={level.progress} />
             </span>
 
             <div className="min-w-0 flex-1 pb-1">
@@ -150,6 +141,12 @@ export function ProfileScreen() {
               )}
 
               <p className="mt-1.5 text-[12.5px] text-muted">
+                {profile.username && (
+                  <>
+                    <span className="font-medium text-ink">@{profile.username}</span>
+                    {' · '}
+                  </>
+                )}
                 {user?.email ?? t(L('Само на това устройство', 'This device only'))}
                 {' · '}
                 {t(
@@ -164,7 +161,10 @@ export function ProfileScreen() {
 
           {editing && (
             <div className="mt-4">
-              <p className="t-label mb-2">{t(L('Аватар', 'Avatar'))}</p>
+              <p className="t-label mb-2">{t(L('Снимка', 'Photo'))}</p>
+              <PhotoControl />
+
+              <p className="t-label mb-2 mt-4">{t(L('Аватар', 'Avatar'))}</p>
               <div className="flex flex-wrap gap-1.5">
                 {AVATARS.map((emoji) => (
                   <button
@@ -303,5 +303,72 @@ export function ProfileScreen() {
         </Card>
       </div>
     </Screen>
+  );
+}
+
+/**
+ * Changing the face after the fact.
+ *
+ * The same three affordances the sign-up step offers, which is the point —
+ * somebody who skipped the photo then should meet the identical control here
+ * rather than a different-shaped one that happens to do the same job.
+ *
+ * Removing a photo falls back to the emoji picker directly below it, which is
+ * why the two sit together: "remove" here has a visible consequence a few
+ * pixels down, instead of being a button that appears to empty something.
+ */
+function PhotoControl() {
+  const t = useT();
+  const profile = useWorkspace((s) => s.profile);
+  const input = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const take = async (file: File | undefined) => {
+    if (!file) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const { dataUrl } = await makeAvatar(file);
+      await useWorkspace.getState().saveProfile({ photo: dataUrl });
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : t(L('Снимката не можа да се обработи.', 'That image could not be processed.')),
+      );
+    } finally {
+      setBusy(false);
+      if (input.current) input.current.value = '';
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-3">
+        <ProfileAvatar size={52} />
+        <input
+          ref={input}
+          type="file"
+          accept={ACCEPTED_IMAGE_TYPES}
+          className="sr-only"
+          onChange={(e) => void take(e.target.files?.[0])}
+        />
+        <Button icon={busy ? 'refresh' : 'upload'} onClick={() => input.current?.click()} disabled={busy}>
+          {t(profile.photo ? L('Друга снимка', 'Change photo') : L('Качи снимка', 'Upload a photo'))}
+        </Button>
+        {profile.photo && (
+          <Button icon="trash" onClick={() => void useWorkspace.getState().saveProfile({ photo: '' })}>
+            {t(L('Премахни', 'Remove'))}
+          </Button>
+        )}
+      </div>
+      {error && (
+        <p role="alert" className="mt-2 flex items-center gap-1.5 text-[12px]" style={{ color: 'var(--c-danger)' }}>
+          <Icon name="alert" size={12} />
+          {error}
+        </p>
+      )}
+    </div>
   );
 }

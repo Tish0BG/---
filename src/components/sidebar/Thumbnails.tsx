@@ -90,7 +90,7 @@ function PageMenu({
         <button
           ref={ref}
           onClick={toggle}
-          className="icon-btn absolute right-1 top-1 h-6 w-6 opacity-0 backdrop-blur transition-opacity group-hover:opacity-100"
+          className="icon-btn hover-reveal absolute right-1 top-1 h-6 w-6 backdrop-blur"
           style={{ background: 'color-mix(in srgb, var(--c-surface) 82%, transparent)' }}
           aria-label={t(L(`Действия за страница ${page}`, `Actions for page ${page}`))}
         >

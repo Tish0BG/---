@@ -104,7 +104,7 @@ export function AchievementsScreen() {
         <div className="grid grid-cols-2 border-t border-line sm:grid-cols-4">
           {[
             {
-              label: t(L('Учене общо', 'Total studied')),
+              label: t(L('Общо време', 'Total time')),
               value: formatDuration(ctx.sessions.reduce((s, x) => s + x.minutes, 0), lang),
               icon: 'timer',
             },

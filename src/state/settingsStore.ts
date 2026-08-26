@@ -56,6 +56,13 @@ const DEFAULTS: AppSettings = {
   gradeScale: { min: 2, max: 6, pass: 3 },
   railCollapsed: false,
   dashboard: DEFAULT_DASHBOARD,
+  reminders: {
+    enabled: false,
+    lead: 0,
+    digest: true,
+    digestAt: '18:00',
+    dueTimes: true,
+  },
 };
 
 /** Everything in AppSettings is persisted; listing the keys keeps the
@@ -74,6 +81,7 @@ function load(): AppSettings {
       timer: { ...DEFAULTS.timer, ...(parsed.timer ?? {}) },
       timerPos: { ...DEFAULTS.timerPos, ...(parsed.timerPos ?? {}) },
       gradeScale: { ...DEFAULTS.gradeScale, ...(parsed.gradeScale ?? {}) },
+      reminders: { ...DEFAULTS.reminders, ...(parsed.reminders ?? {}) },
       // A layout saved before a panel existed, or after one was retired, is
       // still a valid layout — unknown ids are simply dropped at render.
       dashboard: Array.isArray(parsed.dashboard) && parsed.dashboard.length
@@ -89,6 +97,7 @@ interface SettingsStore extends AppSettings {
   set<K extends keyof AppSettings>(key: K, value: AppSettings[K]): void;
   setPreset(tool: ToolId, patch: Partial<ToolSettings>): void;
   setTimer(patch: Partial<AppSettings['timer']>): void;
+  setReminders(patch: Partial<AppSettings['reminders']>): void;
   preset(tool: ToolId): ToolSettings;
   reset(): void;
 }
@@ -111,6 +120,10 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   },
   setTimer(patch) {
     set({ timer: { ...get().timer, ...patch } });
+    persist(get());
+  },
+  setReminders(patch) {
+    set({ reminders: { ...get().reminders, ...patch } });
     persist(get());
   },
   preset(tool) {

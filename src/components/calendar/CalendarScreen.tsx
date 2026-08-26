@@ -7,17 +7,22 @@ import { useTimer } from '@/state/timerStore';
 import { useT, L, useLang, monthTitle, weekdayNames, clockTime, shortDate, formatDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Screen } from '../shell/Screen';
+import { Modal } from '../ui';
 import { Icon } from '../Icon';
 import { Button, Card, EmptyState, IconButton, Segmented, Sheet, useIsPhone, useNow } from '../kit';
 import { TaskRow } from '../tasks/TaskRow';
-import { Timetable } from '../planner/Timetable';
 import { eventsForRange, keyOf, monthGrid, weekDays, type CalEvent } from './events';
+import { TaskEditor } from '../plan/TaskEditor';
+import type { PlannerItem } from '@/types';
+import { AgendaView } from './AgendaView';
 
-type View = 'month' | 'week' | 'day' | 'timetable';
+type View = 'month' | 'week' | 'day' | 'agenda';
 
 const HOUR_FROM = 7;
 const HOUR_TO = 22;
 const HOUR_PX = 52;
+/** What the shortest drawable block is worth in minutes, at `HOUR_PX`. */
+const MIN_BLOCK_MINUTES = 32;
 
 /**
  * The calendar.
@@ -39,33 +44,40 @@ export function CalendarScreen() {
   const subjects = useWorkspace((s) => s.subjects);
   const types = useItemTypes((s) => s.custom);
 
-  const [view, setView] = useState<View>(phone ? 'day' : 'month');
+  const [view, setView] = useState<View>(phone ? 'agenda' : 'month');
   const [anchor, setAnchor] = useState(() => new Date());
   const [openDay, setOpenDay] = useState<Date | null>(null);
+  /** The entry whose details are open. Clicking one anywhere in the calendar
+      used to do nothing at all — the editor existed only on the plan screen. */
+  const [editing, setEditing] = useState<PlannerItem | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const days = useMemo(
-    () => (view === 'month' ? monthGrid(anchor) : view === 'week' ? weekDays(anchor) : [anchor]),
+    () =>
+      view === 'month' || view === 'agenda'
+        ? monthGrid(anchor)
+        : view === 'week'
+          ? weekDays(anchor)
+          : [anchor],
     [view, anchor],
   );
 
   const events = useMemo(
     () => eventsForRange(days, { items, schedule, sessions, subjects, types }, { includeSessions: view !== 'month' }),
-    [days, items, schedule, sessions, subjects, types, view],
+    // `lang` because a lesson with no subject is labelled in words.
+    [days, items, schedule, sessions, subjects, types, view, lang],
   );
 
   const step = (dir: number) => {
     const next = new Date(anchor);
-    if (view === 'month') next.setMonth(next.getMonth() + dir);
+    if (view === 'month' || view === 'agenda') next.setMonth(next.getMonth() + dir);
     else if (view === 'week') next.setDate(next.getDate() + dir * 7);
     else next.setDate(next.getDate() + dir);
     setAnchor(next);
   };
 
   const title =
-    view === 'timetable'
-      ? t(L('Седмична програма', 'Weekly timetable'))
-      : view === 'month'
+    view === 'month' || view === 'agenda'
       ? monthTitle(anchor.getTime(), lang)
       : view === 'week'
         ? `${shortDate(weekDays(anchor)[0].getTime(), lang)} — ${shortDate(weekDays(anchor)[6].getTime(), lang)}`
@@ -85,13 +97,11 @@ export function CalendarScreen() {
       subtitle={t(L('Програма, срокове и изпити — в един изглед.', 'Timetable, deadlines and exams in one view.'))}
       actions={
         <>
-          {view !== 'timetable' && (
-            <div className="flex items-center gap-1">
-              <IconButton icon="chevronLeft" label={t(L('Назад', 'Previous'))} onClick={() => step(-1)} />
-              <Button onClick={() => setAnchor(new Date())}>{t(S.today)}</Button>
-              <IconButton icon="chevronRight" label={t(L('Напред', 'Next'))} onClick={() => step(1)} />
-            </div>
-          )}
+          <div className="flex items-center gap-1">
+            <IconButton icon="chevronLeft" label={t(L('Назад', 'Previous'))} onClick={() => step(-1)} />
+            <Button onClick={() => setAnchor(new Date())}>{t(S.today)}</Button>
+            <IconButton icon="chevronRight" label={t(L('Напред', 'Next'))} onClick={() => step(1)} />
+          </div>
           <Segmented
             value={view}
             onChange={setView}
@@ -100,7 +110,7 @@ export function CalendarScreen() {
               { id: 'month', label: t(S.month) },
               { id: 'week', label: t(S.week) },
               { id: 'day', label: t(S.day) },
-              { id: 'timetable', label: t(L('Програма', 'Timetable')) },
+              { id: 'agenda', label: t(L('Списък', 'List')) },
             ]}
           />
           <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('item')}>
@@ -109,12 +119,17 @@ export function CalendarScreen() {
         </>
       }
     >
+      {view === 'agenda' && (
+        <AgendaView events={events} days={days} now={now} onOpenDay={setOpenDay} onEdit={setEditing} />
+      )}
+
       {view === 'month' && (
         <MonthView
           days={days}
           events={events}
           anchor={anchor}
           now={now}
+          phone={phone}
           onOpenDay={setOpenDay}
           onDragTask={setDragging}
           onDrop={dropOn}
@@ -122,27 +137,37 @@ export function CalendarScreen() {
         />
       )}
       {view === 'week' && <WeekView days={days} events={events} now={now} onOpenDay={setOpenDay} onDrop={dropOn} onDragTask={setDragging} />}
-      {view === 'day' && <DayView day={anchor} events={events.get(keyOf(anchor)) ?? []} now={now} />}
-      {view === 'timetable' && (
-        <div className="space-y-3">
-          <p className="text-[12.5px] text-muted">
-            {t(
-              L(
-                'Седмичната програма се повтаря всяка седмица и се показва във всички изгледи на календара.',
-                'The weekly timetable repeats every week and shows up in every calendar view.',
-              ),
-            )}
-          </p>
-          <Timetable />
-        </div>
+      {view === 'day' && (
+        <DayView day={anchor} events={events.get(keyOf(anchor)) ?? []} now={now} onEdit={setEditing} />
       )}
+      {/* The same editor the plan screen opens, reached from the calendar too.
+          A deadline you can see but not change is a deadline you have to go
+          somewhere else to change. */}
+      {editing &&
+        (phone ? (
+          <Sheet open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))}>
+            <TaskEditor item={editing} onClose={() => setEditing(null)} />
+          </Sheet>
+        ) : (
+          <Modal open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))} width={560}>
+            <TaskEditor item={editing} onClose={() => setEditing(null)} />
+          </Modal>
+        ))}
 
       <Sheet
         open={!!openDay}
         onClose={() => setOpenDay(null)}
         title={openDay ? formatDate(openDay.getTime(), lang, { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
       >
-        {openDay && <DayView day={openDay} events={events.get(keyOf(openDay)) ?? []} now={now} inSheet />}
+        {openDay && (
+          <DayView
+            day={openDay}
+            events={events.get(keyOf(openDay)) ?? []}
+            now={now}
+            inSheet
+            onEdit={setEditing}
+          />
+        )}
       </Sheet>
     </Screen>
   );
@@ -159,6 +184,7 @@ function MonthView({
   onDragTask,
   onDrop,
   dragging,
+  phone,
 }: {
   days: Date[];
   events: Map<string, CalEvent[]>;
@@ -168,6 +194,7 @@ function MonthView({
   onDragTask: (id: string | null) => void;
   onDrop: (d: Date) => void;
   dragging: string | null;
+  phone: boolean;
 }) {
   const t = useT();
   const lang = useLang();
@@ -205,7 +232,9 @@ function MonthView({
                 onDrop(day);
               }}
               onClick={() => onOpenDay(day)}
-              className="min-h-[104px] cursor-pointer border-b border-r border-line p-1.5 transition-colors last-in-row:border-r-0 hover:bg-surface-2"
+              className={`min-w-0 cursor-pointer overflow-hidden border-b border-r border-line p-1.5 transition-colors last-in-row:border-r-0 hover:bg-surface-2 ${
+                phone ? 'min-h-[58px]' : 'min-h-[104px]'
+              }`}
               style={{
                 background: isOver
                   ? 'var(--c-accent-soft)'
@@ -218,27 +247,52 @@ function MonthView({
               <div className="mb-1 flex items-center justify-between px-1">
                 <span
                   className={`t-num grid h-6 min-w-6 place-items-center rounded-full px-1 text-[12px] ${
-                    isToday ? 'font-semibold text-white' : 'text-muted'
+                    isToday ? 'font-semibold' : 'text-muted'
                   }`}
-                  style={isToday ? { background: 'var(--c-accent)' } : undefined}
+                  style={
+                    isToday ? { background: 'var(--c-accent)', color: 'var(--c-accent-text)' } : undefined
+                  }
                 >
                   {day.getDate()}
                 </span>
-                {list.length > 3 && <span className="t-num text-[10px] text-faint">+{list.length - 3}</span>}
+                {list.length > (phone ? 4 : 3) && (
+                  <span className="t-num text-[10px] text-faint">+{list.length - (phone ? 4 : 3)}</span>
+                )}
               </div>
 
-              <div className="space-y-1">
-                {list.slice(0, 3).map((event) => (
-                  <EventChip key={event.id} event={event} onDragTask={onDragTask} />
-                ))}
-              </div>
+              {/*
+                Seven columns across 375 px leaves about 48 px a cell, and a
+                chip that narrow fits one letter and a full stop — "Математика"
+                became "М.". A label nobody can read is worse than no label, so
+                the phone gets a row of dots: how many things, in which
+                subjects, and tap the day to read them.
+              */}
+              {phone ? (
+                <div className="flex flex-wrap gap-1 px-0.5">
+                  {list.slice(0, 4).map((event) => (
+                    <span
+                      key={event.id}
+                      className="h-[5px] w-[5px] rounded-full"
+                      style={{ background: event.color, opacity: event.done ? 0.4 : 1 }}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <div className="min-w-0 space-y-1">
+                  {list.slice(0, 3).map((event) => (
+                    <EventChip key={event.id} event={event} onDragTask={onDragTask} />
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
-      <p className="px-4 py-2 text-[11.5px] text-faint">
-        {t(L('Влачи задача върху друг ден, за да я пренасрочиш.', 'Drag a task onto another day to reschedule it.'))}
-      </p>
+      {!phone && (
+        <p className="px-4 py-2 text-[11.5px] text-faint">
+          {t(L('Влачи задача върху друг ден, за да я пренасрочиш.', 'Drag a task onto another day to reschedule it.'))}
+        </p>
+      )}
     </Card>
   );
 }
@@ -250,7 +304,17 @@ function EventChip({ event, onDragTask }: { event: CalEvent; onDragTask?: (id: s
       draggable={draggable}
       onDragStart={() => onDragTask?.(event.refId)}
       onDragEnd={() => onDragTask?.(null)}
-      className={`flex items-center gap-1.5 truncate rounded-[6px] px-1.5 py-[3px] text-[11px] ${
+      /**
+       * `min-w-0` is the whole fix, and it is not optional.
+       *
+       * A flex item will not shrink below the intrinsic width of its content
+       * unless it is told it may. So `truncate` on the label did nothing: the
+       * chip grew to fit the longest word and the text ran straight out of the
+       * day cell and across the one beside it. `truncate` on this container
+       * could not help either — it clips, but the container had already been
+       * stretched by the child.
+       */
+      className={`flex min-w-0 items-center gap-1.5 overflow-hidden rounded-[6px] px-1.5 py-[3px] text-[11px] ${
         draggable ? 'cursor-grab active:cursor-grabbing' : ''
       }`}
       style={{
@@ -261,11 +325,54 @@ function EventChip({ event, onDragTask }: { event: CalEvent; onDragTask?: (id: s
       }}
       title={event.title}
     >
-      {event.kind === 'exam' && <Icon name="graduation" size={10} strokeWidth={2.4} />}
-      {event.kind === 'class' && <span className="badge-dot" style={{ background: event.color }} />}
-      <span className="truncate">{event.title}</span>
+      {event.kind === 'exam' && <Icon name="graduation" size={10} strokeWidth={2.4} className="shrink-0" />}
+      {event.kind === 'class' && (
+        <span className="badge-dot shrink-0" style={{ background: event.color }} />
+      )}
+      <span className="min-w-0 flex-1 truncate">{event.title}</span>
     </div>
   );
+}
+
+/**
+ * Overlapping events, side by side.
+ *
+ * A single day column is narrow enough that two things at the same hour would
+ * otherwise be drawn on top of each other — the second one's title sitting
+ * across the first one's, which is exactly the "letters landing in the wrong
+ * cell" this is here to stop. Each event takes the leftmost lane whose
+ * previous occupant has already finished.
+ */
+function laneOut(list: CalEvent[]): { event: CalEvent; lane: number; lanes: number }[] {
+  const sorted = [...list].sort((a, b) => a.start - b.start);
+  const ends: number[] = [];
+  const placed = sorted.map((event) => {
+    /**
+     * The floor matters, and it is the reason a first attempt at this still
+     * produced overlaps.
+     *
+     * A block is never drawn shorter than about 26 px, or its title would not
+     * fit — which is roughly half an hour at this scale. So a ten-minute
+     * session at 18:00 occupies the screen down to 18:30 even though it ends
+     * at 18:10, and the next session at 18:20 does not clash *in time* while
+     * clashing very visibly *on screen*. Lanes have to be assigned against
+     * what is drawn, not against what is stored.
+     */
+    const drawnEnd = Math.max(event.end ?? 0, event.start + MIN_BLOCK_MINUTES * 60_000);
+    const finish = drawnEnd;
+    let lane = ends.findIndex((end) => end <= event.start);
+    if (lane === -1) {
+      lane = ends.length;
+      ends.push(finish);
+    } else {
+      ends[lane] = finish;
+    }
+    return { event, lane };
+  });
+  // Every block in a day shares one lane count, so the columns line up
+  // instead of each event choosing its own width.
+  const lanes = Math.max(1, ends.length);
+  return placed.map((p) => ({ ...p, lanes }));
 }
 
 /* ----------------------------------------------------------------- week */
@@ -303,7 +410,7 @@ function WeekView({
             return (
               <div
                 key={i}
-                className="min-h-[52px] space-y-1 border-l border-line p-1.5"
+                className="min-h-[52px] min-w-0 space-y-1 overflow-hidden border-l border-line p-1.5"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={() => onDrop(day)}
                 style={isToday ? { background: 'var(--c-accent-soft)' } : undefined}
@@ -330,7 +437,9 @@ function WeekView({
           <div>
             {hours.map((h) => (
               <div key={h} className="t-num relative text-[10.5px] text-faint" style={{ height: HOUR_PX }}>
-                <span className="absolute -top-1.5 right-2">{String(h).padStart(2, '0')}:00</span>
+                {/* Down, not up. At `-top-1.5` the 07:00 label hung above the
+                    grid and was clipped by the card's own rounded corner. */}
+                <span className="absolute right-2 top-1">{String(h).padStart(2, '0')}:00</span>
               </div>
             ))}
           </div>
@@ -354,33 +463,43 @@ function WeekView({
                   </div>
                 )}
 
-                {list.map((event) => {
+                {/* Same lanes as the day grid. Two focus sessions logged in the
+                    same hour used to be drawn at `inset-x-1` on top of each
+                    other, so the second one's title sat across the first — one
+                    block of overlapping letters, which is precisely the thing
+                    that looked broken. */}
+                {laneOut(list).map(({ event, lane, lanes }) => {
                   const start = new Date(event.start);
                   const top = (start.getHours() - HOUR_FROM + start.getMinutes() / 60) * HOUR_PX;
                   const minutes = event.end ? (event.end - event.start) / 60_000 : 45;
                   const height = Math.max(24, (minutes / 60) * HOUR_PX - 3);
                   if (top < -HOUR_PX) return null;
+                  const width = `calc((100% - 8px) / ${lanes})`;
                   return (
                     <div
                       key={event.id}
-                      className="absolute inset-x-1 overflow-hidden rounded-[8px] px-1.5 py-1 text-[11px]"
+                      title={event.title}
+                      className="absolute overflow-hidden rounded-[8px] px-1.5 py-1 text-[11px]"
                       style={{
                         top: Math.max(0, top),
+                        left: `calc(4px + ${lane} * ${width})`,
+                        width,
                         height,
-                        background:
-                          event.kind === 'session'
-                            ? `color-mix(in srgb, ${event.color} 10%, transparent)`
-                            : `color-mix(in srgb, ${event.color} 15%, transparent)`,
+                        background: `color-mix(in srgb, ${event.color} ${
+                          event.kind === 'session' ? 10 : 15
+                        }%, var(--c-surface))`,
                         borderLeft: `2.5px solid ${event.color}`,
                         color: event.color,
                       }}
                     >
-                      <div className="truncate font-medium">{event.title}</div>
-                      <div className="t-num truncate opacity-75">
-                        {clockTime(event.start, lang)}
-                        {event.room ? ` · ${event.room}` : ''}
-                        {event.minutes ? ` · ${event.minutes}′` : ''}
-                      </div>
+                      <div className="truncate font-medium leading-tight">{event.title}</div>
+                      {height >= 40 && (
+                        <div className="t-num truncate leading-tight opacity-75">
+                          {clockTime(event.start, lang)}
+                          {event.room ? ` · ${event.room}` : ''}
+                          {event.minutes ? ` · ${event.minutes}′` : ''}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -396,14 +515,17 @@ function WeekView({
 /* ------------------------------------------------------------------ day */
 
 function DayView({
+  day,
   events,
   now,
   inSheet,
+  onEdit,
 }: {
   day: Date;
   events: CalEvent[];
   now: number;
   inSheet?: boolean;
+  onEdit?: (item: PlannerItem) => void;
 }) {
   const t = useT();
   const lang = useLang();
@@ -411,49 +533,96 @@ function DayView({
   const timed = events.filter((e) => !e.allDay);
   const allDay = events.filter((e) => e.allDay);
 
+  const hours = Array.from({ length: HOUR_TO - HOUR_FROM }, (_, i) => HOUR_FROM + i);
+  const nowDate = new Date(now);
+  const isToday = keyOf(now) === keyOf(day);
+  const nowOffset = (nowDate.getHours() - HOUR_FROM + nowDate.getMinutes() / 60) * HOUR_PX;
+  const blocks = useMemo(() => laneOut(timed), [timed]);
+
   return (
     <div className={inSheet ? '' : 'grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]'}>
       <Card flush title={inSheet ? undefined : t(L('Часът по час', 'Hour by hour'))}>
-        {timed.length === 0 ? (
-          <EmptyState
-            compact
-            icon="clock"
-            title={t(L('Нищо с час за този ден', 'Nothing scheduled by the hour'))}
-            body={t(L('Часовете от седмичната програма и записаните сесии се показват тук.', 'Timetable classes and logged sessions appear here.'))}
-          />
-        ) : (
-          <ul className="space-y-1 p-3">
-            {timed.map((event) => {
+        {/* The same grid the week view draws, one column wide. A day that
+            reads as a list and a week that reads as a timetable are two
+            different mental models for the same records. */}
+        <div className="relative grid grid-cols-[52px_minmax(0,1fr)]">
+          <div>
+            {hours.map((h) => (
+              <div key={h} className="relative" style={{ height: HOUR_PX }}>
+                {/* Nudged down rather than up: the first label used to sit
+                    above the grid's own top edge and clip against the card. */}
+                <span className="t-num absolute right-2 top-1 text-[10.5px] text-faint">
+                  {String(h).padStart(2, '0')}:00
+                </span>
+              </div>
+            ))}
+          </div>
+
+          <div className="relative border-l border-line">
+            {hours.map((h) => (
+              <div key={h} className="border-b border-line" style={{ height: HOUR_PX }} />
+            ))}
+
+            {isToday && nowOffset >= 0 && nowOffset <= hours.length * HOUR_PX && (
+              <div className="pointer-events-none absolute inset-x-0 z-10" style={{ top: nowOffset }}>
+                <div className="h-px w-full" style={{ background: 'var(--c-danger)' }} />
+                <div
+                  className="absolute -left-1 -top-[3px] h-[7px] w-[7px] rounded-full"
+                  style={{ background: 'var(--c-danger)' }}
+                />
+              </div>
+            )}
+
+            {blocks.map(({ event, lane, lanes }) => {
+              const begin = new Date(event.start);
+              const top = (begin.getHours() - HOUR_FROM + begin.getMinutes() / 60) * HOUR_PX;
+              const minutes = event.end ? (event.end - event.start) / 60_000 : 45;
+              const height = Math.max(26, (minutes / 60) * HOUR_PX - 3);
+              if (top + height < 0) return null;
               const live = event.start <= now && (event.end ?? event.start) > now;
+              const width = `calc((100% - 8px) / ${lanes})`;
               return (
-                <li
+                <div
                   key={event.id}
-                  className="flex items-center gap-3 rounded-[12px] p-2.5"
+                  className="absolute overflow-hidden rounded-[8px] px-2 py-1"
                   style={{
-                    background: live ? 'var(--c-accent-soft)' : 'var(--c-surface-2)',
-                    borderLeft: `3px solid ${event.color}`,
+                    top: Math.max(0, top),
+                    height,
+                    left: `calc(4px + ${lane} * ${width})`,
+                    width,
+                    background: `color-mix(in srgb, ${event.color} ${event.kind === 'session' ? 10 : 15}%, var(--c-surface))`,
+                    borderLeft: `2.5px solid ${event.color}`,
+                    color: event.color,
+                    boxShadow: live ? `0 0 0 1px ${event.color}` : undefined,
                   }}
+                  title={event.title}
                 >
-                  <span className="t-num w-[46px] shrink-0 text-[12px] text-muted">
-                    {clockTime(event.start, lang)}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[13.5px] font-medium">{event.title}</span>
-                    <span className="mt-0.5 block truncate text-[11.5px] text-muted">
-                      {event.end ? `${Math.round((event.end - event.start) / 60_000)} ${t(L('мин', 'min'))}` : ''}
+                  <div className="truncate text-[12px] font-medium leading-tight">{event.title}</div>
+                  {/* Only when the block is tall enough to hold a second line;
+                      squeezing one into 26 px is how text ends up crossing the
+                      border into the hour below. */}
+                  {height >= 40 && (
+                    <div className="t-num truncate text-[10.5px] leading-tight opacity-75">
+                      {clockTime(event.start, lang)}
                       {event.room ? ` · ${event.room}` : ''}
-                      {event.kind === 'session' ? ` · ${t(L('записана сесия', 'logged session'))}` : ''}
-                    </span>
-                  </span>
-                  {live && (
-                    <span className="chip shrink-0" style={{ background: 'var(--c-accent)', color: '#fff' }}>
-                      {t(L('сега', 'now'))}
-                    </span>
+                      {event.minutes ? ` · ${event.minutes}′` : ''}
+                    </div>
                   )}
-                </li>
+                </div>
               );
             })}
-          </ul>
+          </div>
+        </div>
+
+        {timed.length === 0 && (
+          <p className="border-t border-line px-4 py-3 text-[12px] text-faint">
+            {t(
+              L(
+                'Няма нищо с час за този ден. Часовете от програмата и записаните сесии се показват тук.',
+                'Nothing scheduled by the hour. Timetable classes and logged sessions appear here.',
+              ),
+            )}
+          </p>
         )}
       </Card>
 
@@ -464,7 +633,9 @@ function DayView({
           <div className="px-2 py-2">
             {allDay.map((event) => {
               const item = items.find((i) => i.id === event.refId);
-              return item ? <TaskRow key={event.id} item={item} dense /> : null;
+              return item ? (
+                <TaskRow key={event.id} item={item} dense onEdit={onEdit} />
+              ) : null;
             })}
           </div>
         )}

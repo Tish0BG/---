@@ -8,7 +8,8 @@
         "run",
         "dev"
       ],
-      "port": 5180
+      "port": 5180,
+      "autoPort": true
     },
     {
       "name": "plauvia-preview",

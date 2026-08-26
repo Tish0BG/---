@@ -44,6 +44,8 @@ export function MobileNav({ onNewBoard, onUpload }: { onNewBoard?: () => void; o
   const cards = useCards((s) => s.cards);
   const [more, setMore] = useState(false);
   const [create, setCreate] = useState(false);
+  /** The current screen lives behind "More", so that tab is the active one. */
+  const elsewhere = MORE.some((m) => m.id === view);
 
   const badges: Partial<Record<AppView, number>> = {
     plan: dueToday(items).length + overdue(items).length,
@@ -58,19 +60,38 @@ export function MobileNav({ onNewBoard, onUpload }: { onNewBoard?: () => void; o
         key={entry.id}
         onClick={() => useApp.getState().go(entry.id)}
         aria-current={active ? 'page' : undefined}
-        className="relative flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-1"
+        className="relative flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-0.5"
         style={{ color: active ? 'var(--c-accent)' : 'var(--c-muted)' }}
       >
-        <span className="relative">
-          <Icon name={entry.icon} size={21} strokeWidth={active ? 2.1 : 1.8} />
+        {/*
+          The active tab is marked by the shape behind the icon, not only by
+          its colour. On a phone the bar is read at a glance and often in
+          sunlight, and "this one is slightly darker grey than those" is not a
+          signal that survives either.
+        */}
+        <span
+          className="relative grid h-7 w-12 place-items-center rounded-full transition-colors duration-150"
+          style={{ background: active ? 'var(--c-accent-soft)' : 'transparent' }}
+        >
+          <Icon name={entry.icon} size={20} strokeWidth={active ? 2.2 : 1.8} />
+          {/* A count, where there is one to give. A bare dot says "something"
+              and makes the reader open the screen to find out how much. */}
           {!!badge && (
             <span
-              className="absolute -right-1.5 -top-1 h-2 w-2 rounded-full"
-              style={{ background: 'var(--c-danger)', border: '1.5px solid var(--c-surface)' }}
-            />
+              className="t-num absolute -right-1 -top-0.5 grid h-[15px] min-w-[15px] items-center justify-center rounded-full px-[3px] text-[9.5px] font-semibold leading-none"
+              style={{
+                background: 'var(--c-danger)',
+                color: '#fff',
+                boxShadow: '0 0 0 2px var(--c-surface)',
+              }}
+            >
+              {badge > 9 ? '9+' : badge}
+            </span>
           )}
         </span>
-        <span className="text-[10px] font-medium">{t(VIEW_TITLES[entry.id])}</span>
+        <span className="text-[10px] font-medium" style={{ fontWeight: active ? 600 : 500 }}>
+          {t(VIEW_TITLES[entry.id])}
+        </span>
       </button>
     );
   };
@@ -129,10 +150,15 @@ export function MobileNav({ onNewBoard, onUpload }: { onNewBoard?: () => void; o
         <div className="relative w-[68px] shrink-0">
           <button
             onClick={() => setCreate(true)}
-            className="absolute left-1/2 top-0 grid h-[52px] w-[52px] -translate-x-1/2 -translate-y-[16px] cursor-pointer place-items-center rounded-full text-white active:scale-95"
+            className="absolute left-1/2 top-0 grid h-[52px] w-[52px] -translate-x-1/2 -translate-y-[16px] cursor-pointer place-items-center rounded-full active:scale-95"
             style={{
               background: 'var(--c-accent)',
-              boxShadow: '0 0 0 4px var(--c-bg), 0 8px 20px -8px var(--c-accent)',
+              color: 'var(--c-accent-text)',
+              // No opaque ring. The bar behind this is translucent glass, so a
+              // ring painted in `--c-bg` matched the page only when nothing
+              // had scrolled under it and showed as a pale halo the rest of
+              // the time. A plain shadow sits on any background.
+              boxShadow: '0 4px 14px -4px rgb(0 0 0 / 28%)',
               transition: 'transform 0.14s var(--ease)',
             }}
             aria-label={t(S.create)}
@@ -145,11 +171,19 @@ export function MobileNav({ onNewBoard, onUpload }: { onNewBoard?: () => void; o
 
         <button
           onClick={() => setMore(true)}
-          className="flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-1"
-          style={{ color: MORE.some((m) => m.id === view) ? 'var(--c-accent)' : 'var(--c-muted)' }}
+          aria-expanded={more}
+          className="flex h-full flex-1 cursor-pointer flex-col items-center justify-center gap-0.5"
+          style={{ color: elsewhere ? 'var(--c-accent)' : 'var(--c-muted)' }}
         >
-          <Icon name="grid" size={21} strokeWidth={1.8} />
-          <span className="text-[10px] font-medium">{t(L('Още', 'More'))}</span>
+          <span
+            className="grid h-7 w-12 place-items-center rounded-full transition-colors duration-150"
+            style={{ background: elsewhere ? 'var(--c-accent-soft)' : 'transparent' }}
+          >
+            <Icon name="grid" size={20} strokeWidth={elsewhere ? 2.2 : 1.8} />
+          </span>
+          <span className="text-[10px] font-medium" style={{ fontWeight: elsewhere ? 600 : 500 }}>
+            {t(L('Още', 'More'))}
+          </span>
         </button>
       </nav>
 

@@ -10,7 +10,7 @@ export interface GoalContext {
 }
 
 export const METRIC_LABEL: Record<GoalMetric, Msg> = {
-  minutes: L('Минути учене', 'Minutes studied'),
+  minutes: L('Минути фокус', 'Minutes focused'),
   tasks: L('Завършени задачи', 'Tasks completed'),
   cards: L('Прегледани карти', 'Cards reviewed'),
   pages: L('Прочетени страници', 'Pages read'),

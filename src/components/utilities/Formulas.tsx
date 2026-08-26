@@ -186,7 +186,7 @@ export function Formulas({ wid }: { wid: string }) {
                           {f.note && <div className="mt-0.5 text-[10.5px] text-faint">{f.note}</div>}
                         </div>
                         <button
-                          className="icon-btn h-6 w-6 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+                          className="icon-btn h-6 w-6 shrink-0 hover-reveal"
                           onClick={() => copy(f)}
                           title="Копирай"
                         >

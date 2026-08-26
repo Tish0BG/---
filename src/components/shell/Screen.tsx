@@ -65,7 +65,11 @@ export function Screen({
             {title && <h1 className="t-h1">{title}</h1>}
             {subtitle && <p className="mt-1.5 text-[13.5px] leading-snug text-muted">{subtitle}</p>}
           </div>
-          {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
+          {/* Full width on a phone so a screen's own actions can lay
+              themselves out across the row — a primary button that stretches,
+              a menu pinned to the end — instead of huddling at the left edge
+              under the title. */}
+          {actions && <div className="flex flex-wrap items-center gap-2 max-sm:w-full">{actions}</div>}
         </header>
       )}
       {toolbar && <div className="mb-4">{toolbar}</div>}

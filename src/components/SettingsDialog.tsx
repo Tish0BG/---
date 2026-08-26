@@ -12,13 +12,20 @@ import { useT, useLang, useLangStore, L, type Lang } from '@/i18n';
 import type { Accent, LearningProfile, PrivacySettings, Profile } from '@/types';
 import { claimUsername, normaliseUsername, validateUsername } from '@/services/usernameService';
 import { S } from '@/i18n/strings';
-import { Slider, Toggle } from './ui';
+import { Select, Slider, Toggle } from './ui';
 import { Button, IconButton, Sheet, useIsPhone } from './kit';
 import { BRAND } from '@/brand';
 import { Icon } from './Icon';
+import {
+  askPermission,
+  notifyPermission,
+  testNotification,
+  type NotifyPermission,
+} from '@/services/reminderService';
 import { SecuritySection } from './settings/SecuritySection';
 import { SyncSection } from './settings/SyncSection';
 import { DangerSection } from './settings/DangerSection';
+import { ProfileAvatar } from './profile/ProfileAvatar';
 
 type SectionId =
   | 'account'
@@ -42,7 +49,7 @@ const SECTIONS: { id: SectionId; icon: string; label: { bg: string; en: string }
   { id: 'appearance', icon: 'palette', label: L('Изглед и език', 'Appearance & language') },
   { id: 'access', icon: 'eye', label: L('Достъпност', 'Accessibility') },
   { id: 'privacy', icon: 'shield', label: L('Поверителност', 'Privacy') },
-  { id: 'study', icon: 'timer', label: L('Учене', 'Study') },
+  { id: 'study', icon: 'timer', label: L('Фокус и оценки', 'Focus & marks') },
   { id: 'notifications', icon: 'bell', label: L('Известия', 'Notifications') },
   { id: 'writing', icon: 'pencil', label: L('Писане', 'Writing') },
   { id: 'data', icon: 'archive', label: L('Данни и офлайн', 'Data & offline') },
@@ -632,22 +639,26 @@ function StudySection() {
 function NotificationsSection() {
   const t = useT();
   const s = useSettings();
-  const [permission, setPermission] = useState(
-    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission,
-  );
+  const [permission, setPermission] = useState<NotifyPermission>(notifyPermission());
 
-  const ask = async () => {
-    if (typeof Notification === 'undefined') return;
-    const result = await Notification.requestPermission();
+  /**
+   * The browser is asked at the moment the switch is flipped, not on arrival.
+   * A permission prompt that appears before anybody has asked for anything is
+   * a prompt that gets denied, and a denial is permanent.
+   */
+  const enable = async () => {
+    const result = await askPermission();
     setPermission(result);
-    if (result === 'granted') s.setTimer({ notify: true });
+    if (result === 'granted') s.setReminders({ enabled: true });
   };
+
+  const on = s.reminders.enabled && permission === 'granted';
 
   return (
     <div className="space-y-7">
       <Group
         title={t(L('В приложението', 'Inside the app'))}
-        hint={t(L('Камбанката горе събира просрочени задачи, наближаващи изпити, цели с краен срок и серии в риск. Списъкът се строи от твоите записи всеки път, когато го отвориш — нищо не се праща никъде.', 'The bell at the top gathers overdue tasks, exams coming up, goals near their deadline and streaks at risk. The list is built from your own records each time you open it — nothing is sent anywhere.'))}
+        hint={t(L('Камбанката горе събира просрочени задачи, наближаващи срокове, цели с краен срок и серии в риск. Списъкът се строи от твоите записи всеки път, когато го отвориш — нищо не се праща никъде.', 'The bell at the top gathers overdue tasks, deadlines coming up, goals near their date and streaks at risk. The list is built from your own records each time you open it — nothing is sent anywhere.'))}
       >
         <div className="card-quiet flex items-center gap-3 p-3">
           <Icon name="bellRing" size={18} className="text-accent" />
@@ -657,32 +668,106 @@ function NotificationsSection() {
         </div>
       </Group>
 
+      {/* ------------------------------------------------------ reminders */}
       <Group
-        title={t(L('Системни известия', 'System notifications'))}
-        hint={t(L('Използват се само за края на фокус блок, докато разделът е отворен.', 'Used only when a focus block ends, while the tab is open.'))}
+        title={t(L('Напомняния на устройството', 'Reminders on this device'))}
+        hint={t(
+          L(
+            'Записът с час си има напомняне; то идва като истинско известие, дори когато приложението е зад друг прозорец. Проверката се прави тук, на устройството — нищо не пътува до сървър.',
+            'An entry with a time carries a reminder, and it arrives as a real notification even when the app is behind another window. The checking happens here, on the device — nothing travels to a server.',
+          ),
+        )}
       >
         {permission === 'unsupported' ? (
           <p className="text-[12.5px] text-muted">
             {t(L('Този браузър не поддържа системни известия.', 'This browser does not support system notifications.'))}
           </p>
-        ) : permission === 'granted' ? (
-          <Toggle
-            checked={s.timer.notify}
-            onChange={(v) => s.setTimer({ notify: v })}
-            label={t(L('Известие в края на блок', 'Notify when a block ends'))}
-          />
-        ) : (
-          <div className="flex items-center gap-3">
-            <span className="flex-1 text-[12.5px] text-muted">
+        ) : permission !== 'granted' ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="min-w-[200px] flex-1 text-[12.5px] text-muted">
               {permission === 'denied'
                 ? t(L('Отказано е от браузъра. Разреши го от иконата до адреса.', 'Blocked by the browser — allow it from the icon next to the address bar.'))
                 : t(L('Плаувия ще поиска разрешение от браузъра.', 'Plauvia will ask the browser for permission.'))}
             </span>
-            <Button variant="outline" icon="bell" disabled={permission === 'denied'} onClick={() => void ask()}>
-              {t(L('Разреши', 'Allow'))}
+            <Button variant="primary" icon="bell" disabled={permission === 'denied'} onClick={() => void enable()}>
+              {t(L('Включи напомнянията', 'Turn reminders on'))}
             </Button>
           </div>
+        ) : (
+          <div className="space-y-3">
+            <Toggle
+              checked={s.reminders.enabled}
+              onChange={(v) => s.setReminders({ enabled: v })}
+              label={t(L('Напомняния за записи с час', 'Remind me about entries with a time'))}
+            />
+            <Toggle
+              checked={s.reminders.dueTimes}
+              onChange={(v) => s.setReminders({ dueTimes: v })}
+              disabled={!on}
+              label={t(L('И за срокове, на които си сложил час', 'And for deadlines that carry an hour'))}
+            />
+            <Toggle
+              checked={s.reminders.digest}
+              onChange={(v) => s.setReminders({ digest: v })}
+              disabled={!on}
+              label={t(L('Вечерна проверка: какво остана за днес', 'Evening check: what is still open today'))}
+            />
+
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="t-label mb-1 block">{t(L('Час на вечерната проверка', 'Evening check at'))}</span>
+                <input
+                  type="time"
+                  className="field t-num"
+                  disabled={!on || !s.reminders.digest}
+                  value={s.reminders.digestAt}
+                  onChange={(e) => s.setReminders({ digestAt: e.target.value || '18:00' })}
+                />
+              </label>
+              <label className="block">
+                <span className="t-label mb-1 block">{t(L('Колко по-рано', 'How early'))}</span>
+                <Select
+                  value={String(s.reminders.lead)}
+                  width={200}
+                  options={[0, 5, 10, 15, 30, 60].map((m) => ({
+                    value: String(m),
+                    label: m === 0 ? t(L('Точно навреме', 'Right on time')) : t(L(`${m} мин по-рано`, `${m} min earlier`)),
+                  }))}
+                  onChange={(v) => s.setReminders({ lead: Number(v) })}
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center gap-3">
+              <span className="flex-1 text-[12px] text-faint">
+                {t(
+                  L(
+                    'Известията се проверяват, докато разделът е отворен или приложението е инсталирано.',
+                    'Reminders are checked while the tab is open or the app is installed.',
+                  ),
+                )}
+              </span>
+              <Button variant="outline" icon="bellRing" onClick={() => void testNotification()}>
+                {t(L('Пробно известие', 'Send a test'))}
+              </Button>
+            </div>
+          </div>
         )}
+      </Group>
+
+      <Group
+        title={t(L('Фокус таймер', 'Focus timer'))}
+        hint={t(L('Използва се само за края на фокус блок, докато разделът е отворен.', 'Used only when a focus block ends, while the tab is open.'))}
+      >
+        <Toggle
+          checked={s.timer.notify}
+          onChange={(v) => {
+            if (v && permission !== 'granted') void enable();
+            s.setTimer({ notify: v });
+          }}
+          disabled={permission === 'unsupported' || permission === 'denied'}
+          label={t(L('Известие в края на блок', 'Notify when a block ends'))}
+        />
       </Group>
     </div>
   );
@@ -916,7 +1001,7 @@ function completion(profile: Profile, learning: LearningProfile): { done: number
   const checks = [
     profile.name.trim().length > 0,
     profile.username.trim().length > 0,
-    profile.avatar.length > 0,
+    profile.avatar.length > 0 || profile.photo.length > 0,
     learning.interests.length > 0,
     learning.goals.length > 0,
     learning.styles.length > 0,
@@ -967,12 +1052,7 @@ function ProfileSection() {
       </div>
 
       <div className="flex items-center gap-3">
-        <span
-          className="grid h-14 w-14 shrink-0 place-items-center rounded-[12px] text-[26px]"
-          style={{ background: `color-mix(in srgb, ${profile.color} 18%, transparent)` }}
-        >
-          {profile.avatar}
-        </span>
+        <ProfileAvatar size={56} />
         <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2">
           <input
             value={profile.name}

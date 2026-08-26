@@ -27,8 +27,8 @@ export const t = (v: P, lang: Lang): string => v[lang];
 /* ------------------------------------------------------------------ about */
 
 export const ABOUT_LEAD: P = {
-  bg: 'Plauvia е работно място за учене: учебниците, задачите, картите и часовете на едно място, вместо в пет приложения, които не се познават помежду си.',
-  en: 'Plauvia is a workspace for studying: the textbooks, the tasks, the cards and the hours in one place, instead of five apps that have never heard of each other.',
+  bg: 'Plauvia е работно място за деня ти: планът, напомнянията, целите, документите, картите и часовете на едно място, вместо в пет приложения, които не се познават помежду си.',
+  en: 'Plauvia is a workspace for your day: the plan, the reminders, the goals, the documents, the cards and the hours in one place, instead of five apps that have never heard of each other.',
 };
 
 export const ABOUT: Section[] = [
@@ -36,8 +36,8 @@ export const ABOUT: Section[] = [
     h: { bg: 'Защо съществува', en: 'Why it exists' },
     p: [
       {
-        bg: 'Повечето хора не се провалят в ученето, защото не могат да учат. Провалят се, защото планът живее в един тефтер, учебникът е PDF в друга папка, картите са в трето приложение, а никой от тях не знае колко часа наистина са изкарани. Plauvia събира точно тези четири неща и ги кара да четат едни и същи записи.',
-        en: 'Most people do not struggle because they cannot learn. They struggle because the plan lives in one notebook, the textbook is a PDF in another folder, the cards are in a third app, and none of them knows how many hours were actually put in. Plauvia puts those four things together and makes them read the same records.',
+        bg: 'Повечето хора не се провалят в плановете си, защото не могат да ги изпълнят. Провалят се, защото планът живее в един тефтер, напомнянията са в телефона, целите — никъде, а никой от тях не знае колко часа наистина са изкарани. Plauvia събира точно тези неща и ги кара да четат едни и същи записи.',
+        en: 'Most people do not struggle because they cannot do the work. They struggle because the plan lives in one notebook, the reminders live in a phone, the goals live nowhere, and none of them knows how many hours were actually put in. Plauvia puts those things together and makes them read the same records.',
       },
       {
         bg: 'Затова никое число в приложението не се въвежда на ръка. Нивата, целите, сериите и готовността за изпит се пресмятат наново от записите, които вече съществуват — фокус сесии, завършени задачи, прегледани карти. Число, което не може да се проследи до нещо направено, е украса.',
@@ -49,8 +49,8 @@ export const ABOUT: Section[] = [
     h: { bg: 'За кого е', en: 'Who it is for' },
     p: [
       {
-        bg: 'За ученици и студенти, които работят с учебници в PDF и искат да решават направо върху страницата. За всеки, който подготвя изпит и има нужда да види къде отиват часовете. Приложението е на български и на английски и работи еднакво на лаптоп, таблет и телефон.',
-        en: 'For school and university students who work from PDF textbooks and want to solve straight on the page. For anyone preparing for an exam who needs to see where the hours go. The app is in Bulgarian and English and works the same on a laptop, a tablet and a phone.',
+        bg: 'За всеки, който води деня си сам: с работа, с домакинство, с тренировки, с проекти отстрани. За ученици и студенти, които работят с учебници в PDF и искат да решават направо върху страницата. За всеки, който подготвя изпит или голям срок и има нужда да види къде отиват часовете. Приложението е на български и на английски и работи еднакво на лаптоп, таблет и телефон.',
+        en: 'For anyone running their own day — a job, a household, training, a project on the side. For school and university students who work from PDF textbooks and want to solve straight on the page. For anyone facing an exam or a deadline who needs to see where the hours go. The app is in Bulgarian and English and works the same on a laptop, a tablet and a phone.',
       },
     ],
   },
@@ -75,8 +75,8 @@ export const FAQ: { q: P; a: P }[] = [
   {
     q: { bg: 'Какво представлява Plauvia?', en: 'What is Plauvia?' },
     a: {
-      bg: 'Работно място за учене: отваряш учебник в PDF или празна дъска, пишеш направо върху страницата, изрязваш задача и тя става флашкарта, планираш седмицата и пускаш фокус сесия. Часовете, които запишеш, стават статистиката, целите и нивата.',
-      en: 'A workspace for studying: open a PDF textbook or a blank board, write straight on the page, cut a problem out and it becomes a flashcard, plan the week and run a focus session. The hours you log become the statistics, the goals and the levels.',
+      bg: 'Работно място за деня: планираш днес и дългия път на един екран, слагаш напомняния, отваряш документ или празна дъска, пишеш направо върху страницата, изрязваш нещо и то става флашкарта, пускаш фокус сесия. Часовете, които запишеш, стават статистиката, целите и нивата.',
+      en: 'A workspace for the day: plan today and the long haul on one screen, set reminders, open a document or a blank board, write straight on the page, cut something out and it becomes a flashcard, run a focus session. The hours you log become the statistics, the goals and the levels.',
     },
   },
   {

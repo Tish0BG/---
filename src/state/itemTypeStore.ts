@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { ItemType } from '@/types';
+import type { ItemType, PlannerItem } from '@/types';
 import { repo } from '@/services/storageService';
 import { uid } from '@/lib/util';
 import { currentLang, type Lang } from '@/i18n';
@@ -14,12 +14,16 @@ const KEY = 'itemTypes';
  * wrong often enough to be worth undoing: the same list is a rehearsal
  * schedule, a set of shifts, a reading plan, a stack of deadlines at work.
  *
- * So a "kind" is now a small record anybody can make. The three that ship are
+ * So a "kind" is now a small record anybody can make. The ones that ship are
  * still here, because they carry behaviour the rest of the app relies on — an
- * exam gets a countdown, homework defaults to a subject — and because deleting
- * the built-ins would orphan every entry already filed under them. Everything
- * beyond them is a name, an icon and a colour, which is exactly as much as a
- * type should ever be.
+ * exam gets a countdown, a reminder arrives with a time, a habit comes back
+ * tomorrow — and because deleting a built-in would orphan every entry already
+ * filed under it. Everything beyond them is a name, an icon and a colour,
+ * which is exactly as much as a type should ever be.
+ *
+ * The order below is the order of an ordinary day rather than of a timetable:
+ * the plain task first, then the two that make the planner useful outside
+ * school, and the schoolwork after them.
  */
 export const BUILTIN_TYPES: ItemType[] = [
   {
@@ -33,13 +37,43 @@ export const BUILTIN_TYPES: ItemType[] = [
     updatedAt: 0,
   },
   {
+    id: 'reminder',
+    name: 'Напомняне',
+    nameEn: 'Reminder',
+    icon: 'bell',
+    color: '#0ea5e9',
+    builtin: true,
+    order: 1,
+    updatedAt: 0,
+  },
+  {
+    id: 'habit',
+    name: 'Навик',
+    nameEn: 'Habit',
+    icon: 'refresh',
+    color: '#0d9488',
+    builtin: true,
+    order: 2,
+    updatedAt: 0,
+  },
+  {
+    id: 'errand',
+    name: 'Ангажимент',
+    nameEn: 'Errand',
+    icon: 'bolt',
+    color: '#9333ea',
+    builtin: true,
+    order: 3,
+    updatedAt: 0,
+  },
+  {
     id: 'homework',
     name: 'Домашно',
     nameEn: 'Homework',
     icon: 'pencil',
     color: null,
     builtin: true,
-    order: 1,
+    order: 4,
     updatedAt: 0,
   },
   {
@@ -49,14 +83,31 @@ export const BUILTIN_TYPES: ItemType[] = [
     icon: 'graduation',
     color: '#d97706',
     builtin: true,
-    order: 2,
+    order: 5,
     updatedAt: 0,
   },
 ];
 
+/**
+ * What a new entry of each built-in kind starts as.
+ *
+ * A reminder without a time is a to-do with extra steps, and a habit that
+ * does not come back is not a habit — so the two types that only make sense
+ * with a setting arrive with it already made.
+ */
+export const KIND_DEFAULTS: Record<string, Partial<Pick<PlannerItem, 'method' | 'repeat'>> & { remind?: boolean }> = {
+  reminder: { method: 'check', remind: true },
+  habit: { method: 'check', repeat: 'daily' },
+  exam: { method: 'timer' },
+};
+
 /** Icons offered when inventing a type. Every one of them reads at 14 px. */
 export const TYPE_ICONS = [
   'listTodo',
+  'bell',
+  'refresh',
+  'home',
+  'coffee',
   'pencil',
   'graduation',
   'book',
@@ -78,7 +129,6 @@ export const TYPE_ICONS = [
   'send',
   'shield',
   'leaf',
-  'coffee',
 ];
 
 /** Ten hues that stay legible on both themes — the subject palette, reused. */

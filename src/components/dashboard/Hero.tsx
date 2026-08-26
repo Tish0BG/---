@@ -70,8 +70,28 @@ export function Hero({
   }
 
   return (
-    <section className="animate-rise">
-      <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
+    /**
+     * The band is a surface of its own, not text floating on the page.
+     *
+     * Everything below it is a card; a greeting and two buttons sitting bare
+     * on the ground above a grid of cards reads as a page that started
+     * halfway down. The wash is the accent at six per cent — enough that the
+     * eye knows this row is the header, far too little to compete with the
+     * one coloured button inside it.
+     */
+    <section
+      className="animate-rise card card-raised relative overflow-hidden p-4 sm:p-5"
+      style={{
+        background:
+          'linear-gradient(122deg, color-mix(in srgb, var(--c-accent) 7%, var(--c-surface)) 0%, var(--c-surface) 52%)',
+      }}
+    >
+      <span
+        aria-hidden
+        className="pointer-events-none absolute -right-16 -top-24 h-56 w-56 rounded-full opacity-[0.10] blur-3xl"
+        style={{ background: 'var(--grad-accent)' }}
+      />
+      <div className="relative flex flex-wrap items-start justify-between gap-x-6 gap-y-4">
         <div className="min-w-0">
           <h1 className="t-h1">
             {t(greeting(now.getHours()))}
@@ -89,7 +109,7 @@ export function Hero({
             its own, which reads as a mistake. */}
         <div className="flex w-full items-center gap-2 sm:w-auto">
           <Button
-            className="flex-1 sm:flex-none"
+            className="min-w-0 flex-1 whitespace-nowrap sm:flex-none"
             variant="primary"
             size="lg"
             icon="timer"
@@ -100,10 +120,14 @@ export function Hero({
               useTimer.getState().start();
             }}
           >
-            {t(L('Започни фокус', 'Start focus'))}
+            {/* Two words on a phone, three on anything wider: "Започни фокус"
+                wraps a large button onto two lines at 375 px, and a button
+                that changes height is a row that jumps. */}
+            <span className="sm:hidden">{t(L('Фокус', 'Focus'))}</span>
+            <span className="hidden sm:inline">{t(L('Започни фокус', 'Start focus'))}</span>
           </Button>
           <Button
-            className="flex-1 sm:flex-none"
+            className="min-w-0 flex-1 whitespace-nowrap sm:flex-none"
             variant="outline"
             size="lg"
             icon="cards"
@@ -168,7 +192,7 @@ export function Hero({
       </div>
 
       {/* --------------------------------------------------------- level */}
-      <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-3">
+      <div className="relative mt-5 flex flex-wrap items-center gap-x-5 gap-y-3 border-t border-line pt-4">
         <div className="min-w-[210px] flex-1">
           <div className="mb-1.5 flex items-baseline justify-between gap-2">
             <span className="text-[12.5px] font-semibold">
@@ -179,12 +203,12 @@ export function Hero({
               {level.xp - level.floor} / {level.ceiling - level.floor} XP
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
+          <div className="h-2 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
             <div
               className="h-full rounded-full"
               style={{
                 width: `${Math.max(2, level.progress * 100)}%`,
-                background: 'var(--c-accent)',
+                background: 'var(--grad-accent)',
                 transition: 'width 0.8s var(--ease-out)',
               }}
             />

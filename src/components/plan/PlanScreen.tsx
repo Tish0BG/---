@@ -16,10 +16,11 @@ import { useT, L, useLang, shortDate, formatDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Screen } from '../shell/Screen';
 import { Icon } from '../Icon';
-import { MenuItem, Modal, Popover, Select, useConfirm } from '../ui';
+import { MenuItem, Modal, Popover, Select } from '../ui';
 import { Button, Card, EmptyState, Segmented, Sheet, Tabs, useIsPhone } from '../kit';
 import { TaskRow } from '../tasks/TaskRow';
 import { TaskEditor } from './TaskEditor';
+import { PlanBoard, clearDone } from './PlanBoard';
 import { GoalsScreen } from '../goals/GoalsScreen';
 import { ExamsScreen } from '../exams/ExamsScreen';
 import { TypeManager } from './TypeManager';
@@ -35,12 +36,19 @@ type Bucket = 'today' | 'upcoming' | 'overdue' | 'someday' | 'done';
  * after school, and between them they took a quarter of the navigation for
  * one idea: things you owe your future self.
  *
- * They are one screen now. What used to be the difference between them is a
- * *type* — and types are something a person can invent, so the list holds a
- * rehearsal and a shift as comfortably as it holds a physics test. Where a
+ * They are one screen now, with three faces:
+ *
+ *   Board — the day and the long view side by side, which is where anybody
+ *           who opens the app in the morning wants to land. It is the default.
+ *   List  — the same records as one column with every filter available, for
+ *           sorting out a backlog rather than working a day.
+ *   Goals — the long view in full.
+ *
+ * What used to be the difference between the old screens is a *type* — and
+ * types are something a person can invent, so the list holds a rehearsal, a
+ * shift and a dentist's appointment as comfortably as a physics test. Where a
  * type wants a different presentation it gets one: picking "exam" swaps the
- * plain list for the countdown board, because "how many days and how ready"
- * is a genuinely different question from "what is due Thursday".
+ * plain list for the countdown board.
  */
 export function PlanScreen() {
   const t = useT();
@@ -58,7 +66,6 @@ export function PlanScreen() {
   const [bucket, setBucket] = useState<Bucket>('today');
   const [editing, setEditing] = useState<PlannerItem | null>(null);
   const [types, setTypes] = useState(false);
-  const { confirm, element } = useConfirm();
 
   const typeList = useMemo(() => allTypes(custom), [custom]);
 
@@ -96,12 +103,14 @@ export function PlanScreen() {
   const doneToday = buckets.done.filter((i) => (i.completedAt ?? 0) >= startOfDay()).length;
   const live = activeGoals(goals).length;
   const pressing = buckets.today.length + buckets.overdue.length;
+  const open = buckets.today.length + buckets.overdue.length + buckets.upcoming.length + buckets.someday.length;
 
   /** "Exam" is not a filter over the list — it is a different way of reading it. */
   const asBoard = tab === 'work' && kind === 'exam';
 
   return (
     <Screen
+      width={tab === 'board' ? 'wide' : 'default'}
       title={t(L('План', 'Plan'))}
       subtitle={
         tab === 'goals'
@@ -114,27 +123,43 @@ export function PlanScreen() {
             )
       }
       actions={
-        <>
+        /* On a phone the row is the width of the screen: the one button
+           anybody came here to press stretches across it and the menu sits at
+           the end of the same line. Left to wrap, the three-dot button ended
+           up alone on a line above the primary action, which reads as a
+           mistake rather than as a layout. */
+        <div className="flex w-full items-center gap-2 sm:w-auto">
           {/* On a phone the secondary actions fold into a menu. Three buttons
               across 375 px wrap onto two rows, and the rarest of them —
               clearing what is already finished — ends up taking a line of its
               own above the one thing anybody came here to press. */}
           {!phone && tab === 'work' && buckets.done.length > 0 && (
-            <Button
-              icon="trash"
-              onClick={() =>
-                confirm(
-                  t(L('Да изтрия ли всички завършени записи?', 'Delete every completed entry?')),
-                  () => void usePlanner.getState().clearCompleted(),
-                )
-              }
-            >
+            <Button icon="trash" onClick={() => void clearDone(t)}>
               {t(L('Изчисти завършените', 'Clear completed'))}
             </Button>
           )}
           {!phone && (
             <Button icon="layers" onClick={() => setTypes(true)}>
               {t(L('Типове', 'Types'))}
+            </Button>
+          )}
+          {tab === 'goals' ? (
+            <Button
+              className="flex-1 whitespace-nowrap sm:flex-none"
+              variant="primary"
+              icon="plus"
+              onClick={() => useApp.getState().setQuick('goal')}
+            >
+              {t(L('Нова цел', 'New goal'))}
+            </Button>
+          ) : (
+            <Button
+              className="flex-1 whitespace-nowrap sm:flex-none"
+              variant="primary"
+              icon="plus"
+              onClick={() => useApp.getState().setQuick('item', kind ?? 'task')}
+            >
+              {t(L('Нов запис', 'New entry'))}
             </Button>
           )}
           {phone && (
@@ -164,10 +189,7 @@ export function PlanScreen() {
                       label={t(L('Изчисти завършените', 'Clear completed'))}
                       onClick={() => {
                         close();
-                        confirm(
-                          t(L('Да изтрия ли всички завършени записи?', 'Delete every completed entry?')),
-                          () => void usePlanner.getState().clearCompleted(),
-                        );
+                        void clearDone(t);
                       }}
                     />
                   )}
@@ -175,20 +197,7 @@ export function PlanScreen() {
               )}
             </Popover>
           )}
-          {tab === 'goals' ? (
-            <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('goal')}>
-              {t(L('Нова цел', 'New goal'))}
-            </Button>
-          ) : (
-            <Button
-              variant="primary"
-              icon="plus"
-              onClick={() => useApp.getState().setQuick('item', kind ?? 'task')}
-            >
-              {t(L('Нов запис', 'New entry'))}
-            </Button>
-          )}
-        </>
+        </div>
       }
       toolbar={
         <div className="space-y-3">
@@ -196,10 +205,39 @@ export function PlanScreen() {
             value={tab}
             onChange={(v: PlanTab) => useApp.getState().setPlanTab(v)}
             items={[
-              { id: 'work', label: t(L('Работа', 'Work')), icon: 'listTodo', count: pressing },
+              { id: 'board', label: t(L('Табло', 'Board')), icon: 'dashboard', count: pressing },
+              { id: 'work', label: t(L('Списък', 'List')), icon: 'listTodo', count: open },
               { id: 'goals', label: t(S.goals), icon: 'target', count: live },
             ]}
           />
+
+          {tab === 'board' && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="flex-1 text-[12px] text-faint">
+                {t(
+                  phone
+                    ? L(
+                        'Всеки запис има меню: „За днес“, „За утре“, напомняне.',
+                        'Every entry has a menu: move to today, to tomorrow, remind me.',
+                      )
+                    : L(
+                        'Дърпай записи от „Напред“ в „Днес“ — денят се подрежда с ръка.',
+                        'Drag entries from Ahead into Today — the day gets arranged by hand.',
+                      ),
+                )}
+              </span>
+              <FilterMenu
+                types={typeList}
+                kind={kind}
+                subjects={subjects}
+                subjectId={filterSubject}
+                items={items}
+                onKind={(id) => useApp.getState().setPlanKind(id)}
+                onSubject={setFilter}
+                onManage={() => setTypes(true)}
+              />
+            </div>
+          )}
 
           {tab === 'work' && (
             <>
@@ -261,34 +299,37 @@ export function PlanScreen() {
                 />
               </div>
 
-              {/* Whatever is filtered says so, in words, with a way out. A
-                  filter you cannot see is a list that is lying to you. */}
-              {(kind || filterSubject) && (
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-[11.5px] text-faint">{t(L('Показва се:', 'Showing:'))}</span>
-                  {kind && (
-                    <ActiveChip
-                      label={typeName(typeOf(kind, custom), lang)}
-                      icon={typeOf(kind, custom).icon}
-                      color={typeOf(kind, custom).color ?? undefined}
-                      onClear={() => useApp.getState().setPlanKind(null)}
-                    />
-                  )}
-                  {filterSubject && (
-                    <ActiveChip
-                      label={subjects.find((s) => s.id === filterSubject)?.name ?? ''}
-                      color={subjects.find((s) => s.id === filterSubject)?.color}
-                      onClear={() => setFilter(null)}
-                    />
-                  )}
-                </div>
-              )}
             </>
+          )}
+
+          {/* Whatever is filtered says so, in words, with a way out. A
+              filter you cannot see is a list that is lying to you. */}
+          {tab !== 'goals' && (kind || filterSubject) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-[11.5px] text-faint">{t(L('Показва се:', 'Showing:'))}</span>
+              {kind && (
+                <ActiveChip
+                  label={typeName(typeOf(kind, custom), lang)}
+                  icon={typeOf(kind, custom).icon}
+                  color={typeOf(kind, custom).color ?? undefined}
+                  onClear={() => useApp.getState().setPlanKind(null)}
+                />
+              )}
+              {filterSubject && (
+                <ActiveChip
+                  label={subjects.find((s) => s.id === filterSubject)?.name ?? ''}
+                  color={subjects.find((s) => s.id === filterSubject)?.color}
+                  onClear={() => setFilter(null)}
+                />
+              )}
+            </div>
           )}
         </div>
       }
     >
-      {tab === 'goals' ? (
+      {tab === 'board' ? (
+        <PlanBoard onEdit={setEditing} />
+      ) : tab === 'goals' ? (
         <GoalsScreen embedded />
       ) : asBoard ? (
         <ExamsScreen embedded />
@@ -387,7 +428,6 @@ export function PlanScreen() {
           </Modal>
         ))}
 
-      {element}
     </Screen>
   );
 }
@@ -471,8 +511,8 @@ function FilterMenu({
           <span className="hidden sm:inline">{t(L('Филтри', 'Filters'))}</span>
           {active > 0 && (
             <span
-              className="t-num grid h-[17px] min-w-[17px] place-items-center rounded-full px-1 text-[10.5px] font-semibold text-white"
-              style={{ background: 'var(--c-accent)' }}
+              className="t-num grid h-[17px] min-w-[17px] place-items-center rounded-full px-1 text-[10.5px] font-semibold"
+              style={{ background: 'var(--c-accent)', color: 'var(--c-accent-text)' }}
             >
               {active}
             </span>

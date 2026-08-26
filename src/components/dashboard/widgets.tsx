@@ -151,7 +151,7 @@ function TasksToday() {
           ? t(L(`${late.length} просрочени чакат`, `${late.length} overdue waiting`))
           : t(L('Всичко е в срок.', 'Everything on time.'))
       }
-      onClick={() => useApp.getState().goPlan('work')}
+      onClick={() => useApp.getState().goPlan('board')}
     />
   );
 }
@@ -686,7 +686,7 @@ function TodayClasses() {
                   </span>
                 </span>
                 {now && (
-                  <span className="chip shrink-0" style={{ background: 'var(--c-accent)', color: '#fff' }}>
+                  <span className="chip shrink-0" style={{ background: 'var(--c-accent)', color: 'var(--c-accent-text)' }}>
                     {t(L('сега', 'now'))}
                   </span>
                 )}
@@ -879,7 +879,7 @@ function ByType() {
       className="h-full"
       title={t(L('Отворено по вид', 'Open by type'))}
       icon="layers"
-      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan('work')} />}
+      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan('board')} />}
     >
       {rows.length === 0 ? (
         <EmptyState

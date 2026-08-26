@@ -46,18 +46,25 @@ export const SUBJECT_ICONS = [
  *
  * Nothing here is created on its own. These are names on buttons: a subject
  * appears when somebody taps one, and never before.
+ *
+ * The list opens on the parts of an ordinary life — work, home, health, money
+ * — and school follows after them. A "subject" here is simply a thing you
+ * spend time on: the app cannot know whether that is chemistry or the flat,
+ * and the suggestions should not pretend otherwise.
  */
 export const SUGGESTED_SUBJECTS: { icon: string; bg: string; en: string }[] = [
+  { icon: 'bolt', bg: 'Работа', en: 'Work' },
+  { icon: 'home', bg: 'Дом', en: 'Home' },
+  { icon: 'leaf', bg: 'Здраве и спорт', en: 'Health & training' },
+  { icon: 'scale', bg: 'Финанси', en: 'Money' },
+  { icon: 'rocket', bg: 'Личен проект', en: 'Side project' },
+  { icon: 'palette', bg: 'Хоби', en: 'Hobby' },
   { icon: 'sigma', bg: 'Математика', en: 'Mathematics' },
   { icon: 'book', bg: 'Български език и литература', en: 'Literature' },
   { icon: 'globe', bg: 'Английски език', en: 'English' },
   { icon: 'atom', bg: 'Физика', en: 'Physics' },
   { icon: 'flask', bg: 'Химия', en: 'Chemistry' },
-  { icon: 'leaf', bg: 'Биология', en: 'Biology' },
-  { icon: 'target', bg: 'История', en: 'History' },
-  { icon: 'globe', bg: 'География', en: 'Geography' },
   { icon: 'code', bg: 'Информатика', en: 'Computer science' },
-  { icon: 'palette', bg: 'Изкуство', en: 'Art' },
 ];
 
 /** The same list, resolved to the names a person is actually being shown. */
@@ -69,6 +76,7 @@ export const EMPTY_PROFILE: Profile = {
   lastName: '',
   username: '',
   avatar: '🦉',
+  photo: '',
   color: SUBJECT_COLORS[0],
   school: '',
   grade: '',

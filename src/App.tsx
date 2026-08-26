@@ -14,11 +14,13 @@ import { useGame } from '@/state/gameStore';
 import { dueCount, useCards } from '@/state/cardStore';
 import { requestPersistence } from '@/services/db';
 import { installProgressEffects } from '@/services/progressBus';
+import { installReminders } from '@/services/reminderService';
 import { openDoc } from '@/services/openDoc';
 import { useShortcuts } from '@/hooks/useShortcuts';
 import { useLangStore } from '@/i18n';
 import { installRouting, isUnknownPath, useRoute } from '@/state/routeStore';
 import { applyAppPath } from '@/state/appAddress';
+import { clearPendingSignUp, readPendingSignUp } from '@/state/signupHandoff';
 import { HOME, entryPath, isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
@@ -85,6 +87,9 @@ const MfaChallenge = lazy(() =>
   import('@/components/auth/MfaChallenge').then((m) => ({ default: m.MfaChallenge })),
 );
 const Onboarding = lazy(() => import('@/components/onboarding/Onboarding').then((m) => ({ default: m.Onboarding })));
+const ProfileSetup = lazy(() =>
+  import('@/components/auth/ProfileSetup').then((m) => ({ default: m.ProfileSetup })),
+);
 const SettingsDialog = lazy(() =>
   import('@/components/SettingsDialog').then((m) => ({ default: m.SettingsDialog })),
 );
@@ -129,6 +134,15 @@ export default function App() {
   const [newBoard, setNewBoard] = useState(false);
   const [uploadTick, setUploadTick] = useState(0);
   const [onboarded, setOnboarded] = useState(() => localStorage.getItem('plauvia.onboarded.v2') === 'yes');
+  /**
+   * Set the moment the handle and the face have been chosen.
+   *
+   * The flag itself lives in `sessionStorage` and is read on each render
+   * rather than snapshotted at mount, because it is written *during* this
+   * session — by a form two screens ago — and a value captured at mount would
+   * always be the one from before the person started registering.
+   */
+  const [profileSetUp, setProfileSetUp] = useState(false);
 
   const due = useMemo(() => dueCount(cards), [cards]);
 
@@ -142,6 +156,7 @@ export default function App() {
     const stopSync = installSyncEffects();
     const stopProgress = installProgressEffects();
     const stopRouting = installRouting();
+    const stopReminders = installReminders();
     void requestPersistence();
     void useAuth.getState().init();
     void useWorkspace.getState().init();
@@ -173,6 +188,7 @@ export default function App() {
       stopSync();
       stopProgress();
       stopRouting();
+      stopReminders();
     };
   }, []);
 
@@ -431,6 +447,30 @@ export default function App() {
    */
   if (signedIn && restoring && !documentsReady && !everSynced) {
     return <Splash label="…" />;
+  }
+
+  /**
+   * Registered a minute ago, verified, and signed in — but still nobody in
+   * particular. The handle and the face are asked for here, on this side of
+   * the session, because the code that created the session is what unmounted
+   * the form that would otherwise have asked.
+   *
+   * Only ever for an account made in this tab, in this session: the note is
+   * written by the sign-up form and by nothing else, so signing in on a
+   * second device never lands here.
+   */
+  if (signedIn && !profileSetUp && readPendingSignUp()) {
+    return (
+      <Suspense fallback={<Splash />}>
+        <ProfileSetup
+          onDone={() => {
+            clearPendingSignUp();
+            setProfileSetUp(true);
+          }}
+        />
+        <Toaster />
+      </Suspense>
+    );
   }
 
   /**

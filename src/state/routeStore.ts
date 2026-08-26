@@ -66,8 +66,21 @@ const authFragment = (): string =>
 /** The address a link to this page should carry, for `href` attributes. */
 export const hrefFor = (path: string, lang?: Lang): string => resolve(path, lang).href;
 
+/**
+ * The address this tab actually opened on, remembered once.
+ *
+ * The app corrects the address as it starts — a signed-out visitor at
+ * `/register` is moved to the door's canonical address, a screen is moved to
+ * `/login` — and in development every effect runs twice. Re-reading
+ * `location.pathname` on the second run therefore adopts the *corrected*
+ * address as though the person had asked for it, which is how a link to
+ * `/register` used to open the sign-in form. Captured at module load, before
+ * anything has had the chance to rewrite it.
+ */
+const ENTRY_PATH = entryPath(window.location.pathname);
+
 export const useRoute = create<RouteStore>((set) => ({
-  path: entryPath(window.location.pathname),
+  path: ENTRY_PATH,
 
   go(path, opts) {
     const { href: next, lang } = resolve(path, opts?.lang);
@@ -154,7 +167,7 @@ export function installRouting(): () => void {
 
   // A pasted link or a bookmark: `/app/calendar` should open the calendar,
   // not the screen somebody last had open on this device.
-  enter(adopt(window.location.pathname));
+  enter(adopt(ENTRY_PATH));
 
   return () => {
     window.removeEventListener('popstate', onPop);

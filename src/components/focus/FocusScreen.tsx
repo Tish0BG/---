@@ -22,7 +22,7 @@ import { Icon } from '../Icon';
 import { Toggle } from '../ui';
 import { BarChart, Button, Card, EmptyState, IconButton, ProgressRing, Tooltip } from '../kit';
 import { DueChip } from '../planner/DueChip';
-import { MODE_COLOR } from '../timer/TimerPanel';
+import { MODE_COLOR, MODE_INK } from '../timer/TimerPanel';
 
 const MODES: TimerMode[] = ['work', 'break', 'long'];
 
@@ -59,6 +59,7 @@ export function FocusScreen() {
   const total = timer[mode] * 60;
   const progress = total ? 1 - left / total : 0;
   const accent = MODE_COLOR[mode];
+  const ink = MODE_INK[mode];
   const goalPct = Math.min(1, today.minutes / Math.max(1, timer.goal));
   const spent = Math.max(0, Math.round((total - left) / 60));
 
@@ -149,8 +150,8 @@ export function FocusScreen() {
               />
               <button
                 onClick={() => store().toggleRun()}
-                className="grid h-[76px] w-[76px] cursor-pointer place-items-center rounded-full text-white transition-transform active:scale-95"
-                style={{ background: accent, boxShadow: `0 10px 28px -12px ${accent}` }}
+                className="grid h-[76px] w-[76px] cursor-pointer place-items-center rounded-full transition-transform active:scale-95"
+                style={{ background: accent, color: ink, boxShadow: `0 10px 28px -12px ${accent}` }}
                 aria-label={t(running ? S.pause : S.start)}
               >
                 <Icon name={running ? 'pause' : 'play'} size={29} fill={!running} />
@@ -500,9 +501,10 @@ function PickRow({
         style={{
           borderColor: on ? 'var(--c-accent)' : 'var(--c-line-strong)',
           background: on ? 'var(--c-accent)' : 'transparent',
+          color: 'var(--c-accent-text)',
         }}
       >
-        {on && <Icon name="check" size={12} className="text-white" strokeWidth={3} />}
+        {on && <Icon name="check" size={12} strokeWidth={3} />}
       </span>
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5">

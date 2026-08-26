@@ -29,8 +29,22 @@ export const MODE_COLOR: Record<TimerMode, string> = {
   long: 'var(--c-deep)',
 };
 
+/**
+ * What to write on top of `MODE_COLOR`, when the mode colour is a solid fill.
+ *
+ * Always use this instead of white. The focus colour follows the accent, and
+ * the accent is ink in light and paper in dark — so a hard-coded white label
+ * on the start button is invisible in exactly one of the two themes, which is
+ * the sort of thing that ships.
+ */
+export const MODE_INK: Record<TimerMode, string> = {
+  work: 'var(--c-timer-focus-ink)',
+  break: 'var(--c-rest-ink)',
+  long: 'var(--c-deep-ink)',
+};
+
 const MODES: TimerMode[] = ['work', 'break', 'long'];
-const SHORT_LABEL: Record<TimerMode, string> = { work: 'Учене', break: 'Почивка', long: 'Дълга' };
+const SHORT_LABEL: Record<TimerMode, string> = { work: 'Работа', break: 'Почивка', long: 'Дълга' };
 
 /* ------------------------------------------------------------------ timer */
 
@@ -227,7 +241,7 @@ export function TasksTab() {
               ? tr(L(`${list.length} отворени`, `${list.length} open`))
               : ''}
         </span>
-        <button className="cursor-pointer text-accent" onClick={() => useApp.getState().goPlan('work')}>
+        <button className="cursor-pointer text-accent" onClick={() => useApp.getState().goPlan('board')}>
           {tr(L('Отвори плана', 'Open the plan'))}
         </button>
       </div>
@@ -376,7 +390,7 @@ export function TimerSettingsTab() {
       <section>
         <h4 className="mb-1.5 label">Продължителност</h4>
         <div className="space-y-1">
-          <Row label="Учене">
+          <Row label="Работа">
             <Stepper value={`${t.work} мин`} onDown={() => step('work', -5, 5, 180)} onUp={() => step('work', 5, 5, 180)} />
           </Row>
           <Row label="Почивка">

@@ -175,7 +175,7 @@ export function applyAppPath(path: string): void {
   const view = resolveView(head);
   // `/tasks`, `/goals` and `/exams` are the plan, opened on the half the old
   // address was asking for.
-  if (view === 'plan') app.goPlan(PLAN_TAB_FOR[head] ?? 'work', head === 'exams' ? 'exam' : null);
+  if (view === 'plan') app.goPlan(PLAN_TAB_FOR[head] ?? 'board', head === 'exams' ? 'exam' : null);
   else if (view) app.go(view);
 }
 

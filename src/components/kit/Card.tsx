@@ -45,10 +45,13 @@ export function Card({
       onClick={onClick}
     >
       {(title || action) && (
-        <header className="flex items-start justify-between gap-3 px-4 pt-3.5 pb-2">
+        <header className="flex items-start justify-between gap-3 px-4 pb-2.5 pt-4">
           <div className="min-w-0">
-            <h3 className="flex items-center gap-2 text-[13.5px] font-semibold tracking-[-0.01em]">
-              {icon && <Icon name={icon} size={15} className="text-faint" />}
+            <h3 className="flex items-center gap-2 text-[14px] font-semibold tracking-[-0.012em]">
+              {/* The icon is the card's own colour rather than the quietest
+                  grey in the palette: at fifteen pixels a faint glyph beside
+                  a semibold title reads as a smudge. */}
+              {icon && <Icon name={icon} size={15} style={{ color: 'var(--c-accent)', opacity: 0.85 }} />}
               <span className="truncate">{title}</span>
             </h3>
             {subtitle && <p className="mt-0.5 text-[12px] text-muted">{subtitle}</p>}
@@ -133,14 +136,14 @@ export function StatCard({
   const up = (delta?.value ?? 0) >= 0;
   return (
     <div
-      className={`card relative overflow-hidden p-4 ${onClick ? 'card-hover cursor-pointer' : ''} ${className}`}
+      className={`card relative overflow-hidden p-4 sm:p-[18px] ${onClick ? 'card-hover cursor-pointer' : ''} ${className}`}
       onClick={onClick}
       role={onClick ? 'button' : undefined}
       tabIndex={onClick ? 0 : undefined}
       onKeyDown={onClick ? (e) => (e.key === 'Enter' || e.key === ' ') && onClick() : undefined}
     >
       <div className="flex items-start justify-between gap-2">
-        <span className="t-label">{label}</span>
+        <span className="text-[12.5px] font-medium text-muted">{label}</span>
         {ring !== null ? (
           <ProgressRing value={ring} size={34} stroke={3.5} color={tone} colorTo="var(--c-brand-lift)">
             <span className="t-num text-[9.5px] font-semibold">{Math.round(ring * 100)}%</span>
@@ -157,8 +160,8 @@ export function StatCard({
         )}
       </div>
 
-      <div className="mt-2.5 flex items-baseline gap-1.5">
-        <span className="t-num text-[26px] font-semibold leading-none tracking-[-0.03em]">{value}</span>
+      <div className="mt-3 flex items-baseline gap-1.5">
+        <span className="t-num text-[29px] font-semibold leading-none tracking-[-0.035em]">{value}</span>
         {unit && <span className="text-[12.5px] text-muted">{unit}</span>}
         {delta && (
           <span

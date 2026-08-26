@@ -1,18 +1,21 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useApp, type QuickKind } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
-import { useItemTypes, allTypes, typeName, typeOf } from '@/state/itemTypeStore';
+import { useItemTypes, allTypes, typeName, typeOf, KIND_DEFAULTS } from '@/state/itemTypeStore';
 import { usePlanner, startOfDay, addDays, DAY_NAMES } from '@/state/plannerStore';
 import { useGoals } from '@/state/goalStore';
 import { useGame, gameContext } from '@/state/gameStore';
 import { notify } from '@/state/toastStore';
 import { METRIC_ICON, METRIC_LABEL, METRIC_UNIT } from '@/services/goalService';
-import type { GoalMetric, PlannerItem } from '@/types';
+import type { GoalMetric, PlannerItem, RepeatRule, TaskMethod } from '@/types';
 import { useT, L, useLang } from '@/i18n';
 import { S, PRIORITY } from '@/i18n/strings';
 import { Modal, Select } from '../ui';
 import { Button, Segmented, Sheet, useIsPhone } from '../kit';
 import { Icon } from '../Icon';
+import { METHOD_ICON, METHOD_LABEL } from '../tasks/TaskRow';
+import { noteReminderSaved } from '@/services/reminderService';
+import { TaskComposer } from './TaskComposer';
 
 const DURATIONS = [0, 15, 30, 45, 60, 90, 120];
 
@@ -31,7 +34,20 @@ export function QuickCreate() {
   const close = () => useApp.getState().setQuick(null);
 
   if (!kind) return null;
-  const body = <QuickForm kind={kind} onDone={close} />;
+  /**
+   * An entry gets the composer; a goal and a timetable slot keep the form.
+   *
+   * Those two are genuinely made of several answers — a goal is a number, a
+   * unit and a deadline, a slot is a day and two times — and none of them has
+   * a default worth guessing. An entry had eight fields and seven defaults,
+   * which is the case the composer exists for.
+   */
+  const body =
+    kind === 'item' ? (
+      <TaskComposer startKind={useApp.getState().quickKind ?? 'task'} onDone={close} />
+    ) : (
+      <QuickForm kind={kind} onDone={close} />
+    );
   const title = t(
     kind === 'goal'
       ? L('Нова цел', 'New goal')
@@ -40,12 +56,20 @@ export function QuickCreate() {
         : L('Нов запис', 'New entry'),
   );
 
+  /**
+   * The entry composer gets a bare panel and more width: one row of controls
+   * that wraps onto a second line has stopped being a row. Everything else
+   * keeps the titled dialog, because a goal and a timetable slot really are
+   * several questions and benefit from being announced as such.
+   */
+  const isItem = kind === 'item';
+
   return phone ? (
     <Sheet open onClose={close} title={title}>
       {body}
     </Sheet>
   ) : (
-    <Modal open onClose={close} title={title} width={560}>
+    <Modal open onClose={close} title={title} width={isItem ? 660 : 560} bare={isItem}>
       {body}
     </Modal>
   );
@@ -69,6 +93,9 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
   const [duration, setDuration] = useState(0);
   const [priority, setPriority] = useState<0 | 1 | 2>(startKind === 'exam' ? 1 : 0);
   const [notes, setNotes] = useState('');
+  const [method, setMethod] = useState<TaskMethod>((KIND_DEFAULTS[startKind]?.method ?? 'check') as TaskMethod);
+  const [repeat, setRepeat] = useState<RepeatRule>((KIND_DEFAULTS[startKind]?.repeat ?? 'none') as RepeatRule);
+  const [remindAt, setRemindAt] = useState<string>('');
   /* goals */
   const [metric, setMetric] = useState<GoalMetric>('minutes');
   const [target, setTarget] = useState(600);
@@ -117,8 +144,12 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
         due: due ? startOfDay(new Date(due)) : null,
         time: due && time ? time : null,
         duration,
+        method,
+        repeat,
+        remindAt: remindAt ? new Date(remindAt).getTime() : null,
       };
       await usePlanner.getState().addItem(patch);
+      if (patch.remindAt) noteReminderSaved();
       notify.ok(
         t(L(`${typeName(type, 'bg')} е добавен${type.id === 'task' ? 'а' : ''}`, `${typeName(type, 'en')} added`)),
       );
@@ -151,7 +182,16 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
               return (
                 <button
                   key={x.id}
-                  onClick={() => setItemKind(x.id)}
+                  onClick={() => {
+                    setItemKind(x.id);
+                    // A reminder arrives with a time, a habit with a rhythm:
+                    // the two types that only make sense with a setting bring
+                    // it with them rather than waiting to be configured.
+                    const defaults = KIND_DEFAULTS[x.id];
+                    if (defaults?.method) setMethod(defaults.method as TaskMethod);
+                    if (defaults?.repeat) setRepeat(defaults.repeat as RepeatRule);
+                    if (defaults?.remind && !remindAt) setRemindAt(nextHourInput());
+                  }}
                   aria-pressed={on}
                   className="flex h-8 cursor-pointer items-center gap-1.5 rounded-full border px-3 text-[12.5px] font-medium transition-colors"
                   style={{
@@ -183,10 +223,14 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
             onChange={(e) => setTitle(e.target.value)}
             placeholder={
               kind === 'goal'
-                ? t(L('20 часа математика този месец', '20 hours of maths this month'))
+                ? t(L('20 часа за проекта този месец', '20 hours on the project this month'))
                 : itemKind === 'exam'
-                  ? t(L('Контролно по алгебра', 'Algebra test'))
-                  : t(L('Реши задачи 12–20', 'Solve problems 12–20'))
+                  ? t(L('Изпит по алгебра', 'Algebra exam'))
+                  : itemKind === 'reminder'
+                    ? t(L('Вземи лекарството в 20:00', 'Take the tablets at 20:00'))
+                    : itemKind === 'habit'
+                      ? t(L('30 минути разходка', 'A 30-minute walk'))
+                      : t(L('Плати сметките', 'Pay the bills'))
             }
           />
         </div>
@@ -277,6 +321,76 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
               { id: '2', label: t(PRIORITY[2]) },
             ]}
           />
+        </div>
+      )}
+
+      {/* --------------------------------- how it gets done, and when */}
+      {kind === 'item' && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <label className="t-label mb-1.5 block">{t(L('Как ще я направиш', 'How you will work it'))}</label>
+            <Segmented
+              value={method}
+              onChange={(v: TaskMethod) => setMethod(v)}
+              items={(['check', 'checklist', 'count', 'timer'] as TaskMethod[]).map((m) => ({
+                id: m,
+                label: t(METHOD_LABEL[m]),
+                icon: METHOD_ICON[m],
+              }))}
+            />
+          </div>
+          <div>
+            <label className="t-label mb-1.5 block">{t(L('Повтаря се', 'Repeats'))}</label>
+            <Select
+              value={repeat}
+              width={200}
+              options={[
+                { value: 'none', label: t(L('Веднъж', 'Once')) },
+                { value: 'daily', label: t(L('Всеки ден', 'Every day')) },
+                { value: 'weekdays', label: t(L('Делник', 'Weekdays')) },
+                { value: 'weekly', label: t(L('Седмично', 'Weekly')) },
+                { value: 'monthly', label: t(L('Месечно', 'Monthly')) },
+                { value: 'yearly', label: t(L('Годишно', 'Yearly')) },
+              ]}
+              onChange={(v) => setRepeat(v as RepeatRule)}
+            />
+          </div>
+        </div>
+      )}
+
+      {kind === 'item' && (
+        <div>
+          <label className="t-label mb-1.5 block">{t(L('Напомни ми', 'Remind me'))}</label>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="datetime-local"
+              className="field t-num w-auto"
+              value={remindAt}
+              onChange={(e) => setRemindAt(e.target.value)}
+            />
+            {[
+              { label: t(L('След час', 'In an hour')), value: () => nextHourInput() },
+              { label: t(L('Утре 9:00', 'Tomorrow 9:00')), value: () => morningInput(1) },
+            ].map((chip) => (
+              <button
+                key={chip.label}
+                onClick={() => setRemindAt(chip.value())}
+                className="chip cursor-pointer transition-colors hover:bg-surface-3"
+                style={{ background: 'var(--c-surface-2)', color: 'var(--c-muted)' }}
+              >
+                {chip.label}
+              </button>
+            ))}
+            {remindAt && (
+              <button
+                className="icon-btn h-7 w-7"
+                aria-label={t(L('Без напомняне', 'No reminder'))}
+                onClick={() => setRemindAt('')}
+              >
+                <Icon name="x" size={13} />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -373,6 +487,23 @@ function QuickForm({ kind, onDone }: { kind: Exclude<QuickKind, null>; onDone: (
 }
 
 /** `YYYY-MM-DD` in local time — `toISOString` would shift the day in +03. */
+/** The next full hour, in the shape `<input type="datetime-local">` reads. */
+function nextHourInput(): string {
+  const d = new Date();
+  d.setHours(d.getHours() + 1, 0, 0, 0);
+  return localInput(d);
+}
+
+/** Nine in the morning, `days` from now. */
+function morningInput(days: number): string {
+  const d = addDays(days);
+  d.setHours(9, 0, 0, 0);
+  return localInput(d);
+}
+
+const localInput = (d: Date): string =>
+  `${isoDay(d)}T${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+
 export function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }

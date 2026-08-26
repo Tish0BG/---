@@ -416,7 +416,7 @@ function GradeRow({
         </span>
       </span>
       <button
-        className="icon-btn h-7 w-7 opacity-0 group-hover:opacity-100"
+        className="icon-btn h-7 w-7 hover-reveal"
         onClick={() =>
           confirm(tr(L('Да изтрия ли оценката?', 'Delete this grade?')), () =>
             void usePlanner.getState().removeGrade(grade.id),
@@ -508,7 +508,7 @@ function ScheduleTab({ subjectId, color }: { subjectId: string; color: string })
                 {s.room ? ` · ${s.room}` : ''}
               </span>
               <button
-                className="icon-btn h-7 w-7 opacity-0 group-hover:opacity-100"
+                className="icon-btn h-7 w-7 hover-reveal"
                 onClick={() => void usePlanner.getState().removeSlot(s.id)}
               >
                 <Icon name="trash" size={14} />

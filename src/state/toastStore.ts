@@ -51,6 +51,8 @@ export const useToasts = create<ToastStore>((set, get) => ({
 
 /** Shorthand used everywhere instead of reaching into the store. */
 export const notify = {
+  /** The full shape, for the few messages that need a detail *and* a button. */
+  push: (t: Omit<Toast, 'id' | 'timeout'> & { timeout?: number }) => useToasts.getState().push(t),
   ok: (title: string, detail?: string) => useToasts.getState().push({ tone: 'ok', title, detail }),
   info: (title: string, detail?: string) => useToasts.getState().push({ tone: 'info', title, detail }),
   error: (title: string, detail?: string) => useToasts.getState().push({ tone: 'error', title, detail }),

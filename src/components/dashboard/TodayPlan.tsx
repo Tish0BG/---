@@ -177,7 +177,7 @@ function Row({ entry, live }: { entry: Entry; live: boolean }) {
           <div className="flex items-center gap-2">
             <span className="truncate text-[13.5px] font-medium">{s?.name ?? t(S.noSubject)}</span>
             {live && (
-              <span className="chip" style={{ background: 'var(--c-accent)', color: '#fff' }}>
+              <span className="chip" style={{ background: 'var(--c-accent)', color: 'var(--c-accent-text)' }}>
                 {t(L('сега', 'now'))}
               </span>
             )}
@@ -189,7 +189,7 @@ function Row({ entry, live }: { entry: Entry; live: boolean }) {
         </div>
         <Tooltip label={t(L('Фокус върху този час', 'Focus on this class'))}>
           <button
-            className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+            className="icon-btn hover-reveal focus-visible:opacity-100"
             onClick={() => {
               useApp.getState().go('focus');
               useTimer.getState().start();
@@ -270,7 +270,7 @@ function Row({ entry, live }: { entry: Entry; live: boolean }) {
 
       <Tooltip label={t(L('Фокус върху задачата', 'Focus on this task'))}>
         <button
-          className="icon-btn opacity-0 transition-opacity group-hover:opacity-100 focus-visible:opacity-100"
+          className="icon-btn hover-reveal focus-visible:opacity-100"
           onClick={() => {
             useTimer.getState().setActiveTask(item.id);
             useApp.getState().go('focus');

@@ -137,7 +137,7 @@ function FolderNode({
           width={190}
           align="end"
           trigger={({ toggle: t, ref }) => (
-            <button ref={ref} className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={t}>
+            <button ref={ref} className="icon-btn h-6 w-6 hover-reveal" onClick={t}>
               <Icon name="dots" size={14} />
             </button>
           )}
@@ -236,7 +236,7 @@ function DocRow({
         width={200}
         align="end"
         trigger={({ toggle, ref }) => (
-          <button ref={ref} className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100" onClick={toggle}>
+          <button ref={ref} className="icon-btn h-6 w-6 hover-reveal" onClick={toggle}>
             <Icon name="dots" size={14} />
           </button>
         )}

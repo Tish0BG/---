@@ -49,7 +49,7 @@ export function BookmarksPanel() {
             </button>
             <span className="tabular-nums text-faint">{b.page}</span>
             <button
-              className="icon-btn h-6 w-6 opacity-0 group-hover:opacity-100"
+              className="icon-btn h-6 w-6 hover-reveal"
               onClick={() => void removeBookmark(b.id)}
               aria-label={t(L("Изтрий отметката", "Remove the bookmark"))}
             >

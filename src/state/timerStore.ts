@@ -17,7 +17,7 @@ export type TimerView = 'hidden' | 'mini' | 'panel' | 'full';
 export type TimerTab = 'timer' | 'tasks' | 'stats' | 'settings';
 
 export const MODE_LABEL: Record<TimerMode, Msg> = {
-  work: L('Учене', 'Focus'),
+  work: L('Работа', 'Focus'),
   break: L('Почивка', 'Break'),
   long: L('Дълга почивка', 'Long break'),
 };
@@ -175,7 +175,7 @@ export const useTimer = create<TimerStore>((set, get) => {
       }
     } else {
       if (announceIt)
-        notify(tr(L('Почивката свърши', 'Break over')), tr(L(`Учене — ${s.work} мин.`, `Focus — ${s.work} min.`)));
+        notify(tr(L('Почивката свърши', 'Break over')), tr(L(`Работа — ${s.work} мин.`, `Focus — ${s.work} min.`)));
       get().setMode('work', true);
     }
   };
