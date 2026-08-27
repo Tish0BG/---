@@ -13,7 +13,6 @@ import {
 import { useTimer } from './timerStore';
 import { usePlanner } from './plannerStore';
 import { useCards } from './cardStore';
-import { useGoals } from './goalStore';
 import { useLibrary } from './libraryStore';
 
 const KEY = 'game';
@@ -100,14 +99,12 @@ export function gameContext(): GameContext {
   const timer = useTimer.getState();
   const planner = usePlanner.getState();
   const cards = useCards.getState();
-  const goals = useGoals.getState();
   const library = useLibrary.getState();
   if (!timer.loaded && !planner.loaded) return EMPTY_CONTEXT;
   return {
     sessions: timer.sessions,
     items: planner.items,
     cards: cards.cards,
-    goals: goals.goals,
     documents: library.documents,
   };
 }
@@ -120,10 +117,9 @@ export function useGameContext(): GameContext {
   const sessions = useTimer((s) => s.sessions);
   const items = usePlanner((s) => s.items);
   const cards = useCards((s) => s.cards);
-  const goals = useGoals((s) => s.goals);
   const documents = useLibrary((s) => s.documents);
   return useMemo(
-    () => ({ sessions, items, cards, goals, documents }),
-    [sessions, items, cards, goals, documents],
+    () => ({ sessions, items, cards, documents }),
+    [sessions, items, cards, documents],
   );
 }

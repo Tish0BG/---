@@ -40,7 +40,6 @@ import { useWorkspace } from './workspaceStore';
 import { useTimer } from './timerStore';
 import { useItemTypes } from './itemTypeStore';
 import { useNotes } from './noteStore';
-import { useGoals } from './goalStore';
 import { tr, L } from '@/i18n';
 
 const AUTO_KEY = 'studypdf.autosync';
@@ -166,7 +165,6 @@ async function reloadStores(): Promise<void> {
     useWorkspace.getState().init(),
     useTimer.getState().init(),
     useItemTypes.getState().init(),
-    useGoals.getState().init(),
     // A document open on this screen is re-read too, so a note edited on the
     // phone does not sit here showing yesterday's paragraph.
     useNotes.getState().refresh(),

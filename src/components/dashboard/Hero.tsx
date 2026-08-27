@@ -10,7 +10,7 @@ import { useT, useLang, L, longDate } from '@/i18n';
 import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover } from '../ui';
 import { Button } from '../kit';
-import { newNote } from '../shell/AppHeader';
+import { newNote } from '@/services/newNote';
 
 const greeting = (hour: number) =>
   hour < 5

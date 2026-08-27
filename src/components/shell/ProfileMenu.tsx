@@ -4,13 +4,22 @@ import { useAuth } from '@/state/authStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
 import { useTimer, dayKey, statsForDay, streak } from '@/state/timerStore';
-import { Icon } from '../Icon';
-import { MenuItem, MenuSep, Popover } from '../ui';
+import { MenuItem, MenuSep } from '../ui';
 import { useT, L } from '@/i18n';
 import { ProfileAvatar } from '../profile/ProfileAvatar';
 
-/** Avatar plus the two numbers a student checks most: today and the streak. */
-export function ProfileMenu() {
+/**
+ * ─────────────────────────────────────────────────── everything about you ──
+ *
+ * The contents of the account menu, with no trigger of its own.
+ *
+ * It used to be a `Popover` in the top bar, which meant the menu and the
+ * avatar that opened it were the same component. The top bar is gone and the
+ * avatar now lives at the foot of the rail, so the two are separated: the rail
+ * owns the button, this owns the list. Anything that can put a `Popover` on
+ * screen can host it.
+ */
+export function ProfileMenuBody({ close }: { close: () => void }) {
   const t = useT();
   const profile = useWorkspace((s) => s.profile);
   const sessions = useTimer((s) => s.sessions);
@@ -24,128 +33,98 @@ export function ProfileMenu() {
   const days = useMemo(() => streak(sessions), [sessions]);
 
   return (
-    <Popover
-      width={240}
-      align="end"
-      trigger={({ toggle, ref }) => (
-        <button
-          ref={ref}
-          onClick={toggle}
-          className="flex h-9 cursor-pointer items-center gap-2 rounded-full pl-1 pr-2.5 transition-colors hover:bg-surface-3"
-        >
-          <span className="relative shrink-0">
-            <ProfileAvatar size={28} />
-            {user && (
-              <span
-                className="absolute -bottom-0.5 -right-0.5 grid h-3 w-3 place-items-center rounded-full"
-                style={{ background: 'var(--c-surface)' }}
-                title={syncing ? t(L("Синхронизира се", "Syncing")) : sync.error ? t(L("Проблем със синхронизацията", "Sync problem")) : t(L("Синхронизирано", "Synced"))}
-              >
-                <span
-                  className={`h-2 w-2 rounded-full ${syncing ? 'animate-pulse' : ''}`}
-                  style={{ background: sync.error ? 'var(--c-danger)' : 'var(--c-success)' }}
-                />
-              </span>
-            )}
-          </span>
-          <span className="hidden text-[13px] font-medium sm:block">{profile.name || t(L("Профил", "Profile"))}</span>
-          <Icon name="chevronDown" size={13} className="text-faint" />
-        </button>
+    <>
+      <div className="flex items-center gap-2.5 px-2 py-2">
+        <ProfileAvatar size={40} />
+        <div className="min-w-0">
+          <div className="truncate text-[13px] font-medium">{profile.name || t(L('Без име', 'Unnamed'))}</div>
+          <div className="truncate text-[11px] text-muted">
+            {user?.email ??
+              ([profile.grade, profile.school].filter(Boolean).join(' · ') ||
+                t(L('Настрой профила си', 'Set up your profile')))}
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-1 grid grid-cols-2 gap-1.5 px-2">
+        <Stat value={`${today.minutes}`} label={t(L('мин днес', 'min today'))} />
+        <Stat value={`${days}`} label={t(L('дни поред', 'day streak'))} />
+      </div>
+
+      <MenuSep />
+      <MenuItem
+        icon="user"
+        label={t(L('Моят профил', 'My profile'))}
+        onClick={() => {
+          useApp.getState().go('profile');
+          close();
+        }}
+      />
+      <MenuItem
+        icon="trophy"
+        label={t(L('Постижения', 'Achievements'))}
+        onClick={() => {
+          useApp.getState().go('achievements');
+          close();
+        }}
+      />
+      <MenuSep />
+      <MenuItem
+        icon="sliders"
+        label={t(L('Настройки', 'Settings'))}
+        onClick={() => {
+          useApp.getState().setSettings(true);
+          close();
+        }}
+      />
+      {user ? (
+        <MenuItem
+          icon={sync.error ? 'alert' : 'cloud'}
+          label={sync.error ? t(L('Проблем със синхронизацията', 'Sync problem')) : t(L('Синхронизация', 'Sync'))}
+          shortcut={syncing ? '…' : sync.error ? '!' : '✓'}
+          onClick={() => {
+            useApp.getState().setSettings(true, 'sync');
+            close();
+          }}
+        />
+      ) : (
+        <MenuItem
+          icon="logIn"
+          label={t(L('Влез в профил', 'Sign in'))}
+          onClick={() => {
+            useApp.getState().setAuth(true, 'signin');
+            close();
+          }}
+        />
       )}
-    >
-      {(close) => (
+      <MenuItem
+        icon={theme === 'dark' ? 'sun' : 'moon'}
+        label={theme === 'dark' ? t(L('Светла тема', 'Light theme')) : t(L('Тъмна тема', 'Dark theme'))}
+        onClick={() => setSetting('theme', theme === 'dark' ? 'light' : 'dark')}
+      />
+      <MenuItem
+        icon="timer"
+        label={t(L('Фокус таймер', 'Focus timer'))}
+        shortcut="⌥T"
+        onClick={() => {
+          useTimer.getState().toggleWidget();
+          close();
+        }}
+      />
+      {user && (
         <>
-          <div className="flex items-center gap-2.5 px-2 py-2">
-            <ProfileAvatar size={40} />
-            <div className="min-w-0">
-              <div className="truncate text-[13px] font-medium">{profile.name || t(L("Без име", "Unnamed"))}</div>
-              <div className="truncate text-[11px] text-muted">
-                {user?.email ?? ([profile.grade, profile.school].filter(Boolean).join(' · ') || t(L("Настрой профила си", "Set up your profile")))}
-              </div>
-            </div>
-          </div>
-
-          <div className="mb-1 grid grid-cols-2 gap-1.5 px-2">
-            <Stat value={`${today.minutes}`} label={t(L("мин днес", "min today"))} />
-            <Stat value={`${days}`} label={t(L("дни поред", "day streak"))} />
-          </div>
-
           <MenuSep />
           <MenuItem
-            icon="user"
-            label={t(L('Моят профил', 'My profile'))}
+            icon="logOut"
+            label={t(L('Излез', 'Sign out'))}
             onClick={() => {
-              useApp.getState().go('profile');
+              void useAuth.getState().signOut();
               close();
             }}
           />
-          <MenuItem
-            icon="trophy"
-            label={t(L('Постижения', 'Achievements'))}
-            onClick={() => {
-              useApp.getState().go('achievements');
-              close();
-            }}
-          />
-          <MenuSep />
-          <MenuItem
-            icon="sliders"
-            label={t(L('Настройки', 'Settings'))}
-            onClick={() => {
-              useApp.getState().setSettings(true);
-              close();
-            }}
-          />
-          {user ? (
-            <MenuItem
-              icon={sync.error ? 'alert' : 'cloud'}
-              label={sync.error ? t(L('Проблем със синхронизацията', 'Sync problem')) : t(L('Синхронизация', 'Sync'))}
-              shortcut={syncing ? '…' : sync.error ? '!' : '✓'}
-              onClick={() => {
-                useApp.getState().setSettings(true, 'sync');
-                close();
-              }}
-            />
-          ) : (
-            <MenuItem
-              icon="logIn"
-              label={t(L('Влез в профил', 'Sign in'))}
-              onClick={() => {
-                useApp.getState().setAuth(true, 'signin');
-                close();
-              }}
-            />
-          )}
-          <MenuItem
-            icon={theme === 'dark' ? 'sun' : 'moon'}
-            label={theme === 'dark' ? t(L("Светла тема", "Light theme")) : t(L("Тъмна тема", "Dark theme"))}
-            onClick={() => setSetting('theme', theme === 'dark' ? 'light' : 'dark')}
-          />
-          <MenuItem
-            icon="timer"
-            label={t(L("Фокус таймер", "Focus timer"))}
-            shortcut="⌥T"
-            onClick={() => {
-              useTimer.getState().toggleWidget();
-              close();
-            }}
-          />
-          {user && (
-            <>
-              <MenuSep />
-              <MenuItem
-                icon="logOut"
-                label={t(L('Излез', 'Sign out'))}
-                onClick={() => {
-                  void useAuth.getState().signOut();
-                  close();
-                }}
-              />
-            </>
-          )}
         </>
       )}
-    </Popover>
+    </>
   );
 }
 

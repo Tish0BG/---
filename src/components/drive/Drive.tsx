@@ -12,7 +12,7 @@ import { useT, useLang, L, type Msg, shortDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Button, Card, EmptyState as KitEmpty } from '../kit';
 import { openDoc } from '@/services/openDoc';
-import { newNote } from '../shell/AppHeader';
+import { newNote } from '@/services/newNote';
 
 type Scope = 'all' | 'pdf' | 'board' | 'note' | 'starred' | 'trash';
 

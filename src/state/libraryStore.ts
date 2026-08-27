@@ -342,9 +342,6 @@ export const useLibrary = create<LibraryStore>((set, get) => ({
 
 /* --------------------------------------------------------------- selectors */
 
-export const inTrash = (d: DocumentMeta): boolean => !!d.deletedAt;
-export const isLive = (d: DocumentMeta): boolean => !d.deletedAt;
-
 export const progressOf = (d: DocumentMeta): number => {
   if (d.manualProgress != null) return d.manualProgress;
   if (!d.pageCount) return 0;

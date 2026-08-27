@@ -1,499 +1,331 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { ItemType, PlannerItem } from '@/types';
-import { useApp, type PlanTab } from '@/state/appStore';
+import { usePlanner, openItems, overdue as overdueOf, startOfDay } from '@/state/plannerStore';
+import { usePlanView } from '@/state/planViewStore';
+import { useSettings } from '@/state/settingsStore';
+import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useItemTypes, allTypes, typeName, typeOf } from '@/state/itemTypeStore';
-import { useGoals, activeGoals } from '@/state/goalStore';
-import {
-  usePlanner,
-  endOfDay,
-  openItems,
-  overdue,
-  sortByDue,
-  startOfDay,
-} from '@/state/plannerStore';
-import { useT, L, useLang, shortDate, formatDate } from '@/i18n';
+import { useT, useLang, L, formatDate, shortDate } from '@/i18n';
 import { S } from '@/i18n/strings';
-import { Screen } from '../shell/Screen';
 import { Icon } from '../Icon';
-import { MenuItem, Modal, Popover, Select } from '../ui';
-import { Button, Card, EmptyState, Segmented, Sheet, Tabs, useIsPhone } from '../kit';
-import { TaskRow } from '../tasks/TaskRow';
-import { TaskEditor } from './TaskEditor';
-import { PlanBoard, clearDone } from './PlanBoard';
-import { GoalsScreen } from '../goals/GoalsScreen';
-import { ExamsScreen } from '../exams/ExamsScreen';
+import { MenuItem, Modal, Popover } from '../ui';
+import { useIsCompact, useIsPhone } from '../kit';
 import { TypeManager } from './TypeManager';
-import { isoDay } from '../shell/QuickCreate';
-
-type Bucket = 'today' | 'upcoming' | 'overdue' | 'someday' | 'done';
+import { BacklogColumn, DayColumn, scopeItems } from './DayColumn';
+import { PlanCalendar } from './PlanCalendar';
+import { clockMinutes, dayRange, itemsOfDay, plannedTotal } from './planTime';
 
 /**
- * ─────────────────────────────────────────────────────────── the plan ──
+ * ────────────────────────────────────────────────────────────────── the plan ──
  *
- * Tasks, goals and exams used to be three destinations in the sidebar. Two of
- * them were the same records under a different filter, all three were named
- * after school, and between them they took a quarter of the navigation for
- * one idea: things you owe your future self.
+ * One screen, and it is Sunsama's Home and nothing else: the days side by
+ * side, the backlog you pull from at the left edge, the calendar on the same
+ * ruler at the right.
  *
- * They are one screen now, with three faces:
+ * It briefly carried a rail of its own — rituals, an archive, a journal, a
+ * second copy of the objectives — because that is what sits beside Home in the
+ * app this was modelled on. Two navigation rails on one screen is one rail too
+ * many, and a planner that opens onto a menu is a planner that has not
+ * answered the only question anybody opened it with: *does today fit*.
  *
- *   Board — the day and the long view side by side, which is where anybody
- *           who opens the app in the morning wants to land. It is the default.
- *   List  — the same records as one column with every filter available, for
- *           sorting out a backlog rather than working a day.
- *   Goals — the long view in full.
- *
- * What used to be the difference between the old screens is a *type* — and
- * types are something a person can invent, so the list holds a rehearsal, a
- * shift and a dentist's appointment as comfortably as a physics test. Where a
- * type wants a different presentation it gets one: picking "exam" swaps the
- * plain list for the countdown board.
+ * That question is the whole design. Lanes have no size and days do, so the
+ * columns are days, every card carries an estimate, and the bar under each
+ * date is the day's ceiling drawn to scale. Dragging is the whole interaction,
+ * in every direction — between days, into the backlog, onto an hour of the
+ * calendar — because deciding what a day is made of is a physical sort of
+ * thought and a date picker is a bad place to do it.
  */
 export function PlanScreen() {
   const t = useT();
   const lang = useLang();
   const phone = useIsPhone();
-  const tab = useApp((s) => s.planTab);
-  const kind = useApp((s) => s.planKind);
+  const compact = useIsCompact();
   const items = usePlanner((s) => s.items);
-  const goals = useGoals((s) => s.goals);
-  const custom = useItemTypes((s) => s.custom);
-  const allSubjects = useWorkspace((s) => s.subjects);
-  const subjects = useMemo(() => allSubjects.filter((x) => !x.archived), [allSubjects]);
+  const anchor = usePlanView((s) => s.anchor);
+  const dayCount = usePlanView((s) => s.days);
+  const calendar = usePlanView((s) => s.calendar);
+  const backlog = usePlanView((s) => s.backlog);
+  const planKind = useApp((s) => s.planKind);
+  const planNav = useApp((s) => s.planNav);
+  const focusId = useApp((s) => s.focusId);
   const filterSubject = useApp((s) => s.filterSubjectId);
-  const setFilter = useApp((s) => s.setFilter);
-  const [bucket, setBucket] = useState<Bucket>('today');
-  const [editing, setEditing] = useState<PlannerItem | null>(null);
+  const capacity = useSettings((s) => s.dayCapacity);
   const [types, setTypes] = useState(false);
+  const board = useRef<HTMLDivElement>(null);
 
-  const typeList = useMemo(() => allTypes(custom), [custom]);
+  /* A window that has drifted a week back is not where anybody left it; the
+     day the app opens on is always today. */
+  useEffect(() => {
+    if (startOfDay(new Date(usePlanView.getState().anchor)) < startOfDay()) usePlanView.getState().today();
+  }, [planNav]);
 
-  const scoped = useMemo(() => {
-    let list = items;
-    if (filterSubject) list = list.filter((i) => i.subjectId === filterSubject);
-    if (kind) list = list.filter((i) => i.kind === kind);
-    return list;
-  }, [items, filterSubject, kind]);
+  /**
+   * A link that names one entry opens it, on the day it belongs to.
+   *
+   * Reminders and the dashboard's "next step" both carry an id, and both used
+   * to land on a list with the row somewhere in it. Here the window moves to
+   * the entry's own day and the panel opens on it, which is what "take me to
+   * this" was always asking for.
+   */
+  useEffect(() => {
+    if (!focusId) return;
+    const item = usePlanner.getState().items.find((i) => i.id === focusId);
+    useApp.getState().clearFocus();
+    if (!item) return;
+    if (item.due !== null) usePlanView.getState().setAnchor(item.due);
+    useApp.getState().openItem(item.id);
+  }, [focusId]);
 
-  const buckets = useMemo(() => {
-    const open = openItems(scoped);
-    return {
-      overdue: sortByDue(overdue(scoped)),
-      today: sortByDue(open.filter((i) => i.due !== null && i.due >= startOfDay() && i.due <= endOfDay())),
-      upcoming: sortByDue(open.filter((i) => i.due !== null && i.due > endOfDay())),
-      someday: sortByDue(open.filter((i) => i.due === null)),
-      done: scoped.filter((i) => i.done).sort((a, b) => (b.completedAt ?? 0) - (a.completedAt ?? 0)),
-    };
-  }, [scoped]);
+  /* Back to the left edge whenever the window moves. Seven columns scroll, and
+     landing on Wednesday because that is where the board was left is not what
+     pressing "Today" — or adding a day — was asking for. */
+  useEffect(() => {
+    board.current?.scrollTo({ left: 0, behavior: 'smooth' });
+  }, [anchor, dayCount, backlog]);
 
-  const visible = buckets[bucket];
+  useShortcuts();
 
-  /** Upcoming reads better grouped by day than as one long column. */
-  const grouped = useMemo(() => {
-    if (bucket !== 'upcoming') return null;
-    const map = new Map<string, PlannerItem[]>();
-    for (const item of buckets.upcoming) {
-      const key = isoDay(new Date(item.due ?? 0));
-      map.set(key, [...(map.get(key) ?? []), item]);
-    }
-    return [...map.entries()];
-  }, [bucket, buckets.upcoming]);
+  const days = useMemo(() => dayRange(anchor, phone ? 1 : dayCount), [anchor, dayCount, phone]);
+  const late = useMemo(
+    () => overdueOf(scopeItems(items, filterSubject, planKind)).length,
+    [items, filterSubject, planKind],
+  );
+  const todayPlanned = useMemo(
+    () => plannedTotal(itemsOfDay(scopeItems(items, filterSubject, planKind), startOfDay()).filter((i) => !i.done)),
+    [items, filterSubject, planKind],
+  );
 
-  const doneToday = buckets.done.filter((i) => (i.completedAt ?? 0) >= startOfDay()).length;
-  const live = activeGoals(goals).length;
-  const pressing = buckets.today.length + buckets.overdue.length;
-  const open = buckets.today.length + buckets.overdue.length + buckets.upcoming.length + buckets.someday.length;
+  const columnWidth = phone
+    ? 'calc(100vw - 40px)'
+    : dayCount === 1
+      ? 'min(620px, 100%)'
+      : compact
+        ? 300
+        : 306;
 
-  /** "Exam" is not a filter over the list — it is a different way of reading it. */
-  const asBoard = tab === 'work' && kind === 'exam';
+  const showCalendar = calendar && !compact;
 
   return (
-    <Screen
-      width={tab === 'board' ? 'wide' : 'default'}
-      title={t(L('План', 'Plan'))}
-      subtitle={
-        tab === 'goals'
-          ? t(L(`${live} активни цели`, `${live} active goals`))
-          : t(
-              L(
-                `${pressing} за днес · ${doneToday} готови · ${live} цели`,
-                `${pressing} for today · ${doneToday} done · ${live} goals`,
-              ),
-            )
-      }
-      actions={
-        /* On a phone the row is the width of the screen: the one button
-           anybody came here to press stretches across it and the menu sits at
-           the end of the same line. Left to wrap, the three-dot button ended
-           up alone on a line above the primary action, which reads as a
-           mistake rather than as a layout. */
-        <div className="flex w-full items-center gap-2 sm:w-auto">
-          {/* On a phone the secondary actions fold into a menu. Three buttons
-              across 375 px wrap onto two rows, and the rarest of them —
-              clearing what is already finished — ends up taking a line of its
-              own above the one thing anybody came here to press. */}
-          {!phone && tab === 'work' && buckets.done.length > 0 && (
-            <Button icon="trash" onClick={() => void clearDone(t)}>
-              {t(L('Изчисти завършените', 'Clear completed'))}
-            </Button>
-          )}
-          {!phone && (
-            <Button icon="layers" onClick={() => setTypes(true)}>
-              {t(L('Типове', 'Types'))}
-            </Button>
-          )}
-          {tab === 'goals' ? (
-            <Button
-              className="flex-1 whitespace-nowrap sm:flex-none"
-              variant="primary"
-              icon="plus"
-              onClick={() => useApp.getState().setQuick('goal')}
-            >
-              {t(L('Нова цел', 'New goal'))}
-            </Button>
-          ) : (
-            <Button
-              className="flex-1 whitespace-nowrap sm:flex-none"
-              variant="primary"
-              icon="plus"
-              onClick={() => useApp.getState().setQuick('item', kind ?? 'task')}
-            >
-              {t(L('Нов запис', 'New entry'))}
-            </Button>
-          )}
-          {phone && (
-            <Popover
-              width={230}
-              align="end"
-              trigger={({ toggle, ref }) => (
-                <button ref={ref} onClick={toggle} className="icon-btn" aria-label={t(L('Още', 'More'))}>
-                  <Icon name="dots" size={17} />
-                </button>
-              )}
-            >
-              {(close) => (
-                <>
+    <div className="flex h-full min-h-0 flex-col" style={{ minHeight: phone ? undefined : 520 }}>
+      {/* ----------------------------------------------------------- top bar */}
+      <header className="flex shrink-0 flex-wrap items-center gap-2 border-b border-line px-3 py-2">
+        <button onClick={() => usePlanView.getState().today()} className="btn btn-outline h-8 gap-1.5 px-2.5">
+          <Icon name="calendar" size={14} />
+          {t(S.today)}
+        </button>
+
+        <div className="flex items-center gap-0.5">
+          <button
+            className="icon-btn h-8 w-8"
+            aria-label={t(L('Назад', 'Back'))}
+            onClick={() => usePlanView.getState().shift(-1)}
+          >
+            <Icon name="chevronLeft" size={15} />
+          </button>
+          <button
+            className="icon-btn h-8 w-8"
+            aria-label={t(L('Напред', 'Forward'))}
+            onClick={() => usePlanView.getState().shift(1)}
+          >
+            <Icon name="chevronRight" size={15} />
+          </button>
+        </div>
+
+        <span className="hidden min-w-0 truncate text-[13px] font-medium first-letter:uppercase sm:inline">
+          {days.length === 1
+            ? formatDate(days[0], lang, { weekday: 'long', day: 'numeric', month: 'long' })
+            : `${shortDate(days[0], lang)} – ${shortDate(days[days.length - 1], lang)}`}
+        </span>
+
+        {late > 0 && (
+          <span
+            className="flex h-7 shrink-0 items-center gap-1.5 rounded-full px-2.5 text-[11.5px] font-semibold"
+            style={{ background: 'color-mix(in srgb, var(--c-danger) 12%, transparent)', color: 'var(--c-danger)' }}
+          >
+            <Icon name="alert" size={12} />
+            <span className="t-num">{late}</span>
+            {/* The word costs sixty pixels and the number carries the meaning;
+                on a phone the row wraps without this. */}
+            <span className="hidden sm:inline">{t(L('просрочени', 'overdue'))}</span>
+          </span>
+        )}
+
+        <FilterChips subjectId={filterSubject} kind={planKind} />
+
+        <span className="flex-1" />
+
+        {todayPlanned > 0 && (
+          <span
+            className="t-num hidden shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[11.5px] font-semibold md:inline-flex"
+            style={{
+              background:
+                todayPlanned > capacity
+                  ? 'color-mix(in srgb, var(--c-danger) 12%, transparent)'
+                  : 'var(--c-surface-3)',
+              color: todayPlanned > capacity ? 'var(--c-danger)' : 'var(--c-muted)',
+            }}
+            title={t(L('Планирано за днес', 'Planned for today'))}
+          >
+            <Icon name="clock" size={12} />
+            {clockMinutes(todayPlanned)}
+            <span className="opacity-60">/ {clockMinutes(capacity)}</span>
+          </span>
+        )}
+
+        <FilterMenu subjectId={filterSubject} kind={planKind} onManage={() => setTypes(true)} />
+
+        {!phone && (
+          <Popover
+            width={190}
+            align="end"
+            trigger={({ toggle, ref, open }) => (
+              <button
+                ref={ref}
+                onClick={toggle}
+                aria-label={t(L('Колко дни', 'How many days'))}
+                className={`btn btn-outline h-8 gap-1.5 px-2.5 ${open ? 'btn-ghost-active' : ''}`}
+              >
+                <Icon name="grid" size={14} />
+                <span className="t-num">{dayCount}</span>
+              </button>
+            )}
+          >
+            {(close) => (
+              <>
+                <div className="px-2 pb-1 pt-1.5">
+                  <span className="t-label">{t(L('Колко дни наведнъж', 'How many days at once'))}</span>
+                </div>
+                {[1, 2, 3, 4, 5, 7].map((n) => (
                   <MenuItem
-                    icon="layers"
-                    label={t(L('Типове записи', 'Entry types'))}
+                    key={n}
+                    active={dayCount === n}
+                    label={t(L(`${n} ${n === 1 ? 'ден' : 'дни'}`, `${n} ${n === 1 ? 'day' : 'days'}`))}
                     onClick={() => {
-                      setTypes(true);
+                      usePlanView.getState().setDays(n);
                       close();
                     }}
                   />
-                  {buckets.done.length > 0 && (
-                    <MenuItem
-                      icon="trash"
-                      danger
-                      label={t(L('Изчисти завършените', 'Clear completed'))}
-                      onClick={() => {
-                        close();
-                        void clearDone(t);
-                      }}
-                    />
-                  )}
-                </>
-              )}
-            </Popover>
-          )}
-        </div>
-      }
-      toolbar={
-        <div className="space-y-3">
-          <Tabs
-            value={tab}
-            onChange={(v: PlanTab) => useApp.getState().setPlanTab(v)}
-            items={[
-              { id: 'board', label: t(L('Табло', 'Board')), icon: 'dashboard', count: pressing },
-              { id: 'work', label: t(L('Списък', 'List')), icon: 'listTodo', count: open },
-              { id: 'goals', label: t(S.goals), icon: 'target', count: live },
-            ]}
-          />
+                ))}
+              </>
+            )}
+          </Popover>
+        )}
 
-          {tab === 'board' && (
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="flex-1 text-[12px] text-faint">
-                {t(
-                  phone
-                    ? L(
-                        'Всеки запис има меню: „За днес“, „За утре“, напомняне.',
-                        'Every entry has a menu: move to today, to tomorrow, remind me.',
-                      )
-                    : L(
-                        'Дърпай записи от „Напред“ в „Днес“ — денят се подрежда с ръка.',
-                        'Drag entries from Ahead into Today — the day gets arranged by hand.',
-                      ),
-                )}
-              </span>
-              <FilterMenu
-                types={typeList}
-                kind={kind}
-                subjects={subjects}
-                subjectId={filterSubject}
-                items={items}
-                onKind={(id) => useApp.getState().setPlanKind(id)}
-                onSubject={setFilter}
-                onManage={() => setTypes(true)}
-              />
-            </div>
-          )}
+        {!compact && (
+          <>
+            <button
+              onClick={() => usePlanView.getState().toggleBacklog()}
+              aria-pressed={backlog}
+              className={`btn btn-outline h-8 gap-1.5 px-2.5 ${backlog ? 'btn-ghost-active' : ''}`}
+            >
+              <Icon name="archive" size={14} />
+              <span className="hidden lg:inline">{t(L('Бекло̀г', 'Backlog'))}</span>
+            </button>
+            <button
+              onClick={() => usePlanView.getState().toggleCalendar()}
+              aria-pressed={calendar}
+              className={`btn btn-outline h-8 gap-1.5 px-2.5 ${calendar ? 'btn-ghost-active' : ''}`}
+            >
+              <Icon name="calendar" size={14} />
+              <span className="hidden lg:inline">{t(L('Календар', 'Calendar'))}</span>
+            </button>
+          </>
+        )}
 
-          {tab === 'work' && (
+        <Popover
+          width={230}
+          align="end"
+          trigger={({ toggle, ref }) => (
+            <button ref={ref} onClick={toggle} className="icon-btn h-8 w-8" aria-label={t(L('Още', 'More'))}>
+              <Icon name="dots" size={15} />
+            </button>
+          )}
+        >
+          {(close) => (
             <>
-              <QuickAdd subjectId={filterSubject} kind={kind ?? 'task'} types={typeList} />
-
-              {/* One row of controls, not four.
-                  The screen used to stack the tabs, the quick-add, a strip of
-                  types, a strip of buckets and a strip of subjects — five
-                  parallel filter systems, all shouting at once, pushing the
-                  actual work halfway down the window. The buckets are the one
-                  thing a person changes constantly, so they stay visible; the
-                  other two hide behind a control that says how many are on. */}
-              <div className="flex flex-wrap items-center gap-2">
-                {!asBoard && (
-                  <Tabs
-                    value={bucket}
-                    onChange={setBucket}
-                    className="min-w-0 flex-1"
-                    items={[
-                      { id: 'today', label: t(S.today), icon: 'bolt', count: buckets.today.length },
-                      {
-                        id: 'overdue',
-                        label: t(L('Просрочени', 'Overdue')),
-                        icon: 'alert',
-                        count: buckets.overdue.length,
-                      },
-                      {
-                        id: 'upcoming',
-                        label: t(L('Предстоящи', 'Upcoming')),
-                        icon: 'calendar',
-                        count: buckets.upcoming.length,
-                      },
-                      {
-                        id: 'someday',
-                        label: t(L('Някой ден', 'Someday')),
-                        icon: 'waves',
-                        count: buckets.someday.length,
-                      },
-                      {
-                        id: 'done',
-                        label: t(L('Завършени', 'Completed')),
-                        icon: 'checkCircle',
-                        count: buckets.done.length,
-                      },
-                    ]}
-                  />
-                )}
-                {asBoard && <span className="flex-1" />}
-
-                <FilterMenu
-                  types={typeList}
-                  kind={kind}
-                  subjects={subjects}
-                  subjectId={filterSubject}
-                  items={items}
-                  onKind={(id) => useApp.getState().setPlanKind(id)}
-                  onSubject={setFilter}
-                  onManage={() => setTypes(true)}
-                />
-              </div>
-
+              <MenuItem
+                icon="layers"
+                label={t(L('Типове записи', 'Entry types'))}
+                onClick={() => {
+                  setTypes(true);
+                  close();
+                }}
+              />
+              <MenuItem
+                icon="calendar"
+                label={t(L('Пълен календар', 'Full calendar'))}
+                onClick={() => {
+                  useApp.getState().go('calendar');
+                  close();
+                }}
+              />
+              <MenuItem icon="command" label={t(L('Клавиши: ← → C Esc', 'Keys: ← → C Esc'))} />
             </>
           )}
+        </Popover>
+      </header>
 
-          {/* Whatever is filtered says so, in words, with a way out. A
-              filter you cannot see is a list that is lying to you. */}
-          {tab !== 'goals' && (kind || filterSubject) && (
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-[11.5px] text-faint">{t(L('Показва се:', 'Showing:'))}</span>
-              {kind && (
-                <ActiveChip
-                  label={typeName(typeOf(kind, custom), lang)}
-                  icon={typeOf(kind, custom).icon}
-                  color={typeOf(kind, custom).color ?? undefined}
-                  onClear={() => useApp.getState().setPlanKind(null)}
-                />
-              )}
-              {filterSubject && (
-                <ActiveChip
-                  label={subjects.find((s) => s.id === filterSubject)?.name ?? ''}
-                  color={subjects.find((s) => s.id === filterSubject)?.color}
-                  onClear={() => setFilter(null)}
-                />
-              )}
-            </div>
+      {/* -------------------------------------------------------------- body */}
+      <div className="flex min-h-0 flex-1">
+        <div ref={board} className="scroll-thin flex min-h-0 flex-1 gap-3 overflow-x-auto px-3 py-3">
+          {backlog && !phone && <BacklogColumn />}
+          {days.map((day, i) => (
+            <DayColumn
+              key={day}
+              day={day}
+              width={columnWidth}
+              grow={!phone && dayCount > 1}
+              divider={!phone && i < days.length - 1}
+            />
+          ))}
+          {!phone && dayCount > 1 && dayCount < 7 && (
+            <button
+              onClick={() => usePlanView.getState().setDays(dayCount + 1)}
+              aria-label={t(L('Още един ден', 'One more day'))}
+              className="mt-1 h-9 w-9 shrink-0 cursor-pointer rounded-[8px] border border-dashed border-line text-faint transition-colors hover:border-line-strong hover:text-ink"
+            >
+              <Icon name="plus" size={15} className="mx-auto" />
+            </button>
           )}
         </div>
-      }
-    >
-      {tab === 'board' ? (
-        <PlanBoard onEdit={setEditing} />
-      ) : tab === 'goals' ? (
-        <GoalsScreen embedded />
-      ) : asBoard ? (
-        <ExamsScreen embedded />
-      ) : (
-        <>
-          {bucket === 'today' && buckets.overdue.length > 0 && (
-            <Card
-              className="mb-4"
-              title={t(L('Просрочени', 'Overdue'))}
-              icon="alert"
-              subtitle={t(
-                L(
-                  'Пренасрочи ги или ги отметни — денят започва след тях.',
-                  'Reschedule or tick these — today starts after them.',
-                ),
-              )}
-              flush
-            >
-              <div className="px-2 pb-2">
-                {buckets.overdue.map((item) => (
-                  <TaskRow key={item.id} item={item} onEdit={setEditing} />
-                ))}
-              </div>
-            </Card>
-          )}
 
-          {visible.length === 0 ? (
-            <Card>
-              <EmptyState
-                icon={EMPTY[bucket].icon}
-                title={t(EMPTY[bucket].title)}
-                body={t(EMPTY[bucket].body)}
-                action={
-                  bucket === 'done'
-                    ? undefined
-                    : {
-                        label: t(L('Нов запис', 'New entry')),
-                        icon: 'plus',
-                        onClick: () => useApp.getState().setQuick('item', kind ?? 'task'),
-                      }
-                }
-              />
-            </Card>
-          ) : grouped ? (
-            <div className="space-y-4">
-              {grouped.map(([day, list]) => (
-                <Card key={day} flush>
-                  <div className="flex items-baseline justify-between border-b border-line px-4 py-2.5">
-                    <span className="text-[12.5px] font-semibold first-letter:uppercase">
-                      {formatDate(new Date(day).getTime(), lang, { weekday: 'long' })}
-                      <span className="ml-2 font-normal text-muted">
-                        {shortDate(new Date(day).getTime(), lang)}
-                      </span>
-                    </span>
-                    <span className="t-num text-[11.5px] text-faint">{list.length}</span>
-                  </div>
-                  <div className="stagger px-2 py-2">
-                    {list.map((item) => (
-                      <TaskRow key={item.id} item={item} onEdit={setEditing} />
-                    ))}
-                  </div>
-                </Card>
-              ))}
-            </div>
-          ) : (
-            <Card flush>
-              <div className="stagger px-2 py-2">
-                {visible.map((item) => (
-                  <TaskRow key={item.id} item={item} onEdit={setEditing} />
-                ))}
-              </div>
-            </Card>
-          )}
-        </>
+        {showCalendar && <PlanCalendar onClose={() => usePlanView.getState().toggleCalendar()} />}
+      </div>
+
+      {types && (
+        <Modal open onClose={() => setTypes(false)} title={t(L('Типове записи', 'Entry types'))} width={560}>
+          <TypeManager />
+        </Modal>
       )}
-
-      {editing &&
-        (phone ? (
-          <Sheet open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))}>
-            <TaskEditor item={editing} onClose={() => setEditing(null)} />
-          </Sheet>
-        ) : (
-          <Modal open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))} width={560}>
-            <TaskEditor item={editing} onClose={() => setEditing(null)} />
-          </Modal>
-        ))}
-
-      {types &&
-        (phone ? (
-          <Sheet open onClose={() => setTypes(false)} title={t(L('Типове записи', 'Entry types'))}>
-            <TypeManager />
-          </Sheet>
-        ) : (
-          <Modal open onClose={() => setTypes(false)} title={t(L('Типове записи', 'Entry types'))} width={560}>
-            <TypeManager />
-          </Modal>
-        ))}
-
-    </Screen>
+    </div>
   );
 }
 
-const EMPTY: Record<Bucket, { icon: string; title: { bg: string; en: string }; body: { bg: string; en: string } }> = {
-  today: {
-    icon: 'coffee',
-    title: L('Днес е чисто', 'Today is clear'),
-    body: L(
-      'Нищо не е за днес. Издърпаш ли нещо от предстоящите, утре ще е по-леко.',
-      'Nothing is due today. Pull something forward and tomorrow gets lighter.',
-    ),
-  },
-  overdue: {
-    icon: 'checkCircle',
-    title: L('Нищо не е просрочено', 'Nothing is overdue'),
-    body: L('Всичко е в срока си — рядко и хубаво състояние.', 'Everything is inside its deadline. Rare and good.'),
-  },
-  upcoming: {
-    icon: 'calendar',
-    title: L('Няма нищо напред', 'Nothing ahead yet'),
-    body: L('Записите със срок се появяват тук, подредени по ден.', 'Entries with a deadline show up here, grouped by day.'),
-  },
-  someday: {
-    icon: 'waves',
-    title: L('Няма записи без срок', 'No undated entries'),
-    body: L('Тук стоят нещата, които искаш да направиш, но не днес.', 'This is where things you want to do — but not today — wait.'),
-  },
-  done: {
-    icon: 'trophy',
-    title: L('Още нищо завършено', 'Nothing completed yet'),
-    body: L('Отметнатите записи се събират тук.', 'Ticked entries collect here.'),
-  },
-};
-
-/* --------------------------------------------------------------- filters */
+/* ------------------------------------------------------------- the filters */
 
 /**
- * The two filters that are not the buckets, behind one control.
+ * The two lenses over the board, behind one control.
  *
- * They were two full-width strips of chips. Chips are a fine control for four
- * options and a wall for fourteen — and stacked above each other they made the
- * screen look like a search engine rather than a list of what you owe. Here
- * they are a button that carries the count, opening onto both sets at once.
+ * They were a rail of chips down the left-hand side. A rail is a fine place
+ * for navigation and the wrong place for a filter: it made the screen look
+ * like it had two menus, and neither of them said what was currently on.
  */
 function FilterMenu({
-  types,
-  kind,
-  subjects,
   subjectId,
-  items,
-  onKind,
-  onSubject,
+  kind,
   onManage,
 }: {
-  types: ItemType[];
-  kind: string | null;
-  subjects: { id: string; name: string; color: string }[];
   subjectId: string | null;
-  items: PlannerItem[];
-  onKind: (id: string | null) => void;
-  onSubject: (id: string | null) => void;
+  kind: string | null;
   onManage: () => void;
 }) {
   const t = useT();
   const lang = useLang();
+  const items = usePlanner((s) => s.items);
+  const allSubjects = useWorkspace((s) => s.subjects);
+  const custom = useItemTypes((s) => s.custom);
+  const subjects = useMemo(() => allSubjects.filter((x) => !x.archived), [allSubjects]);
+  const typeList = useMemo(() => allTypes(custom), [custom]);
   const open = useMemo(() => openItems(items), [items]);
   const active = (kind ? 1 : 0) + (subjectId ? 1 : 0);
 
@@ -505,10 +337,10 @@ function FilterMenu({
         <button
           ref={ref}
           onClick={toggle}
-          className={`btn btn-outline shrink-0 gap-1.5 ${isOpen || active ? 'btn-ghost-active' : ''}`}
+          className={`btn btn-outline h-8 shrink-0 gap-1.5 px-2.5 ${isOpen || active ? 'btn-ghost-active' : ''}`}
         >
           <Icon name="filter" size={14} />
-          <span className="hidden sm:inline">{t(L('Филтри', 'Filters'))}</span>
+          <span className="hidden lg:inline">{t(L('Филтри', 'Filters'))}</span>
           {active > 0 && (
             <span
               className="t-num grid h-[17px] min-w-[17px] place-items-center rounded-full px-1 text-[10.5px] font-semibold"
@@ -529,14 +361,18 @@ function FilterMenu({
             </button>
           </div>
           <div className="flex flex-wrap gap-1.5">
-            <Chip active={!kind} onClick={() => onKind(null)} label={t(L('Всичко', 'Everything'))} />
-            {types.map((type) => (
+            <Chip
+              active={!kind}
+              onClick={() => useApp.getState().setPlanKind(null)}
+              label={t(L('Всичко', 'Everything'))}
+            />
+            {typeList.map((type) => (
               <Chip
                 key={type.id}
                 active={kind === type.id}
                 color={type.color ?? undefined}
                 icon={type.icon}
-                onClick={() => onKind(kind === type.id ? null : type.id)}
+                onClick={() => useApp.getState().setPlanKind(kind === type.id ? null : type.id)}
                 label={typeName(type, lang)}
                 count={open.filter((i) => i.kind === type.id).length}
               />
@@ -546,16 +382,16 @@ function FilterMenu({
           {subjects.length > 0 && (
             <>
               <div className="mb-1.5 mt-3 px-1">
-                <span className="t-label">{t(S.subject)}</span>
+                <span className="t-label">{t(L('Канал', 'Channel'))}</span>
               </div>
               <div className="flex flex-wrap gap-1.5">
-                <Chip active={!subjectId} onClick={() => onSubject(null)} label={t(S.all)} />
+                <Chip active={!subjectId} onClick={() => useApp.getState().setFilter(null)} label={t(S.all)} />
                 {subjects.map((s) => (
                   <Chip
                     key={s.id}
                     active={subjectId === s.id}
                     color={s.color}
-                    onClick={() => onSubject(subjectId === s.id ? null : s.id)}
+                    onClick={() => useApp.getState().setFilter(subjectId === s.id ? null : s.id)}
                     label={s.name}
                     count={open.filter((i) => i.subjectId === s.id).length}
                   />
@@ -568,8 +404,8 @@ function FilterMenu({
             <button
               className="mt-3 w-full cursor-pointer rounded-lg py-1.5 text-[12px] text-muted transition-colors hover:bg-surface-3"
               onClick={() => {
-                onKind(null);
-                onSubject(null);
+                useApp.getState().setPlanKind(null);
+                useApp.getState().setFilter(null);
               }}
             >
               {t(L('Изчисти филтрите', 'Clear the filters'))}
@@ -581,32 +417,50 @@ function FilterMenu({
   );
 }
 
-/** A filter that is on, said out loud, with the way to switch it off. */
-function ActiveChip({
-  label,
-  icon,
-  color,
-  onClear,
-}: {
-  label: string;
-  icon?: string;
-  color?: string;
-  onClear: () => void;
-}) {
+/** Whatever is narrowing the board, said out loud and switched off in one click. */
+function FilterChips({ subjectId, kind }: { subjectId: string | null; kind: string | null }) {
+  const lang = useLang();
+  const subjects = useWorkspace((s) => s.subjects);
+  const custom = useItemTypes((s) => s.custom);
+  if (!subjectId && !kind) return null;
+
+  const subject = subjects.find((s) => s.id === subjectId) ?? null;
+  const type = kind ? typeOf(kind, custom) : null;
+
+  return (
+    <span className="flex shrink-0 items-center gap-1.5">
+      {subject && (
+        <ActiveChip
+          label={`# ${subject.name}`}
+          color={subject.color}
+          onClear={() => useApp.getState().setFilter(null)}
+        />
+      )}
+      {type && (
+        <ActiveChip
+          label={typeName(type, lang)}
+          color={type.color ?? undefined}
+          onClear={() => useApp.getState().setPlanKind(null)}
+        />
+      )}
+    </span>
+  );
+}
+
+function ActiveChip({ label, color, onClear }: { label: string; color?: string; onClear: () => void }) {
   const tint = color ?? 'var(--c-accent)';
   return (
     <span
-      className="flex h-[24px] items-center gap-1.5 rounded-full pl-2 pr-1 text-[12px] font-medium"
+      className="flex h-[24px] items-center gap-1 rounded-full pl-2 pr-1 text-[11.5px] font-medium"
       style={{ background: `color-mix(in srgb, ${tint} 14%, transparent)`, color: tint }}
     >
-      {icon ? <Icon name={icon} size={11} /> : <span className="badge-dot" style={{ background: tint }} />}
-      {label}
+      <span className="max-w-[120px] truncate">{label}</span>
       <button
         onClick={onClear}
-        className="grid h-[17px] w-[17px] cursor-pointer place-items-center rounded-full transition-colors hover:bg-surface-3"
         aria-label="×"
+        className="grid h-[16px] w-[16px] cursor-pointer place-items-center rounded-full transition-colors hover:bg-surface-3"
       >
-        <Icon name="x" size={11} />
+        <Icon name="x" size={10} />
       </button>
     </span>
   );
@@ -641,110 +495,50 @@ function Chip({
         color: active ? (color ?? 'var(--c-accent)') : 'var(--c-muted)',
       }}
     >
-      {icon ? (
-        <Icon name={icon} size={12} />
-      ) : color ? (
-        <span className="badge-dot" style={{ background: color }} />
-      ) : null}
+      {icon ? <Icon name={icon} size={12} /> : color ? <span className="badge-dot" style={{ background: color }} /> : null}
       {label}
       {count !== undefined && count > 0 && <span className="t-num opacity-60">{count}</span>}
     </button>
   );
 }
 
-/* -------------------------------------------------------------- quick add */
+/* ----------------------------------------------------------------- the keys */
 
 /**
- * The field that stays.
+ * The three keys the board is worked with, and no more.
  *
- * One line, Enter saves, and it inherits whatever the screen is filtered to —
- * the subject and the type — so the fastest path from thought to record does
- * not pass through a dialog.
+ * It had eight, including `T` for today and `B` for the backlog — both of
+ * which the app already spends globally on "new task" and "new whiteboard".
+ * Two systems fighting over one keystroke is worse than a shortcut nobody
+ * has, so the plan keeps only the keys nothing else wants.
  */
-function QuickAdd({
-  subjectId,
-  kind,
-  types,
-}: {
-  subjectId: string | null;
-  kind: string;
-  types: ItemType[];
-}) {
-  const t = useT();
-  const lang = useLang();
-  const [title, setTitle] = useState('');
-  const [when, setWhen] = useState<'today' | 'tomorrow' | 'none'>('today');
-  const [pick, setPick] = useState(kind);
-  const ref = useRef<HTMLInputElement>(null);
+function useShortcuts(): void {
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey || e.repeat) return;
+      if (
+        el &&
+        (el.tagName === 'INPUT' ||
+          el.tagName === 'TEXTAREA' ||
+          el.tagName === 'SELECT' ||
+          el.isContentEditable)
+      )
+        return;
+      if (document.querySelector('[role="dialog"]')) return;
 
-  useEffect(() => setPick(kind), [kind]);
-
-  const type = typeOf(pick, types.filter((x) => !x.builtin));
-
-  const submit = async () => {
-    const value = title.trim();
-    if (!value) return;
-    const due =
-      when === 'none' ? null : startOfDay(new Date(Date.now() + (when === 'tomorrow' ? 86_400_000 : 0)));
-    setTitle('');
-    await usePlanner.getState().addItem({ title: value, subjectId, due, kind: pick });
-    ref.current?.focus();
-  };
-
-  return (
-    <div className="card flex flex-wrap items-center gap-2 p-2">
-      <span
-        className="grid h-8 w-8 shrink-0 place-items-center rounded-[8px]"
-        style={{
-          background: type.color
-            ? `color-mix(in srgb, ${type.color} 15%, transparent)`
-            : 'var(--c-accent-soft)',
-          color: type.color ?? 'var(--c-accent)',
-        }}
-      >
-        <Icon name={type.icon} size={16} strokeWidth={2} />
-      </span>
-      <input
-        ref={ref}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter') void submit();
-          if (e.key === 'Escape') setTitle('');
-        }}
-        placeholder={t(L('Добави и натисни ↵', 'Add something and press ↵'))}
-        className="min-w-[140px] flex-1 bg-transparent text-[13.5px] outline-none placeholder:text-faint"
-      />
-
-      <div className="hidden sm:block">
-        <Select
-          value={pick}
-          width={168}
-          options={types.map((x) => ({
-            value: x.id,
-            label: typeName(x, lang),
-            icon: x.icon,
-            color: x.color ?? undefined,
-          }))}
-          onChange={setPick}
-        />
-      </div>
-
-      <div className="hidden md:block">
-        <Segmented
-          value={when}
-          onChange={setWhen}
-          items={[
-            { id: 'today', label: t(S.today) },
-            { id: 'tomorrow', label: t(L('Утре', 'Tomorrow')) },
-            { id: 'none', label: t(L('Без срок', 'No date')) },
-          ]}
-        />
-      </div>
-
-      <Button variant={title.trim() ? 'primary' : 'ghost'} disabled={!title.trim()} onClick={() => void submit()}>
-        {t(S.add)}
-      </Button>
-    </div>
-  );
+      const view = usePlanView.getState();
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        return view.shift(-1);
+      }
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        return view.shift(1);
+      }
+      if (e.code === 'KeyC') view.toggleCalendar();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 }

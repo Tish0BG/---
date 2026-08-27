@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { usePlanner, startOfDay } from '@/state/plannerStore';
+import { dayKey } from '@/lib/util';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useItemTypes, allTypes, typeOf, typeName } from '@/state/itemTypeStore';
 import { useGame } from '@/state/gameStore';
@@ -93,9 +94,19 @@ export function resolveReminder(
 
 export function TaskComposer({
   startKind = 'task',
+  seed,
   onDone,
 }: {
   startKind?: string;
+  /**
+   * What the thing that opened this already knows.
+   *
+   * "Add" pressed inside Thursday's column means Thursday, and pressed while
+   * the board is filtered to one channel it means that channel. Without it the
+   * composer opened on today with no channel and the person had to correct it
+   * — which is the whole reason the plan grew a second way to add a task.
+   */
+  seed?: { due?: number | null; subjectId?: string | null } | null;
   onDone: () => void;
 }) {
   const t = useT();
@@ -106,19 +117,30 @@ export function TaskComposer({
 
   const [title, setTitle] = useState('');
   const [itemKind, setItemKind] = useState(startKind);
-  const [due, setDue] = useState<number | null>(() => startOfDay(new Date()));
+  const [due, setDue] = useState<number | null>(() =>
+    seed && 'due' in seed ? (seed.due ?? null) : startOfDay(new Date()),
+  );
   const [time, setTime] = useState<string | null>(null);
   const [duration, setDuration] = useState(0);
-  const [subjectId, setSubjectId] = useState<string | null>(null);
+  const [subjectId, setSubjectId] = useState<string | null>(seed?.subjectId ?? null);
   const [lead, setLead] = useState<number | null>(null);
   const [priority, setPriority] = useState<0 | 1 | 2>(0);
   const [busy, setBusy] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   const type = typeOf(itemKind, custom);
   const subject = subjects.find((s) => s.id === subjectId) ?? null;
   const ready = title.trim().length > 0 && !busy;
 
-  const save = async () => {
+  /**
+   * `again` keeps the window open with the day and the channel still set.
+   *
+   * The plan used to have a one-line field in every column that cleared itself
+   * and kept the focus, so five tasks took five seconds. Routing creation
+   * through this dialog would have cost that, and it is the kind of loss
+   * people feel on the second day rather than the first. ⌘↵ is that loop.
+   */
+  const save = async (again = false) => {
     if (!ready) return;
     setBusy(true);
     const remindAt = resolveReminder(due, time, lead);
@@ -136,20 +158,31 @@ export function TaskComposer({
     if (remindAt) noteReminderSaved();
     void useGame.getState().refresh();
     notify.ok(t(L(`${typeName(type, 'bg')} е добавен${type.id === 'task' ? 'а' : ''}`, `${typeName(type, 'en')} added`)));
-    onDone();
+    if (!again) {
+      onDone();
+      return;
+    }
+    // Everything the next one probably shares stays; only what was written
+    // about this particular thing is cleared.
+    setBusy(false);
+    setTitle('');
+    setLead(null);
+    setDuration(0);
+    titleRef.current?.focus();
   };
 
   return (
     <div>
       {/* The only thing the app cannot guess, at the size that says so. */}
       <input
+        ref={titleRef}
         autoFocus
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
-            void save();
+            void save(e.metaKey || e.ctrlKey);
           }
         }}
         placeholder={t(L('Какво трябва да се направи?', 'What needs doing?'))}
@@ -183,7 +216,7 @@ export function TaskComposer({
                 <input
                   type="date"
                   className="field t-num w-full"
-                  value={due ? isoDay(new Date(due)) : ''}
+                  value={due ? dayKey(due) : ''}
                   onChange={(e) => setDue(e.target.value ? startOfDay(new Date(e.target.value)) : null)}
                 />
               </label>
@@ -370,7 +403,7 @@ export function TaskComposer({
         {/* Enter is the button. This only says so, and only while there is
             something for it to do. */}
         <span className="ml-auto shrink-0 pl-2 text-[11.5px] text-faint">
-          {ready ? t(L('↵ запис', '↵ to add')) : ''}
+          {ready ? t(L('↵ запис · ⌘↵ и още едно', '↵ to add · ⌘↵ to add another')) : ''}
         </span>
       </div>
     </div>
@@ -503,11 +536,8 @@ const addDays = (n: number): Date => {
   return d;
 };
 
-const isoDay = (d: Date): string =>
-  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-
 const sameDayAs = (a: number | null, b: number | null): boolean =>
-  a === null || b === null ? a === b : isoDay(new Date(a)) === isoDay(new Date(b));
+  a === null || b === null ? a === b : dayKey(a) === dayKey(b);
 
 function dueLabel(due: number | null, lang: 'bg' | 'en', t: (m: Msg) => string): string {
   if (due === null) return t(L('Без срок', 'No date'));

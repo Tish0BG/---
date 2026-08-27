@@ -273,6 +273,3 @@ const titleCase = (s: string): string =>
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(' ');
-
-/** Colour to paint anything tagged with this subject; grey when untagged. */
-export const subjectColor = (subject: Subject | null): string => subject?.color ?? 'var(--c-faint)';

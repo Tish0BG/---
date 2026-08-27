@@ -9,27 +9,13 @@ import { useItemTypes, typeName, typeOf } from '@/state/itemTypeStore';
 import { useT, useLang, shortDate, L } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Icon } from '../Icon';
+import { METHOD_ICON, METHOD_LABEL } from '../plan/method';
 import { MenuItem, MenuSep, Popover } from '../ui';
 import { Tooltip, useIsPhone } from '../kit';
 import { DueChip } from '../planner/DueChip';
 import { openDoc } from '@/services/openDoc';
 import { notify } from '@/state/toastStore';
 import { noteReminderSaved } from '@/services/reminderService';
-
-/** Labels for the four ways an entry can be worked. */
-export const METHOD_LABEL: Record<TaskMethod, { bg: string; en: string }> = {
-  check: L('Отметка', 'Tick'),
-  checklist: L('Списък', 'Checklist'),
-  count: L('Брояч', 'Counter'),
-  timer: L('Таймер', 'Timer'),
-};
-
-export const METHOD_ICON: Record<TaskMethod, string> = {
-  check: 'checkCircle',
-  checklist: 'listTodo',
-  count: 'sigma',
-  timer: 'timer',
-};
 
 /**
  * One entry, everywhere.
@@ -49,7 +35,6 @@ export const METHOD_ICON: Record<TaskMethod, string> = {
  */
 export function TaskRow({
   item,
-  onEdit,
   dense,
   hideDue,
   draggable,
@@ -57,7 +42,6 @@ export function TaskRow({
   onDragEnd,
 }: {
   item: PlannerItem;
-  onEdit?: (item: PlannerItem) => void;
   dense?: boolean;
   /** the lane or the day heading already says when it is due */
   hideDue?: boolean;
@@ -174,8 +158,7 @@ export function TaskRow({
 
         <button
           className="min-w-0 flex-1 cursor-text text-left"
-          onClick={() => onEdit?.(item)}
-          onDoubleClick={() => onEdit?.(item)}
+          onClick={() => useApp.getState().openItem(item.id)}
         >
           <span className="flex items-center gap-2">
             {item.kind !== 'task' && (
@@ -361,17 +344,7 @@ export function TaskRow({
           >
             {(close) => (
               <>
-                {onEdit && (
-                  <MenuItem
-                    icon="pencil"
-                    label={t(S.edit)}
-                    onClick={() => {
-                      onEdit(item);
-                      close();
-                    }}
-                  />
-                )}
-                <MenuItem
+                                <MenuItem
                   icon="calendar"
                   label={t(L('За днес', 'Move to today'))}
                   onClick={() => {

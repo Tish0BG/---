@@ -35,7 +35,7 @@ const AVATARS = ['🦉', '🦊', '🐨', '🐼', '🦅', '🐙', '🌿', '🔭',
  * The person, not the settings.
  *
  * Everything here is a consequence of work that was done — hours, streaks,
- * badges, goals — so the page reads as a record of a term rather than as a
+ * badges — so the page reads as a record of a term rather than as a
  * form. The two editable things (a name and a face) are edited in place.
  */
 export function ProfileScreen() {
@@ -54,7 +54,6 @@ export function ProfileScreen() {
   const best = useMemo(() => longestStreak(sessions), [sessions]);
   const minutes = useMemo(() => sessions.reduce((s, x) => s + x.minutes, 0), [sessions]);
   const achievements = useMemo(() => achievementStates(ctx, unlocked).filter((a) => a.earned), [ctx, unlocked]);
-  const goalsDone = ctx.goals.filter((g) => g.completedAt).length;
   const tasksDone = ctx.items.filter((i) => i.done).length;
 
   const heat = useMemo(() => {
@@ -233,12 +232,6 @@ export function ProfileScreen() {
           icon="flame"
           tone="var(--c-ember)"
           hint={streak > 0 ? t(L(`Сега: ${streak}`, `Now: ${streak}`)) : undefined}
-        />
-        <StatCard
-          label={t(L('Постигнати цели', 'Goals reached'))}
-          value={goalsDone}
-          icon="target"
-          tone="var(--c-success)"
         />
       </div>
 

@@ -5,6 +5,9 @@
 const I: Record<string, string> = {
   menu: '<path d="M3 6h18M3 12h18M3 18h18"/>',
   panelLeft: '<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/>',
+  /** The rail control: a panel with a dashed spine, the way every editor draws it. */
+  sidebar:
+    '<rect x="3" y="4" width="18" height="16" rx="2.5"/><path d="M9 7.5v1.6M9 11.2v1.6M9 14.9v1.6"/>',
   chevronLeft: '<path d="m15 18-6-6 6-6"/>',
   chevronRight: '<path d="m9 18 6-6-6-6"/>',
   chevronDown: '<path d="m6 9 6 6 6-6"/>',
@@ -82,6 +85,8 @@ const I: Record<string, string> = {
   expand: '<path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/>',
   shrink: '<path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/>',
   bell: '<path d="M18 9a6 6 0 1 0-12 0c0 5-2 6-2 6h16s-2-1-2-6"/><path d="M10.3 21a2 2 0 0 0 3.4 0"/>',
+  inbox:
+    '<path d="M22 12h-5.5l-1.6 2.6H9.1L7.5 12H2"/><path d="M5.6 5.2 2 12v5.5A2.5 2.5 0 0 0 4.5 20h15a2.5 2.5 0 0 0 2.5-2.5V12l-3.6-6.8A2 2 0 0 0 16.6 4H7.4a2 2 0 0 0-1.8 1.2Z"/>',
   volume: '<path d="M11 5 6.5 9H3v6h3.5L11 19Z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9 9 0 0 1 0 13"/>',
   checkCircle: '<circle cx="12" cy="12" r="9"/><path d="m8.5 12 2.5 2.5 4.5-5"/>',
   listTodo: '<path d="M4 7l2 2 3-3M4 17l2 2 3-3M12 8h8M12 18h8"/>',

@@ -17,7 +17,6 @@ import {
 } from '@/state/plannerStore';
 import { useTimer, dayKey, minutesBySubject, statsForDay } from '@/state/timerStore';
 import { useSettings } from '@/state/settingsStore';
-import { useGoals, activeGoals } from '@/state/goalStore';
 import { useGame, useGameContext } from '@/state/gameStore';
 import {
   ACHIEVEMENTS,
@@ -28,7 +27,6 @@ import {
   longestStreak,
   totalXp,
 } from '@/services/gameService';
-import { goalProgress, goalHealth, HEALTH_COLOR } from '@/services/goalService';
 import { openDoc } from '@/services/openDoc';
 import { useT, useLang, L, formatDuration, weekdayNames, shortDate } from '@/i18n';
 import { S } from '@/i18n/strings';
@@ -151,7 +149,7 @@ function TasksToday() {
           ? t(L(`${late.length} просрочени чакат`, `${late.length} overdue waiting`))
           : t(L('Всичко е в срок.', 'Everything on time.'))
       }
-      onClick={() => useApp.getState().goPlan('board')}
+      onClick={() => useApp.getState().goPlan()}
     />
   );
 }
@@ -370,7 +368,7 @@ function Exams() {
       className="h-full"
       title={t(L('Предстоящи изпити', 'Upcoming exams'))}
       icon="graduation"
-      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan('work', 'exam')} />}
+      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().go('exams')} />}
       flush
     >
       {exams.length === 0 ? (
@@ -394,7 +392,7 @@ function Exams() {
             return (
               <li key={exam.id}>
                 <button
-                  onClick={() => useApp.getState().goPlan('work', 'exam', exam.id)}
+                  onClick={() => useApp.getState().go('exams', exam.id)}
                   className="row w-full text-left"
                 >
                   <span
@@ -420,63 +418,6 @@ function Exams() {
                     </span>
                   </span>
                   <Icon name="chevronRight" size={15} className="shrink-0 text-faint" />
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </Card>
-  );
-}
-
-function GoalsPanel() {
-  const t = useT();
-  const goals = useGoals((s) => s.goals);
-  const ctx = useGameContext();
-  const live = useMemo(() => activeGoals(goals).slice(0, 4), [goals]);
-
-  return (
-    <Card
-      className="h-full"
-      title={t(S.goals)}
-      icon="target"
-      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan('goals')} />}
-      flush
-    >
-      {live.length === 0 ? (
-        <EmptyState
-          compact
-          icon="target"
-          title={t(L('Още няма цел', 'No goals yet'))}
-          body={t(
-            L(
-              'Задай цел и следи как се движи сама с часовете ти.',
-              'Set a goal and watch it move on its own as you work.',
-            ),
-          )}
-          action={{
-            label: t(L('Създай цел', 'Create goal')),
-            icon: 'plus',
-            onClick: () => useApp.getState().setQuick('goal'),
-          }}
-        />
-      ) : (
-        <ul className="space-y-3 px-4 pb-4">
-          {live.map((goal) => {
-            const pct = goalProgress(goal, ctx);
-            const health = goalHealth(goal, ctx);
-            return (
-              <li key={goal.id}>
-                <button
-                  onClick={() => useApp.getState().goPlan('goals', null, goal.id)}
-                  className="w-full cursor-pointer text-left"
-                >
-                  <div className="mb-1.5 flex items-baseline justify-between gap-2">
-                    <span className="truncate text-[13px] font-medium">{goal.title}</span>
-                    <span className="t-num shrink-0 text-[12px] text-muted">{Math.round(pct * 100)}%</span>
-                  </div>
-                  <ProgressBar value={pct} height={6} color={HEALTH_COLOR[health]} />
                 </button>
               </li>
             );
@@ -829,7 +770,6 @@ function QuickActions() {
       label: type.name,
       run: () => useApp.getState().setQuick('item', type.id),
     })),
-    { icon: 'target', label: t(S.goal), run: () => useApp.getState().setQuick('goal') },
     {
       icon: 'timer',
       label: t(S.focus),
@@ -879,7 +819,7 @@ function ByType() {
       className="h-full"
       title={t(L('Отворено по вид', 'Open by type'))}
       icon="layers"
-      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan('board')} />}
+      action={<CardLink label={t(S.all)} onClick={() => useApp.getState().goPlan()} />}
     >
       {rows.length === 0 ? (
         <EmptyState
@@ -895,7 +835,7 @@ function ByType() {
             return (
               <button
                 key={type.id}
-                onClick={() => useApp.getState().goPlan('work', type.id)}
+                onClick={() => useApp.getState().goPlan(type.id)}
                 className="flex w-full cursor-pointer items-center gap-2.5 text-left"
               >
                 <Icon name={type.icon} size={14} style={{ color: tint }} className="shrink-0" />
@@ -1010,15 +950,6 @@ export const WIDGETS: WidgetDef[] = [
     sizes: ['third', 'half'],
     defaultSize: 'third',
     render: () => <Exams />,
-  },
-  {
-    id: 'goals',
-    title: L('Цели', 'Goals'),
-    hint: L('Докъде са стигнали активните цели', 'How far the live goals have got'),
-    icon: 'target',
-    sizes: ['third', 'half'],
-    defaultSize: 'third',
-    render: () => <GoalsPanel />,
   },
   {
     id: 'subject-split',

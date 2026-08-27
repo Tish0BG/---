@@ -1,11 +1,11 @@
-import type { DocumentMeta, FlashCard, FocusSession, Goal, PlannerItem, AchievementTier } from '@/types';
+import type { DocumentMeta, FlashCard, FocusSession, PlannerItem, AchievementTier } from '@/types';
 import { L, type Msg } from '@/i18n';
 
 /**
  * Levels, XP and achievements — all of it derived, none of it stored.
  *
  * Every number below is recomputed from records the app keeps anyway: minutes
- * in the focus log, completed planner items, reviewed cards, finished goals.
+ * in the focus log, completed planner items and reviewed cards.
  * A stored running total is a number that eventually disagrees with the thing
  * it counts, and a progress system that lies is worse than none. The only
  * thing written to disk is *when* an achievement was first reached, so it can
@@ -15,7 +15,6 @@ export interface GameContext {
   sessions: FocusSession[];
   items: PlannerItem[];
   cards: FlashCard[];
-  goals: Goal[];
   documents: DocumentMeta[];
 }
 
@@ -23,7 +22,6 @@ export const EMPTY_CONTEXT: GameContext = {
   sessions: [],
   items: [],
   cards: [],
-  goals: [],
   documents: [],
 };
 
@@ -41,14 +39,12 @@ export const XP_PER_MINUTE = 1;
 export const XP_TASK: Record<string, number> = { task: 12, homework: 15, exam: 30 };
 export const xpForItem = (kind: string): number => XP_TASK[kind] ?? XP_TASK.task;
 export const XP_CARD_REVIEW = 1;
-export const XP_GOAL = 120;
 export const XP_STREAK_DAY = 10;
 
 export interface XpBreakdown {
   focus: number;
   tasks: number;
   cards: number;
-  goals: number;
   streak: number;
   total: number;
 }
@@ -57,16 +53,14 @@ export function xpBreakdown(ctx: GameContext): XpBreakdown {
   const focus = ctx.sessions.reduce((sum, s) => sum + s.minutes, 0) * XP_PER_MINUTE;
   const tasks = ctx.items.filter((i) => i.done).reduce((sum, i) => sum + xpForItem(i.kind), 0);
   const cards = ctx.cards.reduce((sum, c) => sum + c.reps, 0) * XP_CARD_REVIEW;
-  const goals = ctx.goals.filter((g) => g.completedAt).length * XP_GOAL;
   // Longest, not current: XP must never go down because a day was missed.
   const streak = longestStreak(ctx.sessions) * XP_STREAK_DAY;
   return {
     focus,
     tasks,
     cards,
-    goals,
     streak,
-    total: Math.round(focus + tasks + cards + goals + streak),
+    total: Math.round(focus + tasks + cards + streak),
   };
 }
 
@@ -308,24 +302,6 @@ export const ACHIEVEMENTS: AchievementDef[] = [
     tier: 'gold',
     target: 1000,
     value: reviews,
-  },
-  {
-    id: 'goal-1',
-    title: L('Първа цел', 'First goal'),
-    body: L('Постигни цел докрай.', 'See a goal through to the end.'),
-    icon: 'target',
-    tier: 'bronze',
-    target: 1,
-    value: (c) => c.goals.filter((g) => g.completedAt).length,
-  },
-  {
-    id: 'goal-5',
-    title: L('Пет цели', 'Five goals'),
-    body: L('Постигни пет цели.', 'Complete five goals.'),
-    icon: 'flag',
-    tier: 'silver',
-    target: 5,
-    value: (c) => c.goals.filter((g) => g.completedAt).length,
   },
   {
     id: 'deep-day',

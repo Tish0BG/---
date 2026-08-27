@@ -2,12 +2,11 @@ import { useState } from 'react';
 import { VIEW_TITLES, useApp, type AppView } from '@/state/appStore';
 import { usePlanner, dueToday, overdue } from '@/state/plannerStore';
 import { useCards, dueCount } from '@/state/cardStore';
-import { useTimer } from '@/state/timerStore';
 import { useT, L } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Icon } from '../Icon';
 import { Sheet } from '../kit';
-import { newNote } from './AppHeader';
+import { newNote } from '@/services/newNote';
 
 const MAIN: { id: AppView; icon: string }[] = [
   { id: 'dashboard', icon: 'dashboard' },
@@ -120,21 +119,6 @@ export function MobileNav({ onNewBoard, onUpload }: { onNewBoard?: () => void; o
       label: t(L('Качи файл', 'Upload a file')),
       hint: t(L('PDF от телефона ти', 'A PDF from your phone')),
       run: () => onUpload?.(),
-    },
-    {
-      icon: 'target',
-      label: t(S.goal),
-      hint: t(L('Число и срок, които се движат сами', 'A number and a deadline that move on their own')),
-      run: () => useApp.getState().setQuick('goal'),
-    },
-    {
-      icon: 'timer',
-      label: t(L('Фокус сесия', 'Focus session')),
-      hint: t(L('Пусни таймера върху нещо', 'Point the clock at something')),
-      run: () => {
-        useApp.getState().go('focus');
-        useTimer.getState().start();
-      },
     },
   ];
 

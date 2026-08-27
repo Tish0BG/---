@@ -231,15 +231,3 @@ export function cellPosition(el: ChemElement): { col: number; row: number } {
   if (el.category === 'actinide') return { col: el.z - 89 + 3, row: 10 };
   return { col: el.group, row: el.period };
 }
-
-export function findElements(query: string): ChemElement[] {
-  const q = query.trim().toLowerCase();
-  if (!q) return [];
-  return ELEMENTS.filter(
-    (e) =>
-      e.symbol.toLowerCase() === q ||
-      String(e.z) === q ||
-      e.name.toLowerCase().startsWith(q) ||
-      e.symbol.toLowerCase().startsWith(q),
-  ).slice(0, 8);
-}

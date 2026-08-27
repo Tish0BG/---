@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useItemTypes } from '@/state/itemTypeStore';
@@ -7,13 +7,10 @@ import { useTimer } from '@/state/timerStore';
 import { useT, L, useLang, monthTitle, weekdayNames, clockTime, shortDate, formatDate } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Screen } from '../shell/Screen';
-import { Modal } from '../ui';
 import { Icon } from '../Icon';
 import { Button, Card, EmptyState, IconButton, Segmented, Sheet, useIsPhone, useNow } from '../kit';
 import { TaskRow } from '../tasks/TaskRow';
 import { eventsForRange, keyOf, monthGrid, weekDays, type CalEvent } from './events';
-import { TaskEditor } from '../plan/TaskEditor';
-import type { PlannerItem } from '@/types';
 import { AgendaView } from './AgendaView';
 
 type View = 'month' | 'week' | 'day' | 'agenda';
@@ -47,9 +44,17 @@ export function CalendarScreen() {
   const [view, setView] = useState<View>(phone ? 'agenda' : 'month');
   const [anchor, setAnchor] = useState(() => new Date());
   const [openDay, setOpenDay] = useState<Date | null>(null);
-  /** The entry whose details are open. Clicking one anywhere in the calendar
-      used to do nothing at all — the editor existed only on the plan screen. */
-  const [editing, setEditing] = useState<PlannerItem | null>(null);
+  const openItemId = useApp((s) => s.openItemId);
+
+  /**
+   * On a phone the entry window is a sheet, and so is the day drawer — and a
+   * sheet sits above a sheet. Opening a record from inside the drawer would
+   * otherwise leave two of them stacked, with the one you asked for behind
+   * the one you asked for it from.
+   */
+  useEffect(() => {
+    if (openItemId) setOpenDay(null);
+  }, [openItemId]);
   const [dragging, setDragging] = useState<string | null>(null);
 
   const days = useMemo(
@@ -113,15 +118,13 @@ export function CalendarScreen() {
               { id: 'agenda', label: t(L('Списък', 'List')) },
             ]}
           />
-          <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('item')}>
+          <Button variant="primary" icon="plus" onClick={() => useApp.getState().setQuick('item', 'task')}>
             {t(S.add)}
           </Button>
         </>
       }
     >
-      {view === 'agenda' && (
-        <AgendaView events={events} days={days} now={now} onOpenDay={setOpenDay} onEdit={setEditing} />
-      )}
+      {view === 'agenda' && <AgendaView events={events} days={days} now={now} onOpenDay={setOpenDay} />}
 
       {view === 'month' && (
         <MonthView
@@ -137,22 +140,7 @@ export function CalendarScreen() {
         />
       )}
       {view === 'week' && <WeekView days={days} events={events} now={now} onOpenDay={setOpenDay} onDrop={dropOn} onDragTask={setDragging} />}
-      {view === 'day' && (
-        <DayView day={anchor} events={events.get(keyOf(anchor)) ?? []} now={now} onEdit={setEditing} />
-      )}
-      {/* The same editor the plan screen opens, reached from the calendar too.
-          A deadline you can see but not change is a deadline you have to go
-          somewhere else to change. */}
-      {editing &&
-        (phone ? (
-          <Sheet open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))}>
-            <TaskEditor item={editing} onClose={() => setEditing(null)} />
-          </Sheet>
-        ) : (
-          <Modal open onClose={() => setEditing(null)} title={t(L('Запис', 'Entry'))} width={560}>
-            <TaskEditor item={editing} onClose={() => setEditing(null)} />
-          </Modal>
-        ))}
+      {view === 'day' && <DayView day={anchor} events={events.get(keyOf(anchor)) ?? []} now={now} />}
 
       <Sheet
         open={!!openDay}
@@ -160,13 +148,7 @@ export function CalendarScreen() {
         title={openDay ? formatDate(openDay.getTime(), lang, { weekday: 'long', day: 'numeric', month: 'long' }) : ''}
       >
         {openDay && (
-          <DayView
-            day={openDay}
-            events={events.get(keyOf(openDay)) ?? []}
-            now={now}
-            inSheet
-            onEdit={setEditing}
-          />
+          <DayView day={openDay} events={events.get(keyOf(openDay)) ?? []} now={now} inSheet />
         )}
       </Sheet>
     </Screen>
@@ -519,13 +501,11 @@ function DayView({
   events,
   now,
   inSheet,
-  onEdit,
 }: {
   day: Date;
   events: CalEvent[];
   now: number;
   inSheet?: boolean;
-  onEdit?: (item: PlannerItem) => void;
 }) {
   const t = useT();
   const lang = useLang();
@@ -634,7 +614,7 @@ function DayView({
             {allDay.map((event) => {
               const item = items.find((i) => i.id === event.refId);
               return item ? (
-                <TaskRow key={event.id} item={item} dense onEdit={onEdit} />
+                <TaskRow key={event.id} item={item} dense />
               ) : null;
             })}
           </div>

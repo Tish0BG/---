@@ -297,9 +297,6 @@ const imageCache = new Map<string, ImageBitmap | HTMLImageElement>();
 export function cacheImage(assetId: string, bmp: ImageBitmap | HTMLImageElement): void {
   imageCache.set(assetId, bmp);
 }
-export function hasImage(assetId: string): boolean {
-  return imageCache.has(assetId);
-}
 export function clearImageCache(): void {
   imageCache.clear();
 }

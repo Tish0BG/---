@@ -145,17 +145,6 @@ export interface StoredFile {
 
 /* ------------------------------------------------------------- annotations */
 
-export type AnnotationType =
-  | 'pen'
-  | 'highlighter'
-  | 'line'
-  | 'rect'
-  | 'ellipse'
-  | 'arrow'
-  | 'text'
-  | 'image'
-  | 'region';
-
 export interface Rect {
   x: number;
   y: number;
@@ -451,8 +440,23 @@ export interface AppSettings {
   driveSort: 'recent' | 'name' | 'progress' | 'size';
   /** highest and lowest mark on the grading scale */
   gradeScale: { min: number; max: number; pass: number };
-  /** collapse the navigation rail to icons only */
-  railCollapsed: boolean;
+  /**
+   * How the navigation rail behaves.
+   *
+   * Three states rather than a boolean, because "collapsed" was answering two
+   * different questions at once: it decided both the width *and* whether the
+   * rail opened under the pointer. Somebody who wants icons only and somebody
+   * who wants icons that unfold on hover were being given the same setting.
+   */
+  railMode: RailMode;
+  /**
+   * How many minutes a day is allowed to hold, for the plan's capacity bar.
+   *
+   * One number for every day rather than one per date: a person's working day
+   * is a habit, not a calendar entry, and a per-day override is a setting
+   * nobody would ever go back and correct.
+   */
+  dayCapacity: number;
   /** the panels on the dashboard, in the order they are drawn */
   dashboard: DashboardPanel[];
   /** desktop notifications for reminders and for what is still open today */
@@ -478,6 +482,9 @@ export interface ReminderSettings {
   /** deadlines with an hour on them also announce themselves */
   dueTimes: boolean;
 }
+
+/** `hover` keeps the narrow footprint and unfolds a floating panel under the pointer. */
+export type RailMode = 'expanded' | 'collapsed' | 'hover';
 
 export type SaveStatus = 'saved' | 'saving' | 'unsaved' | 'error';
 
@@ -712,63 +719,19 @@ export interface TaskStep {
   id: string;
   title: string;
   done: boolean;
+  /**
+   * Minutes this step is expected to take; 0 or unset = unknown.
+   *
+   * Only *planned* time, never actual. A focus session is tagged with a
+   * `PlannerItem.id` and step ids are not addressable, so there is no honest
+   * way to say how long one step really took — and a zero in that column
+   * would read as "no time spent" rather than "not known".
+   */
+  duration?: number;
 }
 
 /** How often a ticked entry returns. `weekdays` is Monday to Friday. */
 export type RepeatRule = 'none' | 'daily' | 'weekdays' | 'weekly' | 'monthly' | 'yearly';
-
-/* -------------------------------------------------------------------- goals */
-
-/**
- * What a goal is measured in.
- *
- * The first four are read straight off data the app already collects, so a
- * goal moves on its own while you work. `custom` is the escape hatch — the
- * chapters of a book, the past papers of a subject — and is counted by hand.
- */
-export type GoalMetric = 'minutes' | 'tasks' | 'cards' | 'pages' | 'custom';
-
-export interface Milestone {
-  id: string;
-  title: string;
-  done: boolean;
-  doneAt: ISODate | null;
-}
-
-/**
- * One thing you are trying to get to, with a deadline and a number attached.
- *
- * Everything except `custom` derives its progress from real records inside the
- * goal's window, which is what keeps a goal honest: it cannot say 80 % while
- * the focus log says otherwise.
- */
-export interface Goal {
-  id: string;
-  title: string;
-  subjectId: string | null;
-  metric: GoalMetric;
-  /** minutes, tasks, reviews, pages or units — read with `metric` */
-  target: number;
-  /** hand-counted progress; only consulted when metric === 'custom' */
-  manual: number;
-  /**
-   * Where the automatic counter stood when the goal was made.
-   *
-   * Pages read are a running total the app has always kept, so without a
-   * baseline a goal set today would open at "already 340 of 200 pages".
-   */
-  baseline: number;
-  /** automatic metrics are measured from here onwards */
-  startAt: ISODate;
-  deadline: ISODate | null;
-  milestones: Milestone[];
-  /** overrides the subject tint for this goal only */
-  color: string | null;
-  archived: boolean;
-  completedAt: ISODate | null;
-  createdAt: ISODate;
-  updatedAt: ISODate;
-}
 
 /* ------------------------------------------------------------ achievements */
 
@@ -829,7 +792,6 @@ export interface ClassSlot {
  */
 export type SyncKind =
   | 'folders'
-  | 'goals'
   | 'documents'
   | 'annotations'
   | 'bookmarks'
@@ -850,15 +812,6 @@ export interface Tombstone {
   /** true for a document: the server also drops everything hanging off it */
   cascade?: boolean;
   deletedAt: ISODate;
-}
-
-/** One binary (a PDF or an image) waiting to be uploaded or downloaded. */
-export interface BlobRef {
-  /** `file:<docId>` or `asset:<assetId>` */
-  key: string;
-  docId: string;
-  size: number;
-  mime: string;
 }
 
 export type SyncPhase = 'idle' | 'checking' | 'pulling' | 'pushing' | 'files' | 'done' | 'error';

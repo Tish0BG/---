@@ -47,7 +47,7 @@ const EN: LandingCopy = {
   },
   hero: {
     eyebrow: 'Plan · Do · Focus · Track · Improve',
-    lead: 'Plauvia holds your day and your long game on one screen — tasks, reminders, goals, documents and the hours you actually put in, so the work you plan is the work that gets done.',
+    lead: 'Plauvia holds your day on one screen — tasks, reminders, documents and the hours you actually put in, so the work you plan is the work that gets done.',
     primary: 'Get started',
     secondary: 'See how it works',
     trust: ['Works offline', 'No ads, no profiling', 'Your data stays yours'],
@@ -80,7 +80,7 @@ const EN: LandingCopy = {
     {
       key: 'improve',
       title: 'Improve',
-      body: 'Goals, streaks and spaced repetition turn one good week into a term you can rely on.',
+      body: 'Streaks and spaced repetition turn one good week into a term you can rely on.',
       icon: 'target',
     },
   ],
@@ -95,7 +95,7 @@ const EN: LandingCopy = {
       },
       {
         title: 'Fill today, and the long list',
-        body: 'The plan is one screen: today on the left, everything with a longer rope beside it, your goals on the right. You drag between them.',
+        body: 'The plan is one screen: the days side by side, the backlog you pull from at the left edge, the calendar beside them. You drag between them.',
         icon: 'calendar',
       },
       {
@@ -105,7 +105,7 @@ const EN: LandingCopy = {
       },
       {
         title: 'Watch it add up',
-        body: 'Goals move on their own, streaks build, levels and achievements follow the hours — not the app opening.',
+        body: 'Streaks build, levels and achievements follow the hours — not the app opening.',
         icon: 'trophy',
       },
     ],
@@ -148,11 +148,6 @@ const EN: LandingCopy = {
         kind: 'exams',
         label: 'Exams',
         body: 'A countdown and a readiness figure worked out from tasks, cards and hours actually logged.',
-      },
-      {
-        kind: 'goals',
-        label: 'Goals',
-        body: 'Measured in minutes, tasks, cards or pages — and told plainly when you are behind the pace.',
       },
       {
         kind: 'stats',
@@ -241,7 +236,7 @@ const EN: LandingCopy = {
       },
       {
         q: 'What happens to the hours I log?',
-        a: 'They become the statistics, the streaks, the goals and the levels. Nothing on those screens is typed in by hand — which is why they are worth reading.',
+        a: 'They become the statistics, the streaks and the levels. Nothing on those screens is typed in by hand — which is why they are worth reading.',
       },
       {
         q: 'Can I export everything?',
@@ -270,7 +265,7 @@ const BG: LandingCopy = {
   },
   hero: {
     eyebrow: 'Планирай · Върши · Фокус · Следи · Подобри',
-    lead: 'Plauvia държи деня и дългия път на един екран — задачи, напомняния, цели, документи и часовете, които наистина си вложил, за да се случва планираното.',
+    lead: 'Plauvia държи деня на един екран — задачи, напомняния, документи и часовете, които наистина си вложил, за да се случва планираното.',
     primary: 'Започни',
     secondary: 'Виж как работи',
     trust: ['Работи офлайн', 'Без реклами и профилиране', 'Данните остават твои'],
@@ -303,7 +298,7 @@ const BG: LandingCopy = {
     {
       key: 'improve',
       title: 'Подобри',
-      body: 'Цели, серии и интервално повторение превръщат една добра седмица в срок, на който можеш да разчиташ.',
+      body: 'Сериите и интервалното повторение превръщат една добра седмица в срок, на който можеш да разчиташ.',
       icon: 'target',
     },
   ],
@@ -318,7 +313,7 @@ const BG: LandingCopy = {
       },
       {
         title: 'Напълни днес и дългия списък',
-        body: 'Планът е един екран: днес отляво, всичко с по-дълъг срок до него, целите отдясно. Дърпаш между тях с ръка.',
+        body: 'Планът е един екран: дните един до друг, бекло̀гът вляво, календарът до тях. Дърпаш между тях с ръка.',
         icon: 'calendar',
       },
       {
@@ -328,7 +323,7 @@ const BG: LandingCopy = {
       },
       {
         title: 'Гледай как се трупа',
-        body: 'Целите се движат сами, сериите растат, нивата и постиженията следват часовете — не отварянето на приложението.',
+        body: 'Сериите растат, нивата и постиженията следват часовете — не отварянето на приложението.',
         icon: 'trophy',
       },
     ],
@@ -371,11 +366,6 @@ const BG: LandingCopy = {
         kind: 'exams',
         label: 'Изпити',
         body: 'Обратно броене и готовност, сметната от задачите, картите и часовете, които наистина си направил.',
-      },
-      {
-        kind: 'goals',
-        label: 'Цели',
-        body: 'В минути, задачи, карти или страници — и казано направо, когато изоставаш от темпото.',
       },
       {
         kind: 'stats',

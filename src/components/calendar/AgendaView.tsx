@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { usePlanner } from '@/state/plannerStore';
-import type { PlannerItem } from '@/types';
 import { useApp } from '@/state/appStore';
 import { L, clockTime, formatDate, useLang, useT } from '@/i18n';
 import { Card, EmptyState } from '../kit';
@@ -28,14 +27,12 @@ export function AgendaView({
   days,
   now,
   onOpenDay,
-  onEdit,
 }: {
   events: Map<string, CalEvent[]>;
   /** the same range the other views are showing, so the two agree */
   days: Date[];
   now: number;
   onOpenDay: (d: Date) => void;
-  onEdit?: (item: PlannerItem) => void;
 }) {
   const t = useT();
   const lang = useLang();
@@ -60,7 +57,7 @@ export function AgendaView({
           )}
           action={{
             label: t(L('Добави', 'Add')),
-            onClick: () => useApp.getState().setQuick('item'),
+            onClick: () => useApp.getState().setQuick('item', 'task'),
           }}
         />
       </Card>
@@ -103,7 +100,6 @@ export function AgendaView({
                   now={now}
                   first={i === 0}
                   lang={lang}
-                  onEdit={onEdit}
                 />
               ))}
             </Card>
@@ -119,13 +115,11 @@ function AgendaRow({
   now,
   first,
   lang,
-  onEdit,
 }: {
   event: CalEvent;
   now: number;
   first: boolean;
   lang: 'bg' | 'en';
-  onEdit?: (item: PlannerItem) => void;
 }) {
   const t = useT();
   const items = usePlanner((s) => s.items);
@@ -133,7 +127,7 @@ function AgendaRow({
   /** Only the two kinds that are actually owed can be ticked off here. */
   const tickable = event.kind === 'task' || event.kind === 'exam';
   /** A lesson and a logged session have no editable record behind them. */
-  const openable = tickable && !!onEdit;
+  const openable = tickable;
 
   const when = event.allDay
     ? t(L('Цял ден', 'All day'))
@@ -170,7 +164,7 @@ function AgendaRow({
         disabled={!openable}
         onClick={() => {
           const item = items.find((i) => i.id === event.refId);
-          if (item) onEdit?.(item);
+          if (item) useApp.getState().openItem(item.id);
         }}
         className={`min-w-0 flex-1 text-left ${openable ? 'cursor-pointer' : 'cursor-default'}`}
       >

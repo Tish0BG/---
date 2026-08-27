@@ -252,6 +252,3 @@ export function typeName(type: ItemType, lang: Lang = currentLang()): string {
   if (lang === 'en' && type.nameEn) return type.nameEn;
   return type.name;
 }
-
-/** React-friendly: the full list, already merged and sorted. */
-export const useAllTypes = (): ItemType[] => allTypes(useItemTypes((s) => s.custom));

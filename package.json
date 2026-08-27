@@ -16,7 +16,6 @@
     "brand": "node scripts/make-brand-assets.mjs"
   },
   "dependencies": {
-    "@supabase/server": "^1.4.1",
     "@supabase/supabase-js": "^2.112.3",
     "@vercel/analytics": "^2.0.1",
     "idb": "^8.0.3",
@@ -38,6 +37,6 @@
     "typescript": "^5.9.2",
     "vite": "^7.1.5"
   },
-  "description": "Plauvia — plan, study, focus and track. Textbooks, whiteboards, flashcards and study time in one place.",
+  "description": "Plauvia \u2014 plan, study, focus and track. Textbooks, whiteboards, flashcards and study time in one place.",
   "homepage": "https://www.plauvia.com"
 }

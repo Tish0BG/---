@@ -27,8 +27,8 @@ export const t = (v: P, lang: Lang): string => v[lang];
 /* ------------------------------------------------------------------ about */
 
 export const ABOUT_LEAD: P = {
-  bg: 'Plauvia е работно място за деня ти: планът, напомнянията, целите, документите, картите и часовете на едно място, вместо в пет приложения, които не се познават помежду си.',
-  en: 'Plauvia is a workspace for your day: the plan, the reminders, the goals, the documents, the cards and the hours in one place, instead of five apps that have never heard of each other.',
+  bg: 'Plauvia е работно място за деня ти: планът, напомнянията, документите, картите и часовете на едно място, вместо в пет приложения, които не се познават помежду си.',
+  en: 'Plauvia is a workspace for your day: the plan, the reminders, the documents, the cards and the hours in one place, instead of five apps that have never heard of each other.',
 };
 
 export const ABOUT: Section[] = [
@@ -36,12 +36,12 @@ export const ABOUT: Section[] = [
     h: { bg: 'Защо съществува', en: 'Why it exists' },
     p: [
       {
-        bg: 'Повечето хора не се провалят в плановете си, защото не могат да ги изпълнят. Провалят се, защото планът живее в един тефтер, напомнянията са в телефона, целите — никъде, а никой от тях не знае колко часа наистина са изкарани. Plauvia събира точно тези неща и ги кара да четат едни и същи записи.',
-        en: 'Most people do not struggle because they cannot do the work. They struggle because the plan lives in one notebook, the reminders live in a phone, the goals live nowhere, and none of them knows how many hours were actually put in. Plauvia puts those things together and makes them read the same records.',
+        bg: 'Повечето хора не се провалят в плановете си, защото не могат да ги изпълнят. Провалят се, защото планът живее в един тефтер, напомнянията са в телефона, а никой от тях не знае колко часа наистина са изкарани. Plauvia събира точно тези неща и ги кара да четат едни и същи записи.',
+        en: 'Most people do not struggle because they cannot do the work. They struggle because the plan lives in one notebook, the reminders live in a phone, and neither of them knows how many hours were actually put in. Plauvia puts those things together and makes them read the same records.',
       },
       {
-        bg: 'Затова никое число в приложението не се въвежда на ръка. Нивата, целите, сериите и готовността за изпит се пресмятат наново от записите, които вече съществуват — фокус сесии, завършени задачи, прегледани карти. Число, което не може да се проследи до нещо направено, е украса.',
-        en: 'That is why no number in the app is typed in by hand. Levels, goals, streaks and exam readiness are recomputed from records that already exist — focus sessions, completed tasks, card reviews. A number that cannot be traced back to something done is decoration.',
+        bg: 'Затова никое число в приложението не се въвежда на ръка. Нивата, сериите и готовността за изпит се пресмятат наново от записите, които вече съществуват — фокус сесии, завършени задачи, прегледани карти. Число, което не може да се проследи до нещо направено, е украса.',
+        en: 'That is why no number in the app is typed in by hand. Levels, streaks and exam readiness are recomputed from records that already exist — focus sessions, completed tasks, card reviews. A number that cannot be traced back to something done is decoration.',
       },
     ],
   },
@@ -75,8 +75,8 @@ export const FAQ: { q: P; a: P }[] = [
   {
     q: { bg: 'Какво представлява Plauvia?', en: 'What is Plauvia?' },
     a: {
-      bg: 'Работно място за деня: планираш днес и дългия път на един екран, слагаш напомняния, отваряш документ или празна дъска, пишеш направо върху страницата, изрязваш нещо и то става флашкарта, пускаш фокус сесия. Часовете, които запишеш, стават статистиката, целите и нивата.',
-      en: 'A workspace for the day: plan today and the long haul on one screen, set reminders, open a document or a blank board, write straight on the page, cut something out and it becomes a flashcard, run a focus session. The hours you log become the statistics, the goals and the levels.',
+      bg: 'Работно място за деня: планираш днес и дългия път на един екран, слагаш напомняния, отваряш документ или празна дъска, пишеш направо върху страницата, изрязваш нещо и то става флашкарта, пускаш фокус сесия. Часовете, които запишеш, стават статистиката и нивата.',
+      en: 'A workspace for the day: plan today and the long haul on one screen, set reminders, open a document or a blank board, write straight on the page, cut something out and it becomes a flashcard, run a focus session. The hours you log become the statistics and the levels.',
     },
   },
   {

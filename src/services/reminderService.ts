@@ -1,4 +1,5 @@
 import type { PlannerItem } from '@/types';
+import { dayKey } from '@/lib/util';
 import { useSettings } from '@/state/settingsStore';
 import { usePlanner, startOfDay } from '@/state/plannerStore';
 import { navigateTo, useApp } from '@/state/appStore';
@@ -139,8 +140,6 @@ const hhmm = (ts: number) =>
     hour: '2-digit',
     minute: '2-digit',
   });
-
-const dayKey = (ts: number) => new Date(ts).toISOString().slice(0, 10);
 
 /**
  * Everything that should be said right now, given the records and the clock.

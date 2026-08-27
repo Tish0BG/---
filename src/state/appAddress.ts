@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { applyHead } from '@/seo/head';
 import { entryPath, isAppPath, normalisePath } from '@/seo/routes';
 import { currentLang, tr, L } from '@/i18n';
-import { useApp, VIEW_TITLES, PLAN_TAB_FOR, resolveView, type AppView } from './appStore';
+import { useApp, VIEW_TITLES, resolveView, type AppView } from './appStore';
 import { useAuth } from './authStore';
 import { useRoute } from './routeStore';
 import { useTimer } from './timerStore';
@@ -31,12 +31,14 @@ import { useWorkspace } from './workspaceStore';
  */
 
 /**
- * The three addresses the plan absorbed.
+ * The two addresses the plan absorbed.
  *
  * They still answer — people bookmarked them — but the app straightens them
  * out to `/plan` in place rather than pushing a second history entry.
+ * `/goals` is here because the feature was removed, not merged: the nearest
+ * live screen is a better answer to an old bookmark than a 404.
  */
-const LEGACY_PLAN_PATHS = ['/tasks', '/goals', '/exams'];
+const LEGACY_PLAN_PATHS = ['/tasks', '/goals'];
 
 /** The address of each screen. The slug is the name the app already uses. */
 export const VIEW_PATHS: Record<AppView, string> = {
@@ -49,6 +51,7 @@ export const VIEW_PATHS: Record<AppView, string> = {
   subjects: '/subjects',
   stats: '/stats',
   achievements: '/achievements',
+  exams: '/exams',
   profile: '/profile',
 };
 
@@ -173,9 +176,8 @@ export function applyAppPath(path: string): void {
     return;
   }
   const view = resolveView(head);
-  // `/tasks`, `/goals` and `/exams` are the plan, opened on the half the old
-  // address was asking for.
-  if (view === 'plan') app.goPlan(PLAN_TAB_FOR[head] ?? 'board', head === 'exams' ? 'exam' : null);
+  // `/tasks` and `/goals` are the plan; everything else is its own screen.
+  if (view === 'plan') app.goPlan(null);
   else if (view) app.go(view);
 }
 

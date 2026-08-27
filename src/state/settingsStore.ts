@@ -50,11 +50,15 @@ const DEFAULTS: AppSettings = {
     fullscreenOnStart: false,
   },
   timerVisible: false,
-  timerPos: { x: 0.97, y: 0.86 },
+  // Right-hand side but well clear of the bottom corner, which now belongs
+  // to the create button. A widget that opens on top of the most-pressed
+  // control in the app is a widget people close before they ever use it.
+  timerPos: { x: 0.97, y: 0.58 },
   driveView: 'grid',
   driveSort: 'recent',
   gradeScale: { min: 2, max: 6, pass: 3 },
-  railCollapsed: false,
+  railMode: 'expanded',
+  dayCapacity: 240,
   dashboard: DEFAULT_DASHBOARD,
   reminders: {
     enabled: false,
@@ -73,10 +77,13 @@ function load(): AppSettings {
   try {
     const raw = localStorage.getItem(KEY);
     if (!raw) return DEFAULTS;
-    const parsed = JSON.parse(raw) as Partial<AppSettings>;
+    const parsed = JSON.parse(raw) as Partial<AppSettings> & { railCollapsed?: boolean };
     return {
       ...DEFAULTS,
       ...parsed,
+      // `railCollapsed: true` meant "narrow, and open it when I point at it",
+      // which is exactly what `hover` means now.
+      railMode: parsed.railMode ?? (parsed.railCollapsed ? 'hover' : 'expanded'),
       toolPresets: { ...DEFAULT_PRESETS, ...(parsed.toolPresets ?? {}) },
       timer: { ...DEFAULTS.timer, ...(parsed.timer ?? {}) },
       timerPos: { ...DEFAULTS.timerPos, ...(parsed.timerPos ?? {}) },
