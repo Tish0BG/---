@@ -260,43 +260,6 @@ export function Donut({
 
 /* ------------------------------------------------------------ sparkline */
 
-export function Sparkline({
-  values,
-  width = 96,
-  height = 28,
-  color = 'var(--c-accent)',
-  className = '',
-}: {
-  values: number[];
-  width?: number;
-  height?: number;
-  color?: string;
-  className?: string;
-}) {
-  if (values.length < 2) return null;
-  const max = Math.max(...values, 1);
-  const min = Math.min(...values, 0);
-  const span = max - min || 1;
-  const step = width / (values.length - 1);
-  const pts = values.map((v, i) => [i * step, height - 3 - ((v - min) / span) * (height - 6)] as const);
-  const d = pts.map((p, i) => `${i ? 'L' : 'M'}${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(' ');
-  const last = pts[pts.length - 1];
-
-  return (
-    <svg width={width} height={height} className={className} aria-hidden>
-      <path
-        d={`${d} L${width} ${height} L0 ${height} Z`}
-        fill={color}
-        opacity={0.1}
-        style={{ transform: 'translateY(1px)' }}
-      />
-      <path d={d} fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      {/* the end marker carries a surface ring so it stays legible on the line */}
-      <circle cx={last[0]} cy={last[1]} r={4} fill={color} stroke="var(--c-surface)" strokeWidth={2} />
-    </svg>
-  );
-}
-
 /* -------------------------------------------------------- heat calendar */
 
 export interface HeatDay {

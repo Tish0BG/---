@@ -20,7 +20,6 @@ export const DEFAULT_DASHBOARD: DashboardPanel[] = [
   { id: 'today-plan', size: 'half' },
   { id: 'exams', size: 'half' },
   { id: 'week-focus', size: 'half' },
-  { id: 'goals', size: 'half' },
   { id: 'recent', size: 'half' },
   { id: 'subject-split', size: 'half' },
 ];

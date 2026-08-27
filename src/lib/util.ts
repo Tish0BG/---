@@ -7,6 +7,21 @@ export function uid(prefix = ''): string {
   return `${prefix}${t}${r}`;
 }
 
+/**
+ * `2026-08-27` — the key a day is filed under, in **local** time.
+ *
+ * There were five copies of this in the tree and two of them used
+ * `toISOString().slice(0, 10)`, which is UTC. In Sofia that puts anything
+ * before three in the morning on the day before — so a reminder could be filed
+ * under yesterday while the planner filed the same moment under today, and the
+ * two would never agree about whether it had already fired. One function, one
+ * timezone, one answer.
+ */
+export function dayKey(d: Date | number = new Date()): string {
+  const x = new Date(d);
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+}
+
 export const clamp = (v: number, min: number, max: number) => Math.min(max, Math.max(min, v));
 
 export const round2 = (v: number) => Math.round(v * 100) / 100;
@@ -68,9 +83,6 @@ export const rectFromPoints = (a: Point, b: Point): Rect => ({
   h: Math.abs(a.y - b.y),
 });
 
-export const rectsIntersect = (a: Rect, b: Rect) =>
-  a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-
 export const pointInRect = (p: Point, r: Rect, pad = 0) =>
   p.x >= r.x - pad && p.x <= r.x + r.w + pad && p.y >= r.y - pad && p.y <= r.y + r.h + pad;
 
@@ -122,25 +134,6 @@ export function distToSegment(p: Point, a: Point, b: Point): number {
   const cy = a.y + t * dy;
   return Math.hypot(p.x - cx, p.y - cy);
 }
-
-/** 2x3 affine matrix multiply, same convention as pdf.js: [a, b, c, d, e, f]. */
-export type Matrix = [number, number, number, number, number, number];
-
-export function matMul(m1: Matrix, m2: Matrix): Matrix {
-  return [
-    m1[0] * m2[0] + m1[2] * m2[1],
-    m1[1] * m2[0] + m1[3] * m2[1],
-    m1[0] * m2[2] + m1[2] * m2[3],
-    m1[1] * m2[2] + m1[3] * m2[3],
-    m1[0] * m2[4] + m1[2] * m2[5] + m1[4],
-    m1[1] * m2[4] + m1[3] * m2[5] + m1[5],
-  ];
-}
-
-export const applyMat = (m: Matrix, x: number, y: number): Point => ({
-  x: m[0] * x + m[2] * y + m[4],
-  y: m[1] * x + m[3] * y + m[5],
-});
 
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;

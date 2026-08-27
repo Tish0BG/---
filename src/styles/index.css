@@ -1210,6 +1210,29 @@ h3 {
     transform: translateX(2px);
   }
 }
+/**
+ * The rail's labels, while the rail is narrow.
+ *
+ * They stay in the tree rather than being unmounted, so opening the rail is a
+ * fade rather than a pop — eight labels appearing all at once at full opacity
+ * reads as a flash, and the eye notices the flash instead of the words. The
+ * rail clips its own overflow, so a 140 px label inside a 68 px column is
+ * simply not there while it is off.
+ */
+.rail-fade {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity var(--dur) var(--ease-out),
+    transform var(--dur) var(--ease-out);
+}
+
+.rail-fade[data-off='true'] {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
+}
+
 .animate-shake {
   animation: shake 0.34s var(--ease);
 }

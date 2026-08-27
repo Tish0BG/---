@@ -119,13 +119,6 @@ export function PlauviaWordmark({
   );
 }
 
-/**
- * Icon plus name: the primary lockup, used wherever there is room for both.
- *
- * `tile` is the default and the one that belongs on a page; `flat` drops the
- * tile and draws the mark in the tone's colour, which is what a dark hero, a
- * printed page or a one-colour e-mail header needs.
- */
 export function PlauviaLogo({
   size = 32,
   className = '',

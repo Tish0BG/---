@@ -153,8 +153,6 @@ export function trustedUntil(userId: string): number | null {
   return until;
 }
 
-export const isTrusted = (userId: string): boolean => trustedUntil(userId) !== null;
-
 export function trustDevice(userId: string, days = TRUST_DAYS): void {
   write({ ...read(), [userId]: Date.now() + days * 24 * 60 * 60 * 1000 });
 }

@@ -198,24 +198,3 @@ export function StatCard({
 /* --------------------------------------------------------------- sections */
 
 /** The heading above a group of cards. Not a card title — a screen section. */
-export function SectionHeader({
-  title,
-  hint,
-  action,
-  className = '',
-}: {
-  title: ReactNode;
-  hint?: ReactNode;
-  action?: ReactNode;
-  className?: string;
-}) {
-  return (
-    <div className={`mb-3 flex items-end justify-between gap-3 ${className}`}>
-      <div className="min-w-0">
-        <h2 className="t-h3">{title}</h2>
-        {hint && <p className="mt-0.5 text-[12px] text-muted">{hint}</p>}
-      </div>
-      {action}
-    </div>
-  );
-}

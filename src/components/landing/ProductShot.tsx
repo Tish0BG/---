@@ -421,28 +421,6 @@ function DashboardScene({ bg }: { bg: boolean }) {
               </span>
             </div>
           ))}
-          <div className="mt-2 border-t border-line pt-2.5">
-            <Heading>{bg ? 'Цели' : 'Goals'}</Heading>
-            {(
-              [
-                [bg ? 'Ремонт — 30 часа' : 'The flat — 30 hours', 0.62, 'var(--c-brand)'],
-                [bg ? '12 тренировки този месец' : '12 workouts this month', 0.35, 'var(--c-aurora)'],
-              ] as [string, number, string][]
-            ).map(([label, value, color]) => (
-              <div key={label} className="mb-2">
-                <div className="mb-1 flex justify-between text-[9px]">
-                  <span className="truncate text-muted">{label}</span>
-                  <span>{Math.round(value * 100)}%</span>
-                </div>
-                <div className="h-1 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
-                  <span
-                    className="block h-full rounded-full"
-                    style={{ width: `${value * 100}%`, background: color }}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
         </Panel>
       </div>
     </>
@@ -848,14 +826,13 @@ export type ShotKind =
   | 'library'
   | 'cards'
   | 'exams'
-  | 'goals'
   | 'stats';
 
 /**
  * A small, self-contained mockup of one screen — the same trick as the big
  * shot, at a size that fits in a column.
  *
- * Nine of them now, because a visitor deciding whether to sign up is really
+ * Eight of them now, because a visitor deciding whether to sign up is really
  * asking "what will I be looking at every day", and that question is answered
  * by pictures rather than by another paragraph. Every one is drawn from the
  * app's own tokens: they follow the visitor's theme, stay sharp on any
@@ -1119,39 +1096,6 @@ export function MiniShot({ kind, lang }: { kind: ShotKind; lang: Lang }) {
                 </span>
               </span>
             </span>
-          </div>
-        ))}
-      </Frame>
-    );
-  }
-
-  if (kind === 'goals') {
-    const goals: [string, string, number, string][] = bg
-      ? [
-          ['30 часа за ремонта', '19 ч 50 мин от 30 ч', 0.66, 'var(--c-brand)'],
-          ['12 тренировки този месец', '4 от 12 · изостава', 0.35, 'var(--c-warn)'],
-          ['200 карти за срока', '188 от 200', 0.94, 'var(--c-aurora)'],
-        ]
-      : [
-          ['30 hours on the flat', '19 h 50 min of 30 h', 0.66, 'var(--c-brand)'],
-          ['12 workouts this month', '4 of 12 · behind', 0.35, 'var(--c-warn)'],
-          ['200 cards by the deadline', '188 of 200', 0.94, 'var(--c-aurora)'],
-        ];
-    return (
-      <Frame>
-        <div className="mb-2 text-[10px] text-muted">{bg ? 'Цели' : 'Goals'}</div>
-        {goals.map(([title, hint, value, color], i) => (
-          <div key={title} className={i ? 'mt-3' : ''}>
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-[10.5px] font-medium">{title}</span>
-              <span className="t-num shrink-0 text-[9.5px]" style={{ color }}>
-                {Math.round(value * 100)}%
-              </span>
-            </div>
-            <div className="mt-1.5 h-[5px] overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
-              <span className="block h-full rounded-full" style={{ width: `${value * 100}%`, background: color }} />
-            </div>
-            <div className="mt-1 text-[8.5px] text-faint">{hint}</div>
           </div>
         ))}
       </Frame>

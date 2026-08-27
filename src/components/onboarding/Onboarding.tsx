@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useWorkspace, SUBJECT_COLORS, SUGGESTED_SUBJECTS } from '@/state/workspaceStore';
 import { useSettings } from '@/state/settingsStore';
-import { useGoals } from '@/state/goalStore';
 import { useAuth } from '@/state/authStore';
-import { gameContext } from '@/state/gameStore';
 import { useT, L, plural, useLangStore, type Lang, type Msg } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { BRAND } from '@/brand';
@@ -83,7 +81,6 @@ interface Draft {
   styles: LearningStyle[];
   daily: number;
   session: number;
-  wantGoal: boolean;
 }
 
 function readDraft(): Partial<Draft> {
@@ -117,7 +114,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
   const [custom, setCustom] = useState('');
   const [daily, setDaily] = useState(saved.daily ?? 90);
   const [session, setSession] = useState(saved.session ?? 25);
-  const [wantGoal, setWantGoal] = useState(saved.wantGoal ?? true);
   const [saving, setSaving] = useState(false);
 
   const names = useMemo(() => SUGGESTED_SUBJECTS.map((s) => s[lang]), [lang]);
@@ -127,15 +123,15 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
 
   /** Written on every change, so a refresh resumes rather than restarts. */
   useEffect(() => {
-    const draft: Draft = { step, name, lastName, username, avatar, color, picked, level, goals, styles, daily, session, wantGoal };
+    const draft: Draft = { step, name, lastName, username, avatar, color, picked, level, goals, styles, daily, session };
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(draft));
     } catch {
       /* private mode — setup still works, it just will not resume */
     }
-  }, [step, name, lastName, username, avatar, color, picked, level, goals, styles, daily, session, wantGoal]);
+  }, [step, name, lastName, username, avatar, color, picked, level, goals, styles, daily, session]);
 
-  const finish = async (skipped = false) => {
+  const finish = async () => {
     setSaving(true);
     const workspace = useWorkspace.getState();
 
@@ -175,26 +171,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
     }
 
     useSettings.getState().setTimer({ goal: daily, work: session });
-
-    if (wantGoal && !skipped) {
-      const first = useWorkspace.getState().subjects[0] ?? null;
-      const deadline = new Date();
-      deadline.setDate(deadline.getDate() + 30);
-      deadline.setHours(0, 0, 0, 0);
-      await useGoals.getState().add(
-        {
-          title:
-            lang === 'bg'
-              ? `${Math.round((daily * 20) / 60)} часа учене този месец`
-              : `${Math.round((daily * 20) / 60)} hours of study this month`,
-          metric: 'minutes',
-          target: daily * 20,
-          subjectId: first?.id ?? null,
-          deadline: deadline.getTime(),
-        },
-        gameContext(),
-      );
-    }
 
     try {
       localStorage.removeItem(DRAFT_KEY);
@@ -261,7 +237,7 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
             <PlauviaWordmark size={16} />
           </span>
           <div className="ml-auto flex items-center gap-2">
-            <Button onClick={() => void finish(true)}>{t(L('Пропусни настройката', 'Skip setup'))}</Button>
+            <Button onClick={() => void finish()}>{t(L('Пропусни настройката', 'Skip setup'))}</Button>
           </div>
         </header>
 
@@ -670,30 +646,6 @@ export function Onboarding({ onDone }: { onDone: () => void }) {
                 ))}
               </div>
 
-              <label
-                className="mt-6 flex cursor-pointer items-start gap-3 rounded-[12px] border border-line p-3.5"
-                style={{ background: 'var(--c-surface)' }}
-              >
-                <input
-                  type="checkbox"
-                  checked={wantGoal}
-                  onChange={(e) => setWantGoal(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 accent-[var(--c-accent)]"
-                />
-                <span>
-                  <span className="block text-[13.5px] font-medium">
-                    {t(L('Създай ми първата цел', 'Create my first goal'))}
-                  </span>
-                  <span className="mt-0.5 block text-[12px] text-muted">
-                    {t(
-                      L(
-                        `${Math.round((daily * 20) / 60)} часа за следващия месец — движи се сама с всяка сесия.`,
-                        `${Math.round((daily * 20) / 60)} hours over the next month — it moves on its own with every session.`,
-                      ),
-                    )}
-                  </span>
-                </span>
-              </label>
             </section>
           )}
 

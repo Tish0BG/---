@@ -288,10 +288,16 @@ function ExamCard({ exam, open, onToggle }: { exam: PlannerItem; open: boolean; 
                   <Button
                     size="sm"
                     icon="plus"
-                    onClick={() => {
-                      useApp.getState().setFilter(exam.subjectId);
-                      useApp.getState().setQuick('item', 'task');
-                    }}
+                    /* The subject travels with the dialog now. It used to be
+                       "smuggled" by setting the global channel filter, which
+                       changed what the whole app was showing and did not even
+                       reach the composer. */
+                    onClick={() =>
+                      useApp.getState().setQuick('item', 'task', {
+                        subjectId: exam.subjectId,
+                        due: exam.due,
+                      })
+                    }
                   >
                     {t(S.add)}
                   </Button>

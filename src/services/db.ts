@@ -8,7 +8,6 @@ import type {
   FlashCard,
   FocusSession,
   Folder,
-  Goal,
   Grade,
   PlannerItem,
   StoredFile,
@@ -29,12 +28,14 @@ export const DB_NAME = 'studypdf';
  * task list, grades and a timetable.
  * v4 makes the library syncable: deletions leave a tombstone so another
  * device learns about them, and blobs remember whether they are uploaded.
- * v5 adds goals — the only new store the 2.0 screens needed, because levels,
- * achievements and statistics are all derived from records that already exist.
+ * v5 added goals; v7 removes them again. Levels, achievements and statistics
+ * were always derived from records that already exist, so the goal store was
+ * the one thing in the app keeping a number nobody could check against work.
  * v6 fixes a silent sync failure: four kinds of record were written without a
  * `updatedAt`, so the cloud never saw them. See the migration below.
+ * v7 drops the goal store and the rows in it.
  */
-export const DB_VERSION = 6;
+export const DB_VERSION = 7;
 
 export interface StudyDB extends DBSchema {
   folders: { key: string; value: Folder; indexes: { 'by-updated': number } };
@@ -64,7 +65,6 @@ export interface StudyDB extends DBSchema {
   planner: { key: string; value: PlannerItem; indexes: { 'by-due': number; 'by-subject': string } };
   grades: { key: string; value: Grade; indexes: { 'by-subject': string } };
   schedule: { key: string; value: ClassSlot; indexes: { 'by-day': number } };
-  goals: { key: string; value: Goal; indexes: { 'by-subject': string } };
   /** key/value bucket for the profile and app-level state */
   meta: { key: string; value: { key: string; value: unknown } };
   /**
@@ -150,11 +150,6 @@ export function getDB(): Promise<IDBPDatabase<StudyDB>> {
           db.createObjectStore('schedule', { keyPath: 'id' }).createIndex('by-day', 'day');
         }
 
-        /* ------------------------------------------------------- v5 */
-        if (!db.objectStoreNames.contains('goals')) {
-          db.createObjectStore('goals', { keyPath: 'id' }).createIndex('by-subject', 'subjectId');
-        }
-
         /* ------------------------------------------------------- v4 */
         if (!db.objectStoreNames.contains('tombstones')) {
           db.createObjectStore('tombstones', { keyPath: 'key' }).createIndex('by-deleted', 'deletedAt');
@@ -212,6 +207,21 @@ export function getDB(): Promise<IDBPDatabase<StudyDB>> {
             backfill('bookmarks', (r) => Number(r.createdAt) || Date.now()),
           ]);
         }
+
+        /* ------------------------------------------------------- v7 */
+
+        /**
+         * Goals are gone, and so is the store they lived in.
+         *
+         * Leaving it behind would be tidier to write and worse to live with: a
+         * store nothing reads is a store that still holds somebody's records,
+         * still counts against the origin's quota, and still turns up in an
+         * export. Dropping it is the honest version of removing the feature.
+         */
+        // Cast: `goals` is deliberately absent from `StudyDB` now, and the
+        // typed helper only knows the stores that still exist.
+        const legacy = db as unknown as IDBDatabase;
+        if (legacy.objectStoreNames.contains('goals')) legacy.deleteObjectStore('goals');
 
         // The timer's flat task list becomes planner items, so there is only
         // ever one place where "things I have to do" live.

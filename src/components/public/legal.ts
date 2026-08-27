@@ -68,8 +68,8 @@ export const PRIVACY: Section[] = [
         en: 'A first name for the greeting, if you entered one, and optionally a username and an avatar.',
       },
       {
-        bg: 'Съдържанието, което създаваш: качени PDF файлове, дъски, бележки върху страниците, флашкарти, предмети, задачи, изпити, цели, оценки и записи на фокус сесии.',
-        en: 'The content you create: uploaded PDF files, boards, page annotations, flashcards, subjects, tasks, exams, goals, grades and focus-session records.',
+        bg: 'Съдържанието, което създаваш: качени PDF файлове, дъски, бележки върху страниците, флашкарти, предмети, задачи, изпити, оценки и записи на фокус сесии.',
+        en: 'The content you create: uploaded PDF files, boards, page annotations, flashcards, subjects, tasks, exams, grades and focus-session records.',
       },
       {
         bg: 'Технически записи, необходими на хостинга и на базата — включително IP адрес и време на заявката — които се пазят за кратко и служат за сигурност и диагностика.',

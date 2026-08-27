@@ -505,7 +505,7 @@ function PrivacySection() {
     {
       key: 'progress',
       label: L('Напредък', 'Progress'),
-      hint: L('Часове, цели и напредък по учебник.', 'Hours, goals and progress per book.'),
+      hint: L('Часове и напредък по учебник.', 'Hours and progress per book.'),
     },
   ];
 
@@ -658,7 +658,7 @@ function NotificationsSection() {
     <div className="space-y-7">
       <Group
         title={t(L('В приложението', 'Inside the app'))}
-        hint={t(L('Камбанката горе събира просрочени задачи, наближаващи срокове, цели с краен срок и серии в риск. Списъкът се строи от твоите записи всеки път, когато го отвориш — нищо не се праща никъде.', 'The bell at the top gathers overdue tasks, deadlines coming up, goals near their date and streaks at risk. The list is built from your own records each time you open it — nothing is sent anywhere.'))}
+        hint={t(L('Кутията долу вляво събира просрочени задачи, наближаващи срокове и серии в риск. Списъкът се строи от твоите записи всеки път, когато го отвориш — нищо не се праща никъде.', 'The inbox at the foot of the rail gathers overdue tasks, deadlines coming up and streaks at risk. The list is built from your own records each time you open it — nothing is sent anywhere.'))}
       >
         <div className="card-quiet flex items-center gap-3 p-3">
           <Icon name="bellRing" size={18} className="text-accent" />
@@ -894,7 +894,6 @@ function ShortcutsSection() {
         ['⌘/Ctrl + K', L('Търсене и команди', 'Search and commands')],
         ['T', L('Нова задача', 'New task')],
         ['E', L('Нов изпит', 'New exam')],
-        ['G', L('Нова цел', 'New goal')],
         ['⌥ + Space', L('Старт / пауза на таймера', 'Start / pause the timer')],
         ['⌥ + T', L('Покажи / скрий таймера', 'Show / hide the timer')],
         ['⌥ + F', L('Фокус режим', 'Focus mode')],

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { navigateTo } from '@/state/appStore';
 import { usePlanner } from '@/state/plannerStore';
-import { useGoals } from '@/state/goalStore';
 import { useCards } from '@/state/cardStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useGame, useGameContext } from '@/state/gameStore';
@@ -14,17 +13,16 @@ import { Popover } from '../ui';
 import { EmptyState } from '../kit';
 
 /** Everything the feed needs, gathered once. */
-export function useNoticeFeed(): Notice[] {
+function useNoticeFeed(): Notice[] {
   const items = usePlanner((s) => s.items);
-  const goals = useGoals((s) => s.goals);
   const cards = useCards((s) => s.cards);
   const subjects = useWorkspace((s) => s.subjects);
   const unlocked = useGame((s) => s.unlocked);
   const ctx = useGameContext();
 
   return useMemo(
-    () => buildNotices({ items, goals, cards, subjects, ctx, unlocked }),
-    [items, goals, cards, subjects, ctx, unlocked],
+    () => buildNotices({ items, cards, subjects, ctx, unlocked }),
+    [items, cards, subjects, ctx, unlocked],
   );
 }
 
@@ -37,13 +35,24 @@ const TONE_COLOR: Record<Notice['tone'], string> = {
 };
 
 /**
- * The bell.
+ * The inbox.
  *
  * Nothing here is pushed or scheduled — the feed is a live query over the same
  * records the screens show, so it can never announce a deadline for a task
  * that was deleted, and it goes quiet on its own when the work is done.
+ *
+ * It was a bell in the top bar. A bell promises interruptions, and this thing
+ * never interrupts anybody: it is a tray that fills up quietly and empties
+ * itself when the work is done. It lives at the foot of the rail now, beside
+ * the profile, which is where the things that are *about you* belong.
  */
-export function NoticeBell() {
+export function NoticeInbox({
+  align = 'start',
+  side = 'top',
+}: {
+  align?: 'start' | 'end' | 'center';
+  side?: 'top' | 'bottom';
+}) {
   const t = useT();
   const lang = useLang();
   const feed = useNoticeFeed();
@@ -55,7 +64,8 @@ export function NoticeBell() {
   return (
     <Popover
       width={352}
-      align="end"
+      align={align}
+      side={side}
       trigger={({ toggle, ref }) => (
         <button
           ref={ref}
@@ -65,10 +75,10 @@ export function NoticeBell() {
             // not "you have not clicked each of these".
             setTimeout(() => markRead(feed.map((n) => n.id)), 900);
           }}
-          className="icon-btn relative"
+          className="icon-btn relative h-8 w-8"
           aria-label={`${t(S.notifications)}${unread.length ? ` (${unread.length})` : ''}`}
         >
-          <Icon name={unread.length ? 'bellRing' : 'bell'} size={17} />
+          <Icon name="inbox" size={16.5} />
           {unread.length > 0 && (
             <span
               className="t-num absolute -right-0.5 -top-0.5 grid h-[15px] min-w-[15px] place-items-center rounded-full px-[3px] text-[9.5px] font-bold text-white"

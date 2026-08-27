@@ -73,36 +73,6 @@ export function EmptyState({
 
 /* ---------------------------------------------------------- error state */
 
-export function ErrorState({
-  title,
-  body,
-  onRetry,
-  retryLabel = 'Try again',
-}: {
-  title: ReactNode;
-  body?: ReactNode;
-  onRetry?: () => void;
-  retryLabel?: string;
-}) {
-  return (
-    <div className="flex flex-col items-center px-6 py-12 text-center">
-      <span
-        className="grid h-12 w-12 place-items-center rounded-[12px]"
-        style={{ background: 'var(--c-danger-soft)', color: 'var(--c-danger)' }}
-      >
-        <Icon name="alert" size={22} />
-      </span>
-      <h3 className="mt-3.5 text-[15px] font-semibold">{title}</h3>
-      {body && <p className="mt-1.5 max-w-[42ch] text-[13px] leading-relaxed text-muted">{body}</p>}
-      {onRetry && (
-        <Button variant="outline" icon="refresh" className="mt-4" onClick={onRetry}>
-          {retryLabel}
-        </Button>
-      )}
-    </div>
-  );
-}
-
 /* -------------------------------------------------------------- skeleton */
 
 export function Skeleton({
@@ -130,20 +100,6 @@ export function SkeletonCard({ lines = 3, className = '' }: { lines?: number; cl
           <Skeleton key={i} w={`${90 - i * 12}%`} h={10} />
         ))}
       </div>
-    </div>
-  );
-}
-
-export function SkeletonRows({ rows = 4 }: { rows?: number }) {
-  return (
-    <div className="space-y-2">
-      {Array.from({ length: rows }, (_, i) => (
-        <div key={i} className="flex items-center gap-3 px-1 py-2">
-          <Skeleton w={18} h={18} r={6} />
-          <Skeleton w={`${55 + ((i * 13) % 30)}%`} h={12} />
-          <Skeleton w={54} h={10} className="ml-auto" />
-        </div>
-      ))}
     </div>
   );
 }

@@ -27,7 +27,6 @@ const KINDS: SyncKind[] = [
   'bookmarks',
   'cards',
   'planner',
-  'goals',
   'grades',
   'schedule',
   'sessions',
@@ -145,8 +144,6 @@ export function runSync(onProgress?: (p: SyncProgress) => void): Promise<SyncRes
   });
   return running;
 }
-
-export const isSyncing = (): boolean => running !== null;
 
 async function doSync(onProgress?: (p: SyncProgress) => void): Promise<SyncResult> {
   const client = await getClient();

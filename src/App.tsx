@@ -9,7 +9,6 @@ import { useTimer, installTimerEffects } from '@/state/timerStore';
 import { useWorkspace } from '@/state/workspaceStore';
 import { useAuth, installSyncEffects } from '@/state/authStore';
 import { usePlanner } from '@/state/plannerStore';
-import { useGoals } from '@/state/goalStore';
 import { useGame } from '@/state/gameStore';
 import { dueCount, useCards } from '@/state/cardStore';
 import { requestPersistence } from '@/services/db';
@@ -24,8 +23,8 @@ import { clearPendingSignUp, readPendingSignUp } from '@/state/signupHandoff';
 import { HOME, entryPath, isAppPath, routeByPath } from '@/seo/routes';
 import type { SidebarTab } from '@/components/sidebar/Sidebar';
 import { AppShell } from '@/components/shell/AppShell';
-import { CommandPalette } from '@/components/shell/CommandPalette';
 import { QuickCreate } from '@/components/shell/QuickCreate';
+import { TaskWindow } from '@/components/plan/TaskWindow';
 import { Celebration } from '@/components/shell/Celebration';
 import { Dashboard } from '@/components/dashboard/Dashboard';
 import { Toaster } from '@/components/system/Toaster';
@@ -58,6 +57,11 @@ const AchievementsScreen = lazy(() =>
 );
 const ProfileScreen = lazy(() =>
   import('@/components/profile/ProfileScreen').then((m) => ({ default: m.ProfileScreen })),
+);
+/* Reached from the dashboard and from `/exams`, not from the rail: a countdown
+   is something you check in a particular week, not a place you live. */
+const ExamsScreen = lazy(() =>
+  import('@/components/exams/ExamsScreen').then((m) => ({ default: m.ExamsScreen })),
 );
 
 /**
@@ -162,7 +166,6 @@ export default function App() {
     void useWorkspace.getState().init();
     void usePlanner.getState().init();
     void useCards.getState().init();
-    void useGoals.getState().init();
     void useItemTypes.getState().init();
     void useTimer
       .getState()
@@ -302,8 +305,8 @@ export default function App() {
   const globals = (
     <>
       <TimerOverlay />
-      <CommandPalette />
       <QuickCreate />
+      <TaskWindow />
       <Celebration />
       <Suspense fallback={null}>
         <SnipDialog onMakeCard={setCardDraft} />
@@ -541,6 +544,7 @@ export default function App() {
           {view === 'subjects' && <SubjectsScreen />}
           {view === 'stats' && <StatsScreen />}
           {view === 'achievements' && <AchievementsScreen />}
+          {view === 'exams' && <ExamsScreen />}
           {view === 'profile' && <ProfileScreen />}
           {view === 'cards' && <CardsHome />}
         </Suspense>

@@ -261,10 +261,12 @@ export const APP_SCREEN_PATHS = [
   '/subjects',
   '/profile',
   '/settings',
-  /* the three screens the plan absorbed; still answered, still linkable */
+  '/exams',
+  /* Two names from before: `/tasks` became the plan and `/goals` was removed
+     outright. Both still resolve, because a dead bookmark is a worse answer
+     than the nearest live screen. */
   '/tasks',
   '/goals',
-  '/exams',
 ] as const;
 
 /**

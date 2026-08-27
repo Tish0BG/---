@@ -1,6 +1,5 @@
-import type { FlashCard, Goal, PlannerItem, Subject } from '@/types';
+import type { FlashCard, PlannerItem, Subject } from '@/types';
 import { L, type Msg } from '@/i18n';
-import { goalProgress, daysLeft, type GoalContext } from './goalService';
 import { currentStreak, studiedToday, type GameContext, ACHIEVEMENTS } from './gameService';
 
 export type NoticeKind =
@@ -8,7 +7,6 @@ export type NoticeKind =
   | 'deadline'
   | 'overdue'
   | 'streak'
-  | 'goal'
   | 'achievement'
   | 'review'
   | 'reminder';
@@ -25,28 +23,37 @@ export interface Notice {
   weight: number;
   at: number;
   /** where clicking it goes */
-  target?: { view: 'tasks' | 'exams' | 'goals' | 'cards' | 'stats' | 'achievements'; id?: string };
+  target?: { view: 'tasks' | 'exams' | 'cards' | 'stats' | 'achievements'; id?: string };
 }
 
 const DAY = 86_400_000;
-const dayKey = (ts: number) => new Date(ts).toISOString().slice(0, 10);
+/**
+ * Local, not UTC.
+ *
+ * `toISOString().slice(0,10)` was filing anything before 03:00 in Sofia under
+ * yesterday, while the planner filed the same moment under today — so an
+ * "overdue" notice could carry a stale id and reappear after being read.
+ */
+const dayKey = (ts: number) => {
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 /**
  * The notification feed is *derived*, like everything else in the product: it
- * is a query over tasks, exams, goals and the focus log, run whenever the
+ * is a query over tasks, exams and the focus log, run whenever the
  * panel opens. Nothing is queued, nothing is scheduled, so nothing can arrive
  * about a task that was deleted five minutes ago.
  */
 export function buildNotices(input: {
   items: PlannerItem[];
-  goals: Goal[];
   cards: FlashCard[];
   subjects: Subject[];
-  ctx: GameContext & GoalContext;
+  ctx: GameContext;
   unlocked: Record<string, number>;
   now?: number;
 }): Notice[] {
-  const { items, goals, cards, subjects, ctx, unlocked } = input;
+  const { items, cards, subjects, ctx, unlocked } = input;
   const now = input.now ?? Date.now();
   const midnight = new Date(now);
   midnight.setHours(0, 0, 0, 0);
@@ -145,32 +152,6 @@ export function buildNotices(input: {
       weight: late ? 95 : 75,
       at,
       target: { view: 'tasks', id: item.id },
-    });
-  }
-
-  /* ------------------------------------------------------------ goals */
-  for (const goal of goals) {
-    if (goal.archived || goal.completedAt) continue;
-    const left = daysLeft(goal, now);
-    if (left === null || left > 3 || left < 0) continue;
-    const done = goalProgress(goal, ctx);
-    if (done >= 1) continue;
-    out.push({
-      id: `goal-${goal.id}-${left}`,
-      kind: 'goal',
-      title:
-        left === 0
-          ? L('Цел с краен срок днес', 'A goal ends today')
-          : L(`Цел до ${left} дни`, `A goal ends in ${left} days`),
-      body: L(
-        `${goal.title} · ${Math.round(done * 100)}% завършена`,
-        `${goal.title} · ${Math.round(done * 100)}% complete`,
-      ),
-      icon: 'target',
-      tone: 'warn',
-      weight: 80 - left,
-      at: goal.deadline ?? now,
-      target: { view: 'goals', id: goal.id },
     });
   }
 

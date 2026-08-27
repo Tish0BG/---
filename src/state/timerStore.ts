@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import type { FocusSession, TimerMode } from '@/types';
 import { repo } from '@/services/storageService';
-import { uid } from '@/lib/util';
+import { dayKey, uid } from '@/lib/util';
 import { useSettings } from './settingsStore';
 import { useViewer } from './viewerStore';
 import { useNotes } from './noteStore';
@@ -25,9 +25,7 @@ export const MODE_LABEL: Record<TimerMode, Msg> = {
 const RUNTIME_KEY = 'studypdf.timer.runtime.v1';
 
 /** Local calendar day, the key every statistic is grouped by. */
-export function dayKey(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
+export { dayKey };
 
 export const formatClock = (seconds: number): string => {
   const s = Math.max(0, Math.round(seconds));
@@ -222,7 +220,7 @@ export const useTimer = create<TimerStore>((set, get) => {
     // The block count on each entry is a different question — "how many
     // sittings did this take" — so every selected one gets its tally.
     for (const task of tasks) await usePlanner.getState().addPomodoro(task.id);
-    // Minutes just moved: goals, XP and achievements all want another look.
+    // Minutes just moved: XP and achievements both want another look.
     announceProgress();
   };
 

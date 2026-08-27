@@ -42,7 +42,6 @@ export function AchievementsScreen() {
     { label: t(L('Фокус', 'Focus')), value: xp.focus, icon: 'timer', color: 'var(--c-brand)' },
     { label: t(S.tasks), value: xp.tasks, icon: 'checkCircle', color: 'var(--c-aurora)' },
     { label: t(S.cards), value: xp.cards, icon: 'cards', color: 'var(--c-deep)' },
-    { label: t(S.goals), value: xp.goals, icon: 'target', color: 'var(--c-success)' },
     { label: t(S.streak), value: xp.streak, icon: 'flame', color: 'var(--c-ember)' },
   ].filter((s) => s.value > 0);
 
@@ -117,11 +116,6 @@ export function AchievementsScreen() {
               label: t(L('Повторения', 'Card reviews')),
               value: String(ctx.cards.reduce((s, c) => s + c.reps, 0)),
               icon: 'cards',
-            },
-            {
-              label: t(L('Постигнати цели', 'Goals reached')),
-              value: String(ctx.goals.filter((g) => g.completedAt).length),
-              icon: 'target',
             },
           ].map((stat, i) => (
             <div key={stat.label} className={`p-4 ${i < 3 ? 'sm:border-r' : ''} border-line`}>

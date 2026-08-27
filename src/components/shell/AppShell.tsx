@@ -1,18 +1,22 @@
-import { useEffect, useState } from 'react';
 import { useAppAddress } from '@/state/appAddress';
 import { ConnectionBar } from '../system/ConnectionBar';
-import { useIsCompact, useIsPhone } from '../kit';
-import { Sidebar, SidebarScrim } from './Sidebar';
-import { AppHeader } from './AppHeader';
+import { useIsPhone } from '../kit';
+import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
+import { CreateButton } from './CreateButton';
 
 /**
  * The frame every screen lives in.
  *
- * Desktop: sidebar, glass header, content. Phone: no sidebar at all — a
- * compact header, the content, and a bottom bar under the thumb. The drawer in
- * between exists only for tablets, where there is room for a sidebar but not
- * for it to be permanent.
+ * There is no top bar. It carried a search box, a create button, a bell and an
+ * avatar across the top of every screen — fifty-six pixels of chrome for four
+ * controls, three of which are better placed elsewhere and one of which is
+ * gone. The account and the inbox are at the foot of the rail, create is a
+ * button in the corner, and the screen below now starts at the top of the
+ * window with its own heading, which is the only title the page ever needed.
+ *
+ * Desktop and tablet: rail, content, create button. Phone: no rail at all —
+ * the content and a bottom bar under the thumb.
  */
 export function AppShell({
   children,
@@ -24,39 +28,26 @@ export function AppShell({
   onNewBoard?: () => void;
   onUpload?: () => void;
 }) {
-  const compact = useIsCompact();
   const phone = useIsPhone();
-  const [drawer, setDrawer] = useState(false);
 
   // While the shell is on screen, the address bar and the tab follow it.
   useAppAddress();
 
-  useEffect(() => {
-    if (!compact) setDrawer(false);
-  }, [compact]);
-
   return (
     <div className="relative flex h-full overflow-hidden">
-      {!compact && <Sidebar />}
-
-      {compact && drawer && (
-        <SidebarScrim onClose={() => setDrawer(false)}>
-          <Sidebar expanded onNavigate={() => setDrawer(false)} />
-        </SidebarScrim>
-      )}
+      {/* The rail handles its own width, including the narrow one a tablet
+          gets. A hamburger and a slide-over drawer were two more moving parts
+          for a screen that has room for sixty-eight pixels of icons. */}
+      {!phone && <Sidebar />}
 
       <div className="flex min-w-0 flex-1 flex-col">
         <ConnectionBar />
-        <AppHeader
-          onMenu={compact ? () => setDrawer(true) : undefined}
-          onNewBoard={onNewBoard}
-          onUpload={onUpload}
-        />
         <main className="scroll-thin min-h-0 flex-1 overflow-y-auto" style={{ paddingBottom: phone ? 66 : 0 }}>
           {children}
         </main>
       </div>
 
+      {!phone && <CreateButton onNewBoard={onNewBoard} onUpload={onUpload} />}
       {phone && <MobileNav onNewBoard={onNewBoard} onUpload={onUpload} />}
     </div>
   );

@@ -1,5 +1,6 @@
 import type { ClassSlot, FocusSession, ItemType, PlannerItem, Subject } from '@/types';
-import { toMinutes } from '@/state/plannerStore';
+import { startOfDay, toMinutes } from '@/state/plannerStore';
+import { dayKey } from '@/lib/util';
 import { typeOf } from '@/state/itemTypeStore';
 import { L, tr } from '@/i18n';
 
@@ -26,13 +27,10 @@ export interface CalEvent {
   icon?: string;
 }
 
-export const dayStart = (d: Date): number => new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+const dayStart = (d: Date): number => startOfDay(d);
 export const sameDay = (a: number, b: number): boolean => dayStart(new Date(a)) === dayStart(new Date(b));
 
-export const keyOf = (d: Date | number): string => {
-  const x = new Date(d);
-  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
-};
+export const keyOf = (d: Date | number): string => dayKey(d);
 
 /** Monday-first grid of six weeks covering the month `anchor` sits in. */
 export function monthGrid(anchor: Date): Date[] {
@@ -165,85 +163,16 @@ export function eventsForRange(
 /* ------------------------------------------------------------- filtering */
 
 /**
- * What can be narrowed down, and it is deliberately not "colour, tag,
- * category".
- *
- * Those three are what a generic calendar offers when it knows nothing about
- * what is in it. This one knows exactly what is in it — lessons, deadlines,
- * exams and logged focus time, each already attached to a subject and a type
- * — so the filters are those real dimensions. A colour filter would be a
- * worse spelling of the subject filter, since the colour *is* the subject.
- */
-export interface CalFilters {
-  /** matches the title, the subject and the room */
-  query: string;
-  /** subject ids; empty means every subject */
-  subjects: string[];
-  kinds: EventKind[];
-  status: EventStatus[];
-}
-
-export type EventStatus = 'open' | 'done' | 'overdue';
-
-export const EMPTY_FILTERS: CalFilters = { query: '', subjects: [], kinds: [], status: [] };
-
-export const hasFilters = (f: CalFilters): boolean =>
-  f.query.trim().length > 0 || f.subjects.length > 0 || f.kinds.length > 0 || f.status.length > 0;
-
-/** How many separate narrowings are active, for the count on the button. */
-export const filterCount = (f: CalFilters): number =>
-  f.subjects.length + f.kinds.length + f.status.length;
-
-/**
  * Where a single event stands.
  *
  * A lesson and a logged session are never "open" or "overdue" — one repeats
  * every week and the other already happened — so only the two kinds that can
  * actually be owed get a status at all.
  */
+export type EventStatus = 'open' | 'done' | 'overdue';
+
 export function statusOf(event: CalEvent, now: number): EventStatus | null {
   if (event.kind === 'class' || event.kind === 'session') return null;
   if (event.done) return 'done';
   return event.start < dayStart(new Date(now)) ? 'overdue' : 'open';
-}
-
-export function matchesFilters(event: CalEvent, f: CalFilters, now: number, subjects: Subject[]): boolean {
-  const query = f.query.trim().toLowerCase();
-  if (query) {
-    const haystack = [event.title, event.subjectName ?? '', event.room ?? ''].join(' ').toLowerCase();
-    if (!haystack.includes(query)) return false;
-  }
-
-  if (f.subjects.length > 0) {
-    // The event carries the subject's name rather than its id — three sources
-    // feed this list and only one of them has an id to hand — so the chosen
-    // ids are resolved to names once, here.
-    const names = f.subjects.map((id) => subjects.find((s) => s.id === id)?.name).filter(Boolean);
-    if (!event.subjectName || !names.includes(event.subjectName)) return false;
-  }
-
-  if (f.kinds.length > 0 && !f.kinds.includes(event.kind)) return false;
-
-  if (f.status.length > 0) {
-    const status = statusOf(event, now);
-    if (!status || !f.status.includes(status)) return false;
-  }
-
-  return true;
-}
-
-/** The same map, with everything that does not match removed. */
-export function filterEvents(
-  events: Map<string, CalEvent[]>,
-  f: CalFilters,
-  now: number,
-  subjects: Subject[],
-): Map<string, CalEvent[]> {
-  if (!hasFilters(f)) return events;
-  const out = new Map<string, CalEvent[]>();
-  for (const [key, list] of events) {
-    const kept = list.filter((e) => matchesFilters(e, f, now, subjects));
-    if (kept.length) out.set(key, kept);
-  }
-  return out;
 }

@@ -3,7 +3,7 @@ import type { ToolId } from '@/types';
 import { useViewer } from '@/state/viewerStore';
 import { useApp } from '@/state/appStore';
 import { insertImage } from '@/services/imageService';
-import { newNote } from '@/components/shell/AppHeader';
+import { newNote } from '@/services/newNote';
 
 const TOOL_KEYS: Record<string, ToolId> = {
   v: 'select',
@@ -39,12 +39,6 @@ export function useShortcuts({
     const onKey = (e: KeyboardEvent) => {
       const store = useViewer.getState();
       const mod = e.metaKey || e.ctrlKey;
-
-      if (mod && e.key.toLowerCase() === 'k') {
-        e.preventDefault();
-        useApp.getState().setPalette(!useApp.getState().paletteOpen);
-        return;
-      }
 
       if (mod && e.key.toLowerCase() === 'z') {
         if (isTyping(e.target)) return;
@@ -97,7 +91,7 @@ export function useShortcuts({
        */
       if (!store.docId) {
         const app = useApp.getState();
-        if (app.quick || app.paletteOpen) return;
+        if (app.quick) return;
         const key = e.key.toLowerCase();
         if (key === 't') {
           e.preventDefault();
@@ -105,9 +99,6 @@ export function useShortcuts({
         } else if (key === 'e') {
           e.preventDefault();
           app.setQuick('item', 'exam');
-        } else if (key === 'g') {
-          e.preventDefault();
-          app.setQuick('goal');
         } else if (key === 'd') {
           // A written document is made and opened in one keystroke: it is the
           // thing this app is for, and it should be the cheapest to reach.
@@ -116,9 +107,6 @@ export function useShortcuts({
         } else if (key === 'b') {
           e.preventDefault();
           onNewBoard?.();
-        } else if (key === '/') {
-          e.preventDefault();
-          app.setPalette(true);
         }
         return;
       }

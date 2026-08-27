@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { ClassSlot, Grade, PlannerItem, RepeatRule, TaskMethod, TaskStep } from '@/types';
 import { repo } from '@/services/storageService';
+import { KIND_DEFAULTS } from './itemTypeStore';
 import { uid } from '@/lib/util';
 import { announceProgress } from '@/services/progressBus';
 
@@ -44,6 +45,8 @@ interface PlannerStore {
   setMethod(id: string, method: TaskMethod): Promise<void>;
   addStep(id: string, title: string): Promise<void>;
   toggleStep(id: string, stepId: string): Promise<void>;
+  /** anything about one step other than its done-ness — its title, its estimate */
+  updateStep(id: string, stepId: string, patch: Partial<TaskStep>): Promise<void>;
   removeStep(id: string, stepId: string): Promise<void>;
   /** counted entries: +1 / −1 straight on the row */
   bump(id: string, delta: number): Promise<void>;
@@ -76,6 +79,17 @@ export const usePlanner = create<PlannerStore>((set, get) => ({
 
   async addItem(patch) {
     const now = Date.now();
+    /**
+     * What a kind arrives already knowing about itself.
+     *
+     * A reminder without a time is a to-do with extra steps and a habit that
+     * does not come back is not a habit. These defaults used to be applied by
+     * the plan's own add field and by nothing else, so the same habit created
+     * from the create button quietly did not repeat. They belong here, at the
+     * one door every new entry comes through — and an explicit `patch` still
+     * wins over them.
+     */
+    const { method: kindMethod, repeat: kindRepeat } = KIND_DEFAULTS[patch.kind ?? 'task'] ?? {};
     const item: PlannerItem = {
       id: uid('pl_'),
       kind: 'task',
@@ -88,13 +102,13 @@ export const usePlanner = create<PlannerStore>((set, get) => ({
       completedAt: null,
       priority: 0,
       pomodoros: 0,
-      method: 'check',
+      method: kindMethod ?? 'check',
       steps: [],
       count: 0,
       target: 0,
       remindAt: null,
       remindedAt: null,
-      repeat: 'none',
+      repeat: kindRepeat ?? 'none',
       order: get().items.length,
       createdAt: now,
       updatedAt: now,
@@ -227,6 +241,14 @@ export const usePlanner = create<PlannerStore>((set, get) => ({
     // once on the step, once on the entry — is a chore nobody should do.
     if (steps.length && steps.every((x) => x.done) && !current.done) await get().toggleItem(id);
     else announceProgress();
+  },
+
+  async updateStep(id, stepId, patch) {
+    const current = get().items.find((i) => i.id === id);
+    if (!current) return;
+    await get().updateItem(id, {
+      steps: (current.steps ?? []).map((x) => (x.id === stepId ? { ...x, ...patch } : x)),
+    });
   },
 
   async removeStep(id, stepId) {
@@ -383,10 +405,6 @@ export function itemProgress(item: PlannerItem): number {
 }
 
 /** Entries carrying a reminder that has not been delivered yet. */
-export const withReminders = (items: PlannerItem[]): PlannerItem[] =>
-  openItems(items)
-    .filter((i) => typeof i.remindAt === 'number' && i.remindAt !== null)
-    .sort((a, b) => (a.remindAt ?? 0) - (b.remindAt ?? 0));
 
 export const upcomingExams = (items: PlannerItem[], withinDays = 30): PlannerItem[] =>
   openItems(items)
@@ -441,7 +459,6 @@ export function neededForTarget(
 /* --------------------------------------------------------------- timetable */
 
 export const DAY_NAMES = ['Неделя', 'Понеделник', 'Вторник', 'Сряда', 'Четвъртък', 'Петък', 'Събота'];
-export const DAY_SHORT = ['нд', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
 export const toMinutes = (hhmm: string): number => {
   const [h, m] = hhmm.split(':').map(Number);
