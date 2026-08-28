@@ -1,4 +1,5 @@
 import type { IDBPDatabase } from 'idb';
+import { normaliseCard } from '@/lib/deck';
 import { getDB, type StudyDB } from './db';
 import type {
   Annotation,
@@ -407,7 +408,11 @@ class IndexedDBRepository implements StudyRepository {
     }
     const store = KIND_STORE[kind] as 'documents';
     const tx = db.transaction(store, 'readwrite');
-    await Promise.all([...rows.map((r) => tx.store.put(r.data as never)), tx.done]);
+    // The one kind that needs a look on the way in: a card without a deck is
+    // a card the deck list cannot sort, and this is the path a *second*
+    // device takes — without it the local migration is undone on every pull.
+    const clean = kind === 'cards' ? rows.map((r) => ({ ...r, data: normaliseCard(r.data as { deck?: string }) })) : rows;
+    await Promise.all([...clean.map((r) => tx.store.put(r.data as never)), tx.done]);
   }
 
   /** Deletes without leaving a tombstone — the cloud already knows. */

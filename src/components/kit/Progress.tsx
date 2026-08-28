@@ -80,7 +80,10 @@ export function ProgressRing({
           fill="none"
           stroke={colorTo ? `url(#${id})` : color}
           strokeWidth={stroke}
-          strokeLinecap="round"
+          /* A round cap on a zero-length dash draws a dot, so an empty ring
+             was wearing a bead at twelve o'clock. Below half a pixel there is
+             nothing to cap. */
+          strokeLinecap={dash > 0.5 ? 'round' : 'butt'}
           strokeDasharray={`${dash} ${rest}`}
           style={{ transition: 'stroke-dasharray 0.6s cubic-bezier(0.16, 1, 0.3, 1)' }}
         />

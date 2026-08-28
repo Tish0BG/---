@@ -1210,29 +1210,6 @@ h3 {
     transform: translateX(2px);
   }
 }
-/**
- * The rail's labels, while the rail is narrow.
- *
- * They stay in the tree rather than being unmounted, so opening the rail is a
- * fade rather than a pop — eight labels appearing all at once at full opacity
- * reads as a flash, and the eye notices the flash instead of the words. The
- * rail clips its own overflow, so a 140 px label inside a 68 px column is
- * simply not there while it is off.
- */
-.rail-fade {
-  opacity: 1;
-  transform: none;
-  transition:
-    opacity var(--dur) var(--ease-out),
-    transform var(--dur) var(--ease-out);
-}
-
-.rail-fade[data-off='true'] {
-  opacity: 0;
-  transform: translateX(-8px);
-  pointer-events: none;
-}
-
 .animate-shake {
   animation: shake 0.34s var(--ease);
 }
@@ -1278,6 +1255,36 @@ h3 {
 @keyframes ring-sweep {
   from {
     stroke-dashoffset: var(--sweep-from);
+  }
+}
+
+/**
+ * The ring being drawn, once, at the moment a block starts.
+ *
+ * `@keyframes ring-sweep` was written for exactly this gesture and then never
+ * used by anything — so pressing start changed the opacity of a halo and the
+ * icon on a button, and nothing else. This is one stroke laid over the gauge
+ * and faded out behind it: the clock answering the press.
+ */
+.timer-sweep {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: rotate(-90deg);
+}
+.timer-sweep circle {
+  fill: none;
+  stroke: currentColor;
+  animation:
+    ring-sweep 0.85s var(--ease-out) both,
+    sweep-fade 0.85s linear both;
+}
+@keyframes sweep-fade {
+  from {
+    opacity: 0.75;
+  }
+  to {
+    opacity: 0;
   }
 }
 /** Content that appears in a list, each row a beat behind the one above. */
@@ -1786,44 +1793,209 @@ h3 {
   color: var(--c-accent);
 }
 
-/** A deck, drawn as the front of a drawer with a pull under the label. */
-.drawer-front {
+/**
+ * ─────────────────────────────────────────────── the box, one level up ──
+ *
+ * The dividers used to be letters *inside* one deck. They are the decks now,
+ * which is what a card box actually is: you open the lid and you are looking
+ * at the tabs, not at the cards. Letters became the taller dividers between
+ * runs of tabs, exactly as they are in a wooden one.
+ *
+ * A tab is stiff stock with a crest standing above the shoulder. The crests
+ * stagger across the width so that thirty of them read as a row of tabs and
+ * not as a striped list — and so that a name is never hidden behind the tab
+ * of the deck in front of it.
+ */
+.deck-tab {
   position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  padding: 10px 12px 14px;
-  border: 1px solid var(--c-line-strong);
-  border-radius: 10px;
-  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
-  cursor: pointer;
+  display: block;
+  width: 100%;
+  margin-top: 11px;
+  padding: 9px 12px 9px 14px;
   text-align: left;
+  cursor: pointer;
+  border: 1px solid var(--c-line-strong);
+  border-left: 4px solid var(--tab, var(--c-line-strong));
+  border-radius: 3px 10px 10px 3px;
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface-2));
+  box-shadow: 0 1px 0 color-mix(in srgb, #0b1020 5%, transparent);
   transition:
-    transform 0.16s var(--ease),
-    box-shadow 0.16s var(--ease),
-    border-color 0.16s var(--ease);
-}
-.drawer-front::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  bottom: 6px;
-  width: 34px;
-  height: 4px;
-  border-radius: 3px;
-  transform: translateX(-50%);
-  background: var(--c-line-strong);
-  opacity: 0.7;
-}
-.drawer-front:hover {
-  transform: translateY(-1px);
-  border-color: var(--c-accent);
-}
-.drawer-front[data-active='yes'] {
-  border-color: var(--c-accent);
-  box-shadow: 0 0 0 1px var(--c-accent) inset;
+    transform 0.18s var(--ease-out),
+    box-shadow 0.18s var(--ease-out),
+    border-color 0.18s var(--ease-out);
 }
 
+/** The crest: the bit of the divider that stands proud of the ones in front. */
+.deck-tab::before {
+  content: '';
+  position: absolute;
+  top: -9px;
+  left: var(--crest, 16px);
+  width: 46px;
+  height: 10px;
+  border: 1px solid var(--c-line-strong);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, var(--c-surface), var(--c-surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #ffffff 60%, transparent);
+  transition: background 0.18s var(--ease-out);
+}
+
+/* Lift, the way a finger nudges one up to read the name behind it. */
+.deck-tab:hover,
+.deck-tab:focus-visible {
+  transform: translateY(-6px);
+  border-color: var(--tab, var(--c-accent));
+  box-shadow: 0 12px 22px -14px color-mix(in srgb, #0b1020 70%, transparent);
+  outline: none;
+}
+.deck-tab:hover::before,
+.deck-tab:focus-visible::before {
+  background: linear-gradient(180deg, var(--tab, var(--c-accent)), var(--c-surface));
+}
+
+/**
+ * Pulling one out.
+ *
+ * It rises, turns a degree the way a card does when you take it between two
+ * fingers, and goes; the cards it was holding come in behind it. The reduced
+ * motion guard collapses this to nothing, which is why the screen never waits
+ * on the animation to finish — it waits on a timer that is shorter than the
+ * eye and switches regardless.
+ */
+.deck-tab[data-pulling='yes'] {
+  animation: deck-pull 0.34s var(--ease-out) forwards;
+  z-index: 4;
+}
+
+@keyframes deck-pull {
+  40% {
+    transform: translateY(-14px) rotate(-0.6deg) scale(1.02);
+    box-shadow: 0 22px 34px -18px color-mix(in srgb, #0b1020 75%, transparent);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-46px) rotate(-1.4deg) scale(1.06);
+    opacity: 0;
+  }
+}
+
+/** The letter between two runs of tabs. Taller stock, no colour, stays put. */
+.deck-letter {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: flex;
+  align-items: flex-end;
+  margin-top: 20px;
+  padding-top: 10px;
+  pointer-events: none;
+}
+.deck-letter:first-child {
+  margin-top: 0;
+}
+.deck-letter span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 30px;
+  height: 21px;
+  padding: 0 9px;
+  border: 1px solid var(--c-line-strong);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  background: linear-gradient(180deg, var(--c-surface-3), var(--c-surface-2));
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--c-faint);
+}
+.deck-letter::after {
+  content: '';
+  flex: 1;
+  height: 21px;
+  border-top: 1px solid var(--c-line-strong);
+  background: linear-gradient(180deg, var(--c-surface-2), transparent);
+}
+
+/**
+ * ──────────────────────────────────────────────── the cards themselves ──
+ *
+ * A stack, not a rectangle: the one you are answering plus the three behind
+ * it, each a little lower and turned a little further, so the pile has a
+ * depth you can see. Answering sends the top one off the table and the next
+ * rises into its place — which is the whole reason to draw a stack at all.
+ */
+.study-stack {
+  position: relative;
+  perspective: 1400px;
+}
+
+.study-card {
+  transform-style: preserve-3d;
+  transition: transform 0.5s var(--ease);
+}
+.study-card[data-flipped='yes'] {
+  transform: rotateY(180deg);
+}
+
+.study-face {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+.study-face-back {
+  position: absolute;
+  inset: 0;
+  transform: rotateY(180deg);
+}
+
+/** The pile behind the top card. `--i` is how far back it stands. */
+.study-ghost {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border: 1px solid var(--c-line);
+  border-radius: 14px;
+  background: var(--c-surface);
+  transform: translateY(calc(var(--i) * 7px)) scale(calc(1 - var(--i) * 0.022))
+    rotate(calc(var(--i) * 0.45deg));
+  opacity: calc(1 - var(--i) * 0.22);
+  transition: transform 0.32s var(--ease-out);
+}
+
+/** Off the table. Left for "again", right for anything you actually knew. */
+.study-card[data-gone='left'] {
+  animation: card-toss-left 0.32s var(--ease) forwards;
+}
+.study-card[data-gone='right'] {
+  animation: card-toss-right 0.32s var(--ease) forwards;
+}
+
+@keyframes card-toss-left {
+  to {
+    transform: translate(-58%, 12%) rotate(-13deg);
+    opacity: 0;
+  }
+}
+@keyframes card-toss-right {
+  to {
+    transform: translate(58%, 12%) rotate(13deg);
+    opacity: 0;
+  }
+}
+
+/** And the next one rises out of the pile to take its place. */
+/* `backwards`, not `both`: a filling animation would keep overriding the
+   transform after it ended, and the flip is a transform. */
+.study-card[data-dealt='yes'] {
+  animation: card-deal 0.3s var(--ease-out) backwards;
+}
+@keyframes card-deal {
+  from {
+    transform: translateY(14px) scale(0.96);
+    opacity: 0;
+  }
+}
 
 /**
  * ───────────────────────────────────────────────── the public surfaces ──

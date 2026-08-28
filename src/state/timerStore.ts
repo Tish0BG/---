@@ -364,8 +364,23 @@ export const useTimer = create<TimerStore>((set, get) => {
       get().setView(v === 'full' ? 'mini' : 'full');
     },
 
+    /**
+     * "Focus on this", pressed from a row anywhere else in the app.
+     *
+     * It used to replace the selection outright, which meant a person who had
+     * picked three exercises here and then pressed focus on a fourth from the
+     * plan was left working on one. While a block is already running the
+     * selection belongs to the block, so the entry joins it instead.
+     */
     setActiveTask(id) {
-      set({ activeTaskIds: id ? [id] : [] });
+      if (!id) {
+        set({ activeTaskIds: [] });
+        saveRuntime();
+        return;
+      }
+      const list = get().activeTaskIds;
+      const join = get().running && list.length > 0 && !list.includes(id);
+      set({ activeTaskIds: join ? [...list, id] : [id] });
       saveRuntime();
     },
 

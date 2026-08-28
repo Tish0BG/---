@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useCards } from '@/state/cardStore';
 import { useSnip } from '@/state/snipStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useViewer } from '@/state/viewerStore';
@@ -126,6 +127,11 @@ export function SnipDialog({ onMakeCard }: { onMakeCard: (draft: CardDraft) => v
           <button
             className="btn btn-primary w-full"
             onClick={() => {
+              // Register the deck, don't just name it. A card cut from a PDF
+              // used to be filed under the file's name with nobody creating
+              // that deck, so it existed only while a card pointed at it and
+              // vanished the moment the last one was moved.
+              void useCards.getState().createDeck(snip.docName);
               onMakeCard({ image: snip.blob, docId: snip.docId, page: snip.page, deck: snip.docName });
               close();
             }}

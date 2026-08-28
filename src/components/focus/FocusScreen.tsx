@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlannerItem, TimerMode } from '@/types';
 import { useApp } from '@/state/appStore';
 import { useSettings } from '@/state/settingsStore';
@@ -19,26 +19,42 @@ import { useT, useLang, L, formatDuration } from '@/i18n';
 import { S } from '@/i18n/strings';
 import { Screen } from '../shell/Screen';
 import { Icon } from '../Icon';
-import { Toggle } from '../ui';
-import { BarChart, Button, Card, EmptyState, IconButton, ProgressRing, Tooltip } from '../kit';
+import { MenuItem, MenuSep, Modal, Popover, Toggle } from '../ui';
+import {
+  BarChart,
+  Button,
+  Card,
+  EmptyState,
+  IconButton,
+  ProgressCells,
+  ProgressRing,
+  Segmented,
+  Tooltip,
+  useMedia,
+  useStill,
+} from '../kit';
 import { DueChip } from '../planner/DueChip';
-import { MODE_COLOR, MODE_INK } from '../timer/TimerPanel';
-
-const MODES: TimerMode[] = ['work', 'break', 'long'];
+import { MODES, MODE_COLOR, MODE_INK } from '../timer/modes';
+import { RecapStats, RecapTasks } from '../timer/Recap';
 
 /**
  * ───────────────────────────────────────────────────── the focus screen ──
  *
- * The timer used to have no screen of its own. Pressing "Focus" in the
- * sidebar started a session *and* threw the app into full screen, which meant
- * the only way to look at the timer was to be locked inside it — so choosing
- * what to work on, or changing how long a block is, had to happen somewhere
- * else entirely, in a settings dialog three clicks away.
+ * The clock is the screen.
  *
- * This is that missing screen. Nothing here starts on its own. The clock is
- * the largest thing on it, the lengths are steppers beside it rather than a
- * preference, the work being done is a list you can tick several rows of, and
- * full screen is a button you press when you want the room.
+ * It used to be one card in a row of five. The other four — what you are
+ * working on, the three lengths, today's chart, four behaviour switches —
+ * were all on at once, all the time, so the thing you came here to look at
+ * had to share the window with two dozen controls you touch about once a
+ * month. And starting a block on a particular entry, from the screen the
+ * timer actually lives on, took three clicks and a search box; everywhere
+ * else in the app the same thing is one click.
+ *
+ * So: one stage. The ring, the time, what is next, and — right under it —
+ * today's open work as buttons, because "what am I about to do" is the only
+ * question worth asking before the clock starts. Lengths sit behind the pair
+ * they are currently set to, which is also the fastest way to change them.
+ * Everything else is behind one gear.
  */
 export function FocusScreen() {
   const t = useT();
@@ -49,19 +65,50 @@ export function FocusScreen() {
   const cycle = useTimer((s) => s.cycle);
   const sessions = useTimer((s) => s.sessions);
   const lastSession = useTimer((s) => s.lastSession);
+  const picked = useTimer((s) => s.activeTaskIds);
+  const items = usePlanner((s) => s.items);
   const timer = useSettings((s) => s.timer);
   const store = useTimer.getState;
+  const still = useStill();
+  const tight = useMedia('(max-width: 560px)');
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
 
   const today = useMemo(() => statsForDay(sessions, dayKey()), [sessions]);
   const run = useMemo(() => streak(sessions), [sessions]);
   const week = useMemo(() => lastDays(sessions, 7), [sessions]);
+  const open = useMemo(() => sortByDue(openItems(items)), [items]);
 
   const total = timer[mode] * 60;
   const progress = total ? 1 - left / total : 0;
   const accent = MODE_COLOR[mode];
   const ink = MODE_INK[mode];
-  const goalPct = Math.min(1, today.minutes / Math.max(1, timer.goal));
   const spent = Math.max(0, Math.round((total - left) / 60));
+  const goalPct = Math.min(1, today.minutes / Math.max(1, timer.goal));
+  const goalLeft = Math.max(0, timer.goal - today.minutes);
+
+  /** What `roll()` will pick when this block runs out — said before it does. */
+  const next: TimerMode = mode === 'work' ? (cycle + 1 >= timer.cycles ? 'long' : 'break') : 'work';
+
+  /**
+   * The ring draws itself once, at the moment the block starts.
+   *
+   * One gesture, not a loop: the clock answering the press. Keyed on a
+   * counter so pressing start again replays it, and skipped entirely when
+   * the person has asked for less movement.
+   */
+  const [sweep, setSweep] = useState(0);
+  const wasRunning = useRef(running);
+  useEffect(() => {
+    if (running && !wasRunning.current && !still) setSweep((n) => n + 1);
+    wasRunning.current = running;
+  }, [running, still]);
+
+  const ring = tight ? 236 : 296;
+  const stroke = 7;
+  const radius = (ring - stroke) / 2;
+  const circumference = 2 * Math.PI * radius;
 
   return (
     <Screen
@@ -74,10 +121,15 @@ export function FocusScreen() {
       )}
       actions={
         <>
+          <IconButton
+            icon="sliders"
+            label={t(L('Настройки на таймера', 'Timer settings'))}
+            onClick={() => setSettingsOpen(true)}
+          />
           <Button icon="chartLine" onClick={() => useApp.getState().go('stats')}>
             {t(S.stats)}
           </Button>
-          <Button variant="primary" icon="expand" onClick={() => store().setView('full')}>
+          <Button icon="expand" onClick={() => store().setView('full')}>
             {t(L('Цял екран', 'Full screen'))}
           </Button>
         </>
@@ -85,165 +137,333 @@ export function FocusScreen() {
     >
       {lastSession && <JustFinished minutes={lastSession.minutes} taskIds={lastSession.taskIds} />}
 
-      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,380px)]">
-        {/* ------------------------------------------------------ the clock */}
-        <Card className="relative overflow-hidden" flush>
-          <span
-            aria-hidden
-            className="pointer-events-none absolute left-1/2 top-0 h-[420px] w-[420px] -translate-x-1/2 -translate-y-1/3 rounded-full"
-            style={{
-              background: `radial-gradient(circle, color-mix(in srgb, ${accent} ${running ? 13 : 7}%, transparent) 0%, transparent 70%)`,
-              transition: 'background 0.6s var(--ease)',
-            }}
+      {/* ------------------------------------------------------- the stage */}
+      <div
+        className="relative grid place-items-center overflow-hidden rounded-[18px] border border-line"
+        style={{ background: 'var(--c-surface)', minHeight: 'min(74vh, 640px)' }}
+      >
+        <span
+          aria-hidden
+          className={`pointer-events-none absolute left-1/2 top-1/2 h-[640px] w-[640px] -translate-x-1/2 -translate-y-1/2 rounded-full ${
+            running && !still ? 'animate-breathe' : ''
+          }`}
+          style={{
+            background: `radial-gradient(circle, color-mix(in srgb, ${accent} ${running ? 15 : 6}%, transparent) 0%, transparent 68%)`,
+            transition: 'background 0.8s var(--ease)',
+          }}
+        />
+
+        <div className="relative flex w-full max-w-[440px] flex-col items-center px-5 py-8">
+          <Segmented
+            className="w-full max-w-[330px]"
+            ariaLabel={t(S.focus)}
+            value={mode}
+            onChange={(m) => store().setMode(m)}
+            items={MODES.map((m) => ({ id: m, label: t(MODE_LABEL[m]) }))}
           />
 
-          <div className="relative flex flex-col items-center px-4 py-6 sm:px-8 sm:py-8">
-            <div className="segmented w-full max-w-[330px]">
-              {MODES.map((m) => (
-                <button key={m} aria-pressed={m === mode} onClick={() => store().setMode(m)}>
-                  {t(MODE_LABEL[m])}
-                </button>
-              ))}
-            </div>
-
-            <div className="mt-7">
-              <ProgressRing
-                value={progress}
-                size={248}
-                stroke={6}
-                color={accent}
-                colorTo="var(--c-brand-lift)"
-              >
-                <div className="text-center">
-                  <div className="t-num text-[58px] font-light leading-none tracking-[-0.045em]">
-                    {formatClock(left)}
-                  </div>
-                  <div className="mt-2.5 text-[12.5px] text-muted">
-                    {running
-                      ? t(L(`${spent} мин досега`, `${spent} min so far`))
-                      : t(L('На пауза', 'Paused'))}
-                  </div>
+          {/* -------------------------------------------------- the clock */}
+          <div className="relative mt-8" style={{ width: ring, height: ring }}>
+            <ProgressRing
+              value={progress}
+              size={ring}
+              stroke={stroke}
+              color={accent}
+              colorTo="var(--c-brand-lift)"
+            >
+              <div className="text-center">
+                <div
+                  className="t-num font-light leading-none tracking-[-0.045em]"
+                  style={{ fontSize: tight ? 52 : 66 }}
+                >
+                  {formatClock(left)}
                 </div>
-              </ProgressRing>
-            </div>
+                <div className="mt-3 text-[12.5px] text-muted">
+                  {running
+                    ? t(L(`${spent} мин досега`, `${spent} min so far`))
+                    : t(L('На пауза', 'Paused'))}
+                </div>
+              </div>
+            </ProgressRing>
 
-            <div className="mt-6 flex gap-2">
-              {Array.from({ length: timer.cycles }, (_, i) => (
-                <span
-                  key={i}
-                  className="h-[6px] rounded-full transition-all duration-300"
-                  style={{
-                    width: i === cycle ? 22 : 6,
-                    background: i <= cycle ? accent : 'var(--c-line-strong)',
-                    opacity: i <= cycle ? 1 : 0.5,
-                  }}
+            {sweep > 0 && (
+              <svg
+                key={sweep}
+                className="timer-sweep"
+                width={ring}
+                height={ring}
+                style={{ color: accent }}
+                aria-hidden
+              >
+                <circle
+                  cx={ring / 2}
+                  cy={ring / 2}
+                  r={radius}
+                  strokeWidth={stroke}
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  style={{ '--sweep-from': `${circumference}px` } as React.CSSProperties}
                 />
-              ))}
-            </div>
+              </svg>
+            )}
+          </div>
 
-            <div className="mt-7 flex items-center gap-4">
-              <IconButton
-                icon="refresh"
-                size="lg"
-                label={t(L('Нулирай', 'Reset'))}
-                onClick={() => store().reset()}
-              />
-              <button
-                onClick={() => store().toggleRun()}
-                className="grid h-[76px] w-[76px] cursor-pointer place-items-center rounded-full transition-transform active:scale-95"
-                style={{ background: accent, color: ink, boxShadow: `0 10px 28px -12px ${accent}` }}
-                aria-label={t(running ? S.pause : S.start)}
-              >
-                <Icon name={running ? 'pause' : 'play'} size={29} fill={!running} />
-              </button>
-              <Tooltip
-                label={t(
-                  L(
-                    'Следващ режим. Прескочените минути не влизат в статистиката.',
-                    'Next mode. Skipped minutes are never counted.',
-                  ),
-                )}
-              >
-                <IconButton icon="skip" size="lg" label={t(S.skip)} onClick={() => store().skip()} />
-              </Tooltip>
-            </div>
+          {/* Which block of the round this is. */}
+          <div className="mt-6 flex w-[168px] flex-col items-center gap-1.5">
+            <ProgressCells value={(cycle + (running ? 0.5 : 0)) / timer.cycles} cells={timer.cycles} color={accent} className="w-full" />
+            <span className="t-num text-[11px] text-faint">
+              {t(L(`блок ${cycle + 1} от ${timer.cycles}`, `block ${cycle + 1} of ${timer.cycles}`))}
+            </span>
+          </div>
 
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <Button
-                icon="check"
-                variant="outline"
-                disabled={mode !== 'work' || spent < 1}
-                onClick={() => void store().stop()}
-              >
-                {t(L(`Приключи и запиши ${spent} мин`, `Finish and log ${spent} min`))}
-              </Button>
-            </div>
-
-            <p className="mt-4 max-w-[46ch] text-center text-[11.5px] leading-relaxed text-faint">
-              {t(
+          {/* ----------------------------------------------- start / stop */}
+          <div className="mt-7 flex items-center gap-5">
+            <IconButton
+              icon="refresh"
+              size="lg"
+              label={t(L('Нулирай', 'Reset'))}
+              onClick={() => store().reset()}
+            />
+            <button
+              onClick={() => store().toggleRun()}
+              className="grid h-[84px] w-[84px] cursor-pointer place-items-center rounded-full transition-transform active:scale-95"
+              style={{ background: accent, color: ink, boxShadow: `0 14px 34px -14px ${accent}` }}
+              aria-label={t(running ? S.pause : S.start)}
+            >
+              <Icon name={running ? 'pause' : 'play'} size={32} fill={!running} />
+            </button>
+            <Tooltip
+              label={t(
                 L(
-                  'В статистиката влиза само времето, което наистина си изкарал. Прескочи ли режим, прескочените минути не се броят.',
-                  'Only time you actually sat through is logged. Skip a block and the skipped minutes are not counted.',
+                  'Следващ режим. Прескочените минути не влизат в статистиката.',
+                  'Next mode. Skipped minutes are never counted.',
                 ),
               )}
-            </p>
+            >
+              <IconButton icon="skip" size="lg" label={t(S.skip)} onClick={() => store().skip()} />
+            </Tooltip>
           </div>
-        </Card>
 
-        {/* ------------------------------------------------------- the rail */}
-        <div className="space-y-4">
-          <Card
-            title={t(L('Върху какво работиш', 'What you are working on'))}
-            icon="target"
-            subtitle={t(
+          <p className="mt-4 text-[12px] text-faint">
+            {t(
               L(
-                'Може да избереш няколко — сесията се брои на всяка от тях.',
-                'Pick several — the session counts towards each of them.',
+                `Следва ${MODE_LABEL[next].bg.toLowerCase()} · ${timer[next]} мин`,
+                `Next up: ${MODE_LABEL[next].en.toLowerCase()} · ${timer[next]} min`,
               ),
             )}
-            flush
-          >
-            <TaskPicker />
-          </Card>
+          </p>
 
-          <Card title={t(L('Дължина на блоковете', 'Block lengths'))} icon="timer">
-            <Durations />
-          </Card>
+          {mode === 'work' && spent >= 1 && (
+            <button
+              className="mt-3 cursor-pointer text-[12.5px] font-medium text-accent underline-offset-2 hover:underline"
+              onClick={() => void store().stop()}
+            >
+              {t(L(`Приключи и запиши ${spent} мин`, `Finish and log ${spent} min`))}
+            </button>
+          )}
 
-          <Card
-            title={t(L('Днес', 'Today'))}
-            icon="gauge"
-            action={
-              <span className="t-num text-[12px] text-muted">
-                {formatDuration(today.minutes, lang)} / {timer.goal}
+          {/* --------------------------------------------- what it is for */}
+          <div className="mt-7 w-full border-t border-line pt-5">
+            <WorkingOn open={open} picked={picked} onMore={() => setPickerOpen(true)} />
+          </div>
+
+          {/* ------------------------------------------------ the day, thin */}
+          <div className="mt-6 w-full max-w-[330px]">
+            <ProgressCells value={goalPct} cells={12} color="var(--c-accent)" />
+            <div className="mt-2 flex items-baseline justify-between text-[11.5px] text-faint">
+              <span className="t-num">
+                {formatDuration(today.minutes, lang)} / {timer.goal} {t(L('мин', 'min'))}
               </span>
-            }
-          >
-            <div className="flex items-center gap-4">
-              <ProgressRing value={goalPct} size={62} stroke={6} color="var(--c-accent)" colorTo="var(--c-brand-lift)">
-                <span className="t-num text-[13px] font-semibold">{Math.round(goalPct * 100)}%</span>
-              </ProgressRing>
-              <div className="min-w-0 flex-1">
-                <BarChart
-                  data={week.map((d, i) => ({
-                    label: d.label,
-                    value: d.minutes,
-                    current: i === week.length - 1,
-                  }))}
-                  goal={timer.goal}
-                  format={(v) => formatDuration(v, lang)}
-                  height={64}
-                />
-              </div>
+              <span>
+                {goalLeft
+                  ? t(L(`още ${formatDuration(goalLeft, lang)}`, `${formatDuration(goalLeft, lang)} to go`))
+                  : t(L('целта е изпълнена', 'goal met'))}
+              </span>
             </div>
-          </Card>
+          </div>
 
-          <Card title={t(L('Поведение', 'Behaviour'))} icon="sliders">
-            <Behaviour />
-          </Card>
+          <LengthMenu onAll={() => setSettingsOpen(true)} />
         </div>
       </div>
+
+      {/* ------------------------------------------------------- the week */}
+      <Card
+        className="mt-4"
+        title={t(L('Последните 7 дни', 'The last 7 days'))}
+        icon="gauge"
+        action={
+          <span className="t-num text-[12px] text-muted">
+            {formatDuration(today.minutes, lang)} / {timer.goal}
+          </span>
+        }
+      >
+        <BarChart
+          data={week.map((d, i) => ({ label: d.label, value: d.minutes, current: i === week.length - 1 }))}
+          goal={timer.goal}
+          format={(v) => formatDuration(v, lang)}
+          height={72}
+        />
+      </Card>
+
+      <Modal
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        title={t(L('Настройки на таймера', 'Timer settings'))}
+        width={420}
+      >
+        <Durations />
+        <div className="mt-4 border-t border-line pt-3">
+          <Behaviour />
+        </div>
+      </Modal>
+
+      <Modal
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        title={t(L('Върху какво работиш', 'What you are working on'))}
+        width={440}
+      >
+        <TaskPicker compact />
+      </Modal>
     </Screen>
+  );
+}
+
+/* ------------------------------------------------------------ working on */
+
+/**
+ * Today's open work, as buttons.
+ *
+ * The old card was a search box over a list of sixty rows with a checkbox on
+ * each — a filing cabinet, when the question is only ever "this one". Three
+ * entries, in the order the plan already sorts them, and one click starts the
+ * block on one of them. The cabinet is still there behind "друго", for the
+ * hour that really is three exercises off the same sheet.
+ */
+function WorkingOn({
+  open,
+  picked,
+  onMore,
+}: {
+  open: PlannerItem[];
+  picked: string[];
+  onMore: () => void;
+}) {
+  const t = useT();
+  const custom = useItemTypes((s) => s.custom);
+  const chosen = picked.map((id) => open.find((i) => i.id === id)).filter((x) => !!x);
+  const suggestions = open.filter((i) => !picked.includes(i.id)).slice(0, chosen.length ? 1 : 3);
+
+  return (
+    <div className="flex flex-wrap items-center justify-center gap-1.5">
+      <span className="mr-0.5 text-[11.5px] text-faint">
+        {chosen.length ? t(L('Работиш по', 'Working on')) : t(L('Върху какво?', 'On what?'))}
+      </span>
+
+      {chosen.map((item) => (
+        <span
+          key={item.id}
+          className="flex max-w-[240px] items-center gap-1.5 rounded-full border px-2.5 py-1 text-[12.5px]"
+          style={{
+            borderColor: 'color-mix(in srgb, var(--c-accent) 35%, transparent)',
+            background: 'var(--c-accent-soft)',
+            color: 'var(--c-accent)',
+          }}
+        >
+          <Icon name={typeOf(item.kind, custom).icon} size={12} className="shrink-0" />
+          <span className="truncate">{item.title}</span>
+          <button
+            className="shrink-0 cursor-pointer opacity-60 hover:opacity-100"
+            aria-label={t(L('Махни', 'Remove'))}
+            onClick={() => useTimer.getState().toggleTask(item.id)}
+          >
+            <Icon name="x" size={12} />
+          </button>
+        </span>
+      ))}
+
+      {suggestions.map((item) => (
+        <button
+          key={item.id}
+          onClick={() => useTimer.getState().toggleTask(item.id)}
+          className="flex max-w-[240px] cursor-pointer items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[12.5px] text-muted transition-colors hover:border-strong hover:text-base"
+        >
+          <Icon name={typeOf(item.kind, custom).icon} size={12} className="shrink-0 opacity-70" />
+          <span className="truncate">{item.title}</span>
+        </button>
+      ))}
+
+      <button
+        onClick={onMore}
+        className="cursor-pointer rounded-full border border-dashed border-line px-2.5 py-1 text-[12.5px] text-faint transition-colors hover:text-base"
+      >
+        {open.length ? t(L('Друго…', 'Something else…')) : t(L('Добави задача…', 'Add a task…'))}
+      </button>
+    </div>
+  );
+}
+
+/* --------------------------------------------------------------- lengths */
+
+/**
+ * The pair you are on, which is also the fastest way off it.
+ *
+ * 25 → 50 used to be five presses of a stepper inside a card that was open
+ * all the time. It is a button showing "25/5" and one press of "50/10" now,
+ * and the steppers are behind the same door as everything else.
+ */
+function LengthMenu({ onAll }: { onAll: () => void }) {
+  const t = useT();
+  const timer = useSettings((s) => s.timer);
+  const setTimer = useSettings((s) => s.setTimer);
+
+  return (
+    <Popover
+      width={214}
+      align="center"
+      trigger={({ toggle, ref }) => (
+        <button
+          ref={ref}
+          onClick={toggle}
+          className="mt-6 flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[12px] text-muted transition-colors hover:bg-surface-3"
+        >
+          <Icon name="timer" size={13} />
+          <span className="t-num">
+            {timer.work}/{timer.break}
+          </span>
+          <Icon name="chevronDown" size={12} className="opacity-60" />
+        </button>
+      )}
+    >
+      {(close) => (
+        <>
+          {PRESETS.map(([work, brk, long, cycles]) => {
+            const on = timer.work === work && timer.break === brk;
+            return (
+              <MenuItem
+                key={work}
+                icon={on ? 'check' : 'timer'}
+                label={t(L(`${work} / ${brk} мин`, `${work} / ${brk} min`))}
+                onClick={() => {
+                  setTimer({ work, break: brk, long, cycles });
+                  useTimer.getState().syncDuration();
+                  close();
+                }}
+              />
+            );
+          })}
+          <MenuSep />
+          <MenuItem
+            icon="sliders"
+            label={t(L('Всички настройки…', 'All settings…'))}
+            onClick={() => {
+              close();
+              onAll();
+            }}
+          />
+        </>
+      )}
+    </Popover>
   );
 }
 
@@ -363,6 +583,11 @@ function Stepper({ value, onDown, onUp }: { value: string; onDown: () => void; o
  * one sheet, and being made to pick a single one of them meant either
  * stopping the clock between them or logging the hour against whichever
  * happened to be first.
+ *
+ * What "counts towards each" means, precisely: every selected entry gets a
+ * block on its tally, and the minutes are written once, against the first —
+ * an hour counted three times would be three times the hour that was sat
+ * through. The copy below says so rather than implying otherwise.
  */
 export function TaskPicker({ compact }: { compact?: boolean }) {
   const t = useT();
@@ -394,7 +619,16 @@ export function TaskPicker({ compact }: { compact?: boolean }) {
 
   return (
     <div className="flex min-h-0 flex-col">
-      <div className="flex items-center gap-1.5 border-b border-line px-3 py-2">
+      <p className="px-3 pb-2 text-[11.5px] leading-relaxed text-muted">
+        {t(
+          L(
+            'Може да избереш няколко — всяка получава блок в бройката си. Минутите се записват веднъж, на първата.',
+            'Pick several — each one gets a block on its tally. The minutes are logged once, against the first.',
+          ),
+        )}
+      </p>
+
+      <div className="flex items-center gap-1.5 border-y border-line px-3 py-2">
         <Icon name="plus" size={15} className="shrink-0 text-faint" />
         <input
           value={draft}
@@ -577,37 +811,39 @@ function Behaviour() {
 /* ------------------------------------------------------ finished a block */
 
 /**
- * What a finished block leaves behind.
+ * What a finished block leaves behind, on the screen you were sitting on.
  *
- * Not just a receipt. The end of a session is the one moment a person knows
- * whether the thing they were working on is actually done, so the entries it
- * was spent on are right here with a box to tick — rather than waiting on
- * another screen for somebody to remember them.
+ * It used to say less here than in full screen — the minutes and nothing
+ * else, while full screen gave XP, the day, the streak and a break waiting
+ * to be taken. Same event, so: the same answer. The entries it was spent on
+ * come with it, because the end of a block is the one moment a person knows
+ * whether the thing is actually done.
  */
 function JustFinished({ minutes, taskIds }: { minutes: number; taskIds: string[] }) {
   const t = useT();
   const lang = useLang();
   const items = usePlanner((s) => s.items);
-  const custom = useItemTypes((s) => s.custom);
-  const worked = taskIds.map((id) => items.find((i) => i.id === id)).filter(Boolean) as typeof items;
+  const breakMinutes = useSettings((s) => s.timer.break);
+  const store = useTimer.getState;
+  const worked = taskIds.map((id) => items.find((i) => i.id === id)).filter((x) => !!x);
 
   useEffect(() => {
     // It goes on its own only when there is nothing left to answer. A banner
     // asking a question should not disappear while it is being read.
     if (worked.some((x) => !x.done)) return;
-    const id = setTimeout(() => useTimer.getState().clearLast(), 10_000);
+    const id = setTimeout(() => useTimer.getState().clearLast(), 12_000);
     return () => clearTimeout(id);
   }, [minutes, worked]);
 
   return (
     <div
-      className="animate-rise mb-4 rounded-[14px] border"
+      className="animate-rise mb-4 rounded-[16px] border px-4 py-4"
       style={{
         borderColor: 'color-mix(in srgb, var(--c-success) 30%, transparent)',
         background: 'color-mix(in srgb, var(--c-success) 7%, transparent)',
       }}
     >
-      <div className="flex flex-wrap items-center gap-3 px-4 py-3">
+      <div className="flex flex-wrap items-center gap-3">
         <span
           className="animate-pop grid h-9 w-9 shrink-0 place-items-center rounded-full text-white"
           style={{ background: 'var(--c-success)' }}
@@ -624,42 +860,25 @@ function JustFinished({ minutes, taskIds }: { minutes: number; taskIds: string[]
               : t(L('Влиза в статистиката и в целите ти.', 'It counts towards your statistics and goals.'))}
           </span>
         </span>
-        <IconButton icon="x" label={t(S.close)} onClick={() => useTimer.getState().clearLast()} />
+        <Button
+          icon="coffee"
+          onClick={() => {
+            store().clearLast();
+            store().setMode('break', true);
+          }}
+        >
+          {t(L(`Почивка ${breakMinutes} мин`, `Break ${breakMinutes} min`))}
+        </Button>
+        <IconButton icon="x" label={t(S.close)} onClick={() => store().clearLast()} />
+      </div>
+
+      <div className="mt-3.5">
+        <RecapStats minutes={minutes} compact />
       </div>
 
       {worked.length > 0 && (
-        <div
-          className="flex flex-wrap gap-1.5 border-t px-4 py-2.5"
-          style={{ borderColor: 'color-mix(in srgb, var(--c-success) 22%, transparent)' }}
-        >
-          {worked.map((item) => {
-            const type = typeOf(item.kind, custom);
-            return (
-              <button
-                key={item.id}
-                onClick={() => void usePlanner.getState().toggleItem(item.id)}
-                className="flex max-w-full cursor-pointer items-center gap-2 rounded-full border px-2.5 py-1 text-[12.5px] transition-colors"
-                style={{
-                  borderColor: item.done ? 'transparent' : 'var(--c-line)',
-                  background: item.done ? 'color-mix(in srgb, var(--c-success) 15%, transparent)' : 'var(--c-surface)',
-                  color: item.done ? 'var(--c-success)' : 'var(--c-muted)',
-                }}
-                aria-pressed={item.done}
-              >
-                <span
-                  className="grid h-[15px] w-[15px] shrink-0 place-items-center rounded-[4px] border"
-                  style={{
-                    borderColor: item.done ? 'var(--c-success)' : 'var(--c-line-strong)',
-                    background: item.done ? 'var(--c-success)' : 'transparent',
-                  }}
-                >
-                  {item.done && <Icon name="check" size={10} className="text-white" strokeWidth={3.4} />}
-                </span>
-                <Icon name={type.icon} size={12} className="shrink-0 opacity-70" />
-                <span className={`truncate ${item.done ? 'line-through' : ''}`}>{item.title}</span>
-              </button>
-            );
-          })}
+        <div className="mt-3">
+          <RecapTasks taskIds={taskIds} />
         </div>
       )}
     </div>

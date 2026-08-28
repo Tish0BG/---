@@ -4,6 +4,7 @@ import { useIsPhone } from '../kit';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { CreateButton } from './CreateButton';
+import { useCards } from '@/state/cardStore';
 
 /**
  * The frame every screen lives in.
@@ -29,6 +30,9 @@ export function AppShell({
   onUpload?: () => void;
 }) {
   const phone = useIsPhone();
+  /* A review takes the whole pane and puts four grade buttons along the
+     bottom edge; the create button sat on top of the last one. */
+  const reviewing = useCards((s) => s.reviewing);
 
   // While the shell is on screen, the address bar and the tab follow it.
   useAppAddress();
@@ -47,7 +51,7 @@ export function AppShell({
         </main>
       </div>
 
-      {!phone && <CreateButton onNewBoard={onNewBoard} onUpload={onUpload} />}
+      {!phone && !reviewing && <CreateButton onNewBoard={onNewBoard} onUpload={onUpload} />}
       {phone && <MobileNav onNewBoard={onNewBoard} onUpload={onUpload} />}
     </div>
   );

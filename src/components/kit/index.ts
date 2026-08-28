@@ -13,4 +13,4 @@ export { EmptyState, Skeleton, SkeletonCard } from './States';
 export { Tabs, Segmented } from './Tabs';
 export { BarChart, Donut, HeatCalendar, SERIES_COLORS, OTHER_COLOR } from './Charts';
 export { Sheet } from './Sheet';
-export { useMedia, useIsPhone, useIsCompact, useNow } from './hooks';
+export { useMedia, useIsPhone, useIsCompact, useNow, useStill, useDragX } from './hooks';

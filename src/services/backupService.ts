@@ -13,6 +13,7 @@ import type {
 } from '@/types';
 import { repo } from './storageService';
 import { tr, L } from '@/i18n';
+import { normaliseCard } from '@/lib/deck';
 
 /**
  * A backup is one self-describing file:
@@ -202,7 +203,7 @@ export async function restoreBackup(
   for (const d of manifest.documents) await repo.putDocument({ ...d, kind: d.kind ?? 'pdf' });
   await repo.saveAnnotations(manifest.annotations, []);
   for (const b of manifest.bookmarks) await repo.putBookmark(b);
-  await repo.putCards(manifest.cards ?? []);
+  await repo.putCards((manifest.cards ?? []).map(normaliseCard));
   for (const s of manifest.subjects ?? []) await repo.putSubject(s);
   await repo.putPlanner(manifest.planner ?? []);
   for (const g of manifest.grades ?? []) await repo.putGrade(g);

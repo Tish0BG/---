@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CardGrade, FlashCard } from '@/types';
 import { DEFAULT_DECK, decks, dueCount, useCards } from '@/state/cardStore';
 import { previewIntervals } from '@/services/cardService';
@@ -8,9 +8,11 @@ import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Modal, Popover, useConfirm } from '../ui';
 import { CardEditor, type CardDraft } from './CardEditor';
 import { CardBox } from './CardBox';
-import { useT, L } from '@/i18n';
+import { DeckBox } from './DeckBox';
+import { SUBJECT_COLORS } from '@/state/workspaceStore';
+import { useT, L, plural } from '@/i18n';
 import { S } from '@/i18n/strings';
-import { Button, Card, EmptyState, IconButton } from '../kit';
+import { Button, Card, EmptyState, IconButton, useDragX, useStill } from '../kit';
 import { Screen } from '../shell/Screen';
 
 /**
@@ -76,13 +78,13 @@ function DeckList({
 }) {
   const t = useT();
   const cards = useCards((s) => s.cards);
-  const deckNames = useCards((s) => s.deckNames);
+  const deckList = useCards((s) => s.deckList);
   const [deck, setDeck] = useState<string | null>(null);
   const [newDeck, setNewDeck] = useState(false);
   const [query, setQuery] = useState('');
   const { confirm, element } = useConfirm();
 
-  const summaries = useMemo(() => decks(cards, deckNames), [cards, deckNames]);
+  const summaries = useMemo(() => decks(cards, deckList), [cards, deckList]);
   const due = dueCount(cards);
 
   const listed = useMemo(() => {
@@ -95,6 +97,7 @@ function DeckList({
   }, [cards, deck, query]);
 
   const scopedDue = listed.filter((c) => !c.suspended && c.due <= Date.now()).length;
+  const open = deck === null ? null : summaries.find((x) => x.deck === deck) ?? null;
 
   return (
     <div className="scroll-thin flex h-full flex-col overflow-y-auto">
@@ -160,99 +163,78 @@ function DeckList({
               secondary={{ label: t(L('Ново тесте', 'New deck')), icon: 'folderPlus', onClick: () => setNewDeck(true) }}
             />
           </Card>
+        ) : deck === null ? (
+          /* Closed: you are looking at the tabs, which is what opening a card
+             box actually shows you. The cards are behind a divider, and you
+             get to them by pulling one out. */
+          <DeckBox summaries={summaries} onOpen={setDeck} />
         ) : (
-          <>
-            {/* ------------------------------------------------ the drawers */}
-            <section className="mb-5">
-              <h2 className="t-label mb-2">{t(L('Тестета', 'Decks'))}</h2>
-              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                <button
-                  className="drawer-front"
-                  data-active={deck === null ? 'yes' : 'no'}
-                  onClick={() => setDeck(null)}
-                >
-                  <span className="flex items-center gap-2 text-[13px] font-semibold">
-                    <Icon name="layers" size={14} className="text-faint" />
-                    {t(L('Цялата кутия', 'The whole box'))}
-                  </span>
-                  <span className="text-[11.5px] text-muted">
-                    {t(
-                      L(
-                        `${cards.length} ${cards.length === 1 ? 'карта' : 'карти'}${due ? ` · ${due} за преговор` : ''}`,
-                        `${cards.length} ${cards.length === 1 ? 'card' : 'cards'}${due ? ` · ${due} due` : ''}`,
-                      ),
-                    )}
-                  </span>
-                </button>
-
-                {summaries.map((summary) => (
-                  <DrawerFront
-                    key={summary.deck}
-                    summary={summary}
-                    active={deck === summary.deck}
-                    onPick={() => setDeck(summary.deck)}
-                    onAdd={() => onEdit({ deck: summary.deck })}
-                    onDelete={(withCards) =>
-                      confirm(
-                        t(
-                          withCards
-                            ? L(`Да изтрия ли „${summary.deck}“ заедно с ${summary.total} карти?`, `Delete "${summary.deck}" and its ${summary.total} cards?`)
-                            : L(`Да махна ли тестето „${summary.deck}“? Картите ще отидат в „${DEFAULT_DECK}“.`, `Remove the deck "${summary.deck}"? Its cards move to "${DEFAULT_DECK}".`),
-                        ),
-                        () => void useCards.getState().deleteDeck(summary.deck, withCards),
-                      )
-                    }
-                  />
-                ))}
-              </div>
-            </section>
-
-            {/* ---------------------------------------------------- the box */}
-            <section>
-              <div className="mb-2 flex flex-wrap items-center gap-2">
-                <h2 className="t-label flex-1">
-                  {deck ? t(L(`Тесте „${deck}“`, `Deck "${deck}"`)) : t(L('Всички карти', 'All cards'))}
-                  <span className="t-num ml-2 font-normal normal-case tracking-normal text-faint">
-                    {listed.length}
-                  </span>
-                </h2>
-                <label className="flex h-8 items-center gap-1.5 rounded-[9px] border border-line px-2.5 focus-within:border-line-strong">
-                  <Icon name="search" size={13} className="text-faint" />
-                  <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder={t(L('Търси в кутията', 'Search the box'))}
-                    className="w-[150px] bg-transparent text-[12.5px] outline-none placeholder:text-faint"
-                  />
-                  {query && (
-                    <button className="cursor-pointer text-faint" aria-label={t(L('Изчисти', 'Clear'))} onClick={() => setQuery('')}>
-                      <Icon name="x" size={12} />
-                    </button>
-                  )}
-                </label>
-                <Button
-                  variant={scopedDue ? 'soft' : 'ghost'}
-                  icon="brain"
-                  disabled={!scopedDue}
-                  onClick={() => useCards.getState().startReview(deck)}
-                >
-                  {t(L('Учи оттук', 'Study this'))} {scopedDue > 0 ? `(${scopedDue})` : ''}
-                </Button>
-              </div>
-
-              <CardBox
-                cards={listed}
-                deck={deck}
-                onEdit={(card) => onEdit({ card })}
-                onAdd={() => onEdit({ deck: deck ?? DEFAULT_DECK })}
-                onDelete={(card) =>
-                  confirm(t(L('Да изтрия ли тази карта?', 'Delete this card?')), () =>
-                    void useCards.getState().remove([card.id]),
-                  )
-                }
+          <section>
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <IconButton
+                icon="arrowLeft"
+                label={t(L('Обратно в кутията', 'Back to the box'))}
+                onClick={() => setDeck(null)}
               />
-            </section>
-          </>
+              <h2 className="flex min-w-0 items-center gap-2 text-[15px] font-semibold tracking-[-0.015em]">
+                <span
+                  className="h-3.5 w-[3px] shrink-0 rounded-full"
+                  style={{ background: open?.color ?? 'var(--c-line-strong)' }}
+                  aria-hidden
+                />
+                <span className="truncate">{deck}</span>
+                <span className="t-num text-[12px] font-normal text-faint">{listed.length}</span>
+              </h2>
+
+              <span className="flex-1" />
+
+              <label className="flex h-8 items-center gap-1.5 rounded-[9px] border border-line px-2.5 focus-within:border-line-strong">
+                <Icon name="search" size={13} className="text-faint" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={t(L('Търси в тестето', 'Search this deck'))}
+                  className="w-[130px] bg-transparent text-[12.5px] outline-none placeholder:text-faint"
+                />
+                {query && (
+                  <button className="cursor-pointer text-faint" aria-label={t(L('Изчисти', 'Clear'))} onClick={() => setQuery('')}>
+                    <Icon name="x" size={12} />
+                  </button>
+                )}
+              </label>
+
+              <DeckMenu
+                deck={deck}
+                color={open?.color ?? 'var(--c-line-strong)'}
+                total={open?.total ?? 0}
+                onAdd={() => onEdit({ deck })}
+                onRenamed={(to) => setDeck(to)}
+                onDeleted={() => setDeck(null)}
+                confirm={confirm}
+              />
+
+              <Button
+                variant={scopedDue ? 'primary' : 'ghost'}
+                icon="brain"
+                disabled={!scopedDue}
+                onClick={() => useCards.getState().startReview(deck)}
+              >
+                {t(L('Учи', 'Study'))} {scopedDue > 0 ? `(${scopedDue})` : ''}
+              </Button>
+            </div>
+
+            <CardBox
+              cards={listed}
+              deck={deck}
+              onEdit={(card) => onEdit({ card })}
+              onAdd={() => onEdit({ deck })}
+              onDelete={(card) =>
+                confirm(t(L('Да изтрия ли тази карта?', 'Delete this card?')), () =>
+                  void useCards.getState().remove([card.id]),
+                )
+              }
+            />
+          </section>
         )}
       </Screen>
 
@@ -280,159 +262,157 @@ function DeckList({
  * already learned rather than what is left, because the encouraging number is
  * the honest one here — cards leave the queue by being known.
  */
-function DrawerFront({
-  summary,
-  active,
-  onPick,
+/**
+ * Everything you can do to one deck, from inside it.
+ *
+ * These used to live on the tile in the grid, which meant every deck carried a
+ * three-dot button and the grid read as a list of controls. A divider in a box
+ * is a divider; you act on a deck once you have pulled it out.
+ */
+function DeckMenu({
+  deck,
+  color,
+  total,
   onAdd,
-  onDelete,
+  onRenamed,
+  onDeleted,
+  confirm,
 }: {
-  summary: { deck: string; total: number; due: number };
-  active: boolean;
-  onPick: () => void;
+  deck: string;
+  color: string;
+  total: number;
   onAdd: () => void;
-  onDelete: (withCards: boolean) => void;
+  onRenamed: (to: string) => void;
+  onDeleted: () => void;
+  confirm: (message: string, run: () => void) => void;
 }) {
   const t = useT();
   const [renaming, setRenaming] = useState(false);
-  const [name, setName] = useState(summary.deck);
-  const known = summary.total ? 1 - summary.due / summary.total : 1;
+  const [draft, setDraft] = useState(deck);
+
+  useEffect(() => setDraft(deck), [deck]);
 
   if (renaming) {
     return (
       <form
-        className="drawer-front flex-row items-center gap-1"
+        className="flex h-8 items-center gap-1"
         onSubmit={(e) => {
           e.preventDefault();
-          void useCards.getState().renameDeck(summary.deck, name);
+          const clean = draft.trim();
           setRenaming(false);
+          if (!clean || clean === deck) return;
+          void useCards.getState().renameDeck(deck, clean);
+          onRenamed(clean);
         }}
       >
-        <input autoFocus value={name} onChange={(e) => setName(e.target.value)} className="field h-7 flex-1" />
-        <button className="btn h-7 px-2" type="submit">
-          <Icon name="check" size={14} />
-        </button>
+        <input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={() => setRenaming(false)}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Escape') setRenaming(false);
+          }}
+          className="field h-8 w-[170px] text-[12.5px]"
+        />
       </form>
     );
   }
 
   return (
-    <div
-      /* A drawer front holds its own menu button, so it cannot be a <button>
-         itself — nesting one inside another is invalid and breaks the click
-         target. It takes the role and the keys by hand instead, which is what
-         a keyboard needs to reach it at all. */
-      role="button"
-      tabIndex={0}
-      aria-pressed={active}
-      className="drawer-front"
-      data-active={active ? 'yes' : 'no'}
-      onClick={onPick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onPick();
-        }
-      }}
-    >
-      <div className="flex items-center gap-2">
-        <span
-          className="grid h-6 w-6 shrink-0 place-items-center rounded-[7px]"
-          style={{
-            background: summary.due ? 'color-mix(in srgb, var(--c-accent) 14%, transparent)' : 'var(--c-surface-3)',
-            color: summary.due ? 'var(--c-accent)' : 'var(--c-faint)',
-          }}
-        >
-          <Icon name="cards" size={13} />
-        </span>
-        <span className="min-w-0 flex-1 truncate text-[13px] font-semibold">{summary.deck}</span>
-        <Popover
-          width={210}
-          align="end"
-          trigger={({ toggle, ref }) => (
-            <button
-              ref={ref}
-              className="icon-btn h-7 w-7 shrink-0"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggle();
-              }}
-              aria-label={t(L('Още', 'More'))}
-            >
-              <Icon name="dots" size={15} />
-            </button>
-          )}
-        >
-          {(close) => (
-            <>
-              <MenuItem
-                icon="brain"
-                label={t(L('Учи това тесте', 'Study this deck'))}
-                onClick={() => {
-                  useCards.getState().startReview(summary.deck);
-                  close();
-                }}
-              />
-              <MenuItem
-                icon="plus"
-                label={t(L('Нова карта тук', 'New card here'))}
-                onClick={() => {
-                  onAdd();
-                  close();
-                }}
-              />
-              <MenuItem
-                icon="pencil"
-                label={t(L('Преименувай', 'Rename'))}
-                onClick={() => {
-                  setName(summary.deck);
-                  setRenaming(true);
-                  close();
-                }}
-              />
-              <MenuSep />
-              <MenuItem
-                icon="archive"
-                label={t(L('Махни тестето', 'Remove the deck'))}
-                onClick={() => {
-                  onDelete(false);
-                  close();
-                }}
-              />
-              <MenuItem
-                icon="trash"
-                label={t(L('Изтрий с картите', 'Delete with its cards'))}
-                danger
-                onClick={() => {
-                  onDelete(true);
-                  close();
-                }}
-              />
-            </>
-          )}
-        </Popover>
-      </div>
-
-      <span className="text-[11.5px] text-muted">
-        {summary.total === 0
-          ? t(L('празно чекмедже', 'empty drawer'))
-          : t(
-              L(
-                `${summary.total} ${summary.total === 1 ? 'карта' : 'карти'}${summary.due > 0 ? ` · ${summary.due} за преговор` : ' · всичко е наред'}`,
-                `${summary.total} ${summary.total === 1 ? 'card' : 'cards'}${summary.due > 0 ? ` · ${summary.due} due` : ' · all caught up'}`,
-              ),
-            )}
-      </span>
-
-      {summary.total > 0 && (
-        <span className="mt-1 block h-1 overflow-hidden rounded-full" style={{ background: 'var(--c-surface-3)' }}>
-          <span
-            className="block h-full rounded-full"
-            style={{ width: `${known * 100}%`, background: 'var(--c-success)' }}
-          />
-        </span>
+    <Popover
+      width={244}
+      align="end"
+      trigger={({ toggle, ref }) => (
+        <button ref={ref} onClick={toggle} className="icon-btn h-8 w-8" aria-label={t(L('Още', 'More'))}>
+          <Icon name="dots" size={15} />
+        </button>
       )}
-    </div>
+    >
+      {(close) => (
+        <>
+          <div className="px-2 pb-1.5 pt-1">
+            <span className="t-label">{t(L('Цвят на тестето', "The deck's colour"))}</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {SUBJECT_COLORS.map((c) => (
+                <button
+                  key={c}
+                  aria-label={c}
+                  onClick={() => void useCards.getState().recolourDeck(deck, c)}
+                  className="h-5 w-5 cursor-pointer rounded-full transition-transform hover:scale-110"
+                  style={{
+                    background: c,
+                    boxShadow: c === color ? '0 0 0 2px var(--c-surface), 0 0 0 3.5px var(--c-text)' : undefined,
+                  }}
+                />
+              ))}
+            </div>
+          </div>
+          <MenuSep />
+          <MenuItem
+            icon="plus"
+            label={t(L('Нова карта тук', 'New card here'))}
+            onClick={() => {
+              onAdd();
+              close();
+            }}
+          />
+          <MenuItem
+            icon="pencil"
+            label={t(L('Преименувай', 'Rename'))}
+            onClick={() => {
+              setRenaming(true);
+              close();
+            }}
+          />
+          <MenuSep />
+          <MenuItem
+            icon="archive"
+            label={t(L('Махни тестето', 'Remove the deck'))}
+            onClick={() => {
+              close();
+              confirm(
+                total
+                  ? t(
+                      L(
+                        `Да махна ли „${deck}“? ${total} карти отиват в „${DEFAULT_DECK}“.`,
+                        `Remove "${deck}"? Its ${total} cards move to "${DEFAULT_DECK}".`,
+                      ),
+                    )
+                  : t(L(`Да махна ли „${deck}“?`, `Remove "${deck}"?`)),
+                () => {
+                  void useCards.getState().deleteDeck(deck, false);
+                  onDeleted();
+                },
+              );
+            }}
+          />
+          {total > 0 && (
+          <MenuItem
+            icon="trash"
+            danger
+            label={t(L('Изтрий с картите', 'Delete with its cards'))}
+            onClick={() => {
+              close();
+              confirm(
+                t(
+                  L(
+                    `Да изтрия ли „${deck}“ заедно с ${total} карти?`,
+                    `Delete "${deck}" and its ${total} cards?`,
+                  ),
+                ),
+                () => {
+                  void useCards.getState().deleteDeck(deck, true);
+                  onDeleted();
+                },
+              );
+            }}
+          />
+          )}
+        </>
+      )}
+    </Popover>
   );
 }
 
@@ -518,9 +498,46 @@ function ReviewSession({ onEdit }: { onEdit: (d: CardDraft) => void }) {
   const answered = useCards((s) => s.answered);
   const remaining = useCards((s) => s.queue.length);
   const store = useCards.getState;
+  const still = useStill();
 
   const intervals = useMemo(() => (card ? previewIntervals(card) : null), [card]);
   const total = answered + remaining;
+
+  /** Which way the answered card left the table, while it is still leaving. */
+  const [gone, setGone] = useState<'left' | 'right' | null>(null);
+  const busy = useRef(false);
+  const stillRef = useRef(still);
+  stillRef.current = still;
+
+  /**
+   * Answering is one thing, however it was asked for — a key, a button, or a
+   * card thrown off the table. The grade is held back for the length of the
+   * toss so the card you graded is the card you watch leave; the store only
+   * hears about it once it is gone, and the next card deals in behind it.
+   */
+  const grade = useCallback((id: CardGrade) => {
+    if (busy.current) return;
+    busy.current = true;
+    const commit = () => {
+      setGone(null);
+      void useCards
+        .getState()
+        .answer(id)
+        .finally(() => {
+          busy.current = false;
+        });
+    };
+    if (stillRef.current) return commit();
+    setGone(id === 'again' ? 'left' : 'right');
+    window.setTimeout(commit, 320);
+  }, []);
+
+  /** A throw past the threshold grades; anything shorter springs back. */
+  const { dx, dragging, moved, onPointerDown } = useDragX((travelled) => {
+    if (!useCards.getState().revealed) return;
+    if (travelled <= -110) grade('again');
+    else if (travelled >= 110) grade('good');
+  }, revealed && !gone);
 
   /**
    * Space reveals, 1–4 grade. Reviewing is the one place in the product where
@@ -534,19 +551,19 @@ function ReviewSession({ onEdit }: { onEdit: (d: CardDraft) => void }) {
       if (e.code === 'Space' || e.key === 'Enter') {
         e.preventDefault();
         if (!store.revealed) store.reveal();
-        else void store.answer('good');
+        else grade('good');
         return;
       }
-      const grade = GRADES.find((g) => g.key === e.key);
-      if (grade && store.revealed) {
+      const picked = GRADES.find((g) => g.key === e.key);
+      if (picked && store.revealed) {
         e.preventDefault();
-        void store.answer(grade.id);
+        grade(picked.id);
       }
       if (e.key === 'Escape') store.endReview();
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [grade]);
 
   if (!card) {
     return (
@@ -561,7 +578,7 @@ function ReviewSession({ onEdit }: { onEdit: (d: CardDraft) => void }) {
           <p className="t-h2 mt-5">{t(L('Готово за днес', 'Done for today'))}</p>
           <p className="mt-2 text-[13.5px] text-muted">
             {answered > 0
-              ? t(L(`Прегледа ${answered} карти.`, `You reviewed ${answered} cards.`))
+              ? `${answered} ${t(plural(answered, L('карта', 'card'), L('карти', 'cards')))}${t(L(' — прегледани.', ' reviewed.'))}`
               : t(L('Няма карти за преговор.', 'Nothing is due right now.'))}
           </p>
           <Button variant="primary" size="lg" className="mt-5" onClick={() => store().endReview()}>
@@ -607,12 +624,69 @@ function ReviewSession({ onEdit }: { onEdit: (d: CardDraft) => void }) {
         )}
       </header>
 
-      <button
-        className="scroll-thin flex min-h-0 flex-1 cursor-pointer flex-col items-center justify-center gap-5 overflow-y-auto px-5 py-6"
-        onClick={() => !revealed && store().reveal()}
-      >
-        <CardFace card={card} revealed={revealed} />
-      </button>
+      <div className="flex min-h-0 flex-1 items-center justify-center px-5 py-5 sm:px-8">
+        <div
+          className="study-stack w-full max-w-2xl"
+          style={{ height: 'min(58vh, 470px)' }}
+        >
+          {/* The pile you have left, drawn rather than described. */}
+          {Array.from({ length: Math.min(3, remaining - 1) }, (_, i) => (
+            <span key={i} className="study-ghost" style={{ '--i': i + 1 } as React.CSSProperties} />
+          ))}
+
+          <div
+            key={card.id}
+            role="button"
+            tabIndex={0}
+            aria-label={revealed ? t(L('Оцени картата', 'Grade the card')) : t(L('Обърни картата', 'Flip the card'))}
+            className="study-card absolute inset-0 cursor-pointer touch-pan-y select-none"
+            data-flipped={revealed ? 'yes' : undefined}
+            data-gone={gone ?? undefined}
+            data-dealt={!gone && !still ? 'yes' : undefined}
+            style={
+              dragging
+                ? {
+                    // While a finger is on it the card follows the finger, so
+                    // the flip has to be carried along by hand — a transform
+                    // in the style attribute replaces the one in the sheet.
+                    transform: `translateX(${dx}px) rotate(${((revealed ? -dx : dx) / 26).toFixed(2)}deg) rotateY(${revealed ? 180 : 0}deg)`,
+                    transition: 'none',
+                  }
+                : undefined
+            }
+            onPointerDown={onPointerDown}
+            onClick={() => {
+              if (moved.current > 6) return; // that was a throw, not a tap
+              if (!revealed) store().reveal();
+            }}
+            onKeyDown={(e) => {
+              if (e.key !== 'Enter' && e.code !== 'Space') return;
+              e.preventDefault();
+              if (!revealed) store().reveal();
+              else grade('good');
+            }}
+          >
+            <CardPlane><CardFace card={card} side="front" /></CardPlane>
+            <CardPlane back><CardFace card={card} side="back" /></CardPlane>
+
+            {/* What the throw is about to do, shown while it is still undone. */}
+            {dragging && revealed && Math.abs(dx) > 40 && (
+              <span
+                className="pointer-events-none absolute top-5 rounded-full border px-3 py-1 text-[12px] font-semibold uppercase tracking-wide"
+                style={{
+                  [dx < 0 ? 'left' : 'right']: 20,
+                  borderColor: dx < 0 ? 'var(--c-danger)' : 'var(--c-accent)',
+                  color: dx < 0 ? 'var(--c-danger)' : 'var(--c-accent)',
+                  opacity: Math.min(1, (Math.abs(dx) - 40) / 70),
+                  transform: `rotate(${dx < 0 ? -10 : 10}deg)`,
+                }}
+              >
+                {dx < 0 ? t(L('Отново', 'Again')) : t(L('Знам я', 'Got it'))}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
 
       <footer className="border-t border-line px-4 py-3">
         {revealed ? (
@@ -641,10 +715,28 @@ function ReviewSession({ onEdit }: { onEdit: (d: CardDraft) => void }) {
   );
 }
 
-/** The card itself. Occlusion cards reveal exactly one hidden region. */
-function CardFace({ card, revealed }: { card: FlashCard; revealed: boolean }) {
+/**
+ * One side of the card: a real surface, with the other one behind it.
+ *
+ * Both faces sit in the same box and only one of them is ever pointing at you,
+ * which is what makes the flip a flip instead of a cross-fade.
+ */
+function CardPlane({ back, children }: { back?: boolean; children: React.ReactNode }) {
+  return (
+    <div
+      className={`study-face scroll-thin absolute inset-0 grid place-items-center overflow-y-auto rounded-[14px] border border-line bg-surface px-6 py-7 ${back ? 'study-face-back' : ''}`}
+      style={{ boxShadow: 'var(--shadow-raised)' }}
+    >
+      {children}
+    </div>
+  );
+}
+
+/** What is written on it. Occlusion cards uncover exactly one hidden region. */
+function CardFace({ card, side }: { card: FlashCard; side: 'front' | 'back' }) {
   const t = useT();
   const url = useAssetUrl(card.frontAsset);
+  const revealed = side === 'back';
 
   if (card.kind === 'occlusion' && url) {
     return (

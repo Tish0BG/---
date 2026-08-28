@@ -92,6 +92,17 @@ export const tr: TFn = (m, vars) => translate(m, currentLang(), vars);
 
 export const localeOf = (lang: Lang): string => (lang === 'bg' ? 'bg-BG' : 'en-GB');
 
+/**
+ * One collator for every list of names in the product.
+ *
+ * `numeric` so that "Тест 2" comes before "Тест 10" rather than after it, and
+ * `sensitivity: 'base'` so that case and accents do not split a shelf in two.
+ * Six places used to call `localeCompare(x, 'bg')` with the locale hard-coded,
+ * which sorted an English interface by Bulgarian rules.
+ */
+export const collatorOf = (lang: Lang): Intl.Collator =>
+  new Intl.Collator(localeOf(lang), { numeric: true, sensitivity: 'base' });
+
 export function useLocale(): string {
   return localeOf(useLang());
 }
