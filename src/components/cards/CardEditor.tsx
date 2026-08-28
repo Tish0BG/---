@@ -46,17 +46,18 @@ export function CardEditor({
   const subjects = useWorkspace((s) => s.subjects);
   const documents = useLibrary((s) => s.documents);
   const cards = useCards((s) => s.cards);
-  const deckNames = useCards((s) => s.deckNames);
+  const deckList = useCards((s) => s.deckList);
 
   /** Every deck that exists, whether or not it already holds a card. */
   const deckOptions = useMemo<SelectOption[]>(
     () =>
-      decks(cards, [...deckNames, DEFAULT_DECK]).map((d) => ({
+      decks(cards, deckList).map((d) => ({
         value: d.deck,
         label: d.deck,
+        color: d.color,
         hint: d.total ? `${d.total}` : t(L("празно", "empty")),
       })),
-    [cards, deckNames],
+    [cards, deckList],
   );
 
   const subjectOptions = useMemo<SelectOption[]>(
@@ -101,6 +102,16 @@ export function CardEditor({
         back,
       };
 
+      /**
+       * The deck exists before the card does.
+       *
+       * A deck used to be nothing but a string repeated on every card, so one
+       * created this way lived only as long as a card pointed at it — empty it
+       * and the divider vanished from the box. `createDeck` is a no-op for a
+       * name already registered, which is the case every time but the first.
+       */
+      await useCards.getState().createDeck(base.deck);
+
       if (kind === 'occlusion' && assetId && masks.length) {
         if (editing?.groupId) {
           // keep scheduling for the masks that survived the edit
@@ -126,7 +137,11 @@ export function CardEditor({
         await useCards.getState().save([card]);
       }
       notify.ok(
-        editing ? t(L("Картата е запазена", "Card saved")) : kind === 'occlusion' ? `${masks.length} карти са създадени` : 'Картата е създадена',
+        editing
+          ? t(L('Картата е запазена', 'Card saved'))
+          : kind === 'occlusion'
+            ? t(L(`${masks.length} карти са създадени`, `${masks.length} cards created`))
+            : t(L('Картата е създадена', 'Card created')),
         t(L(`в тестето „${base.deck}“`, `in the deck "${base.deck}"`)),
       );
       onClose();

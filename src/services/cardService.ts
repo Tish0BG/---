@@ -1,4 +1,6 @@
 import type { Asset, CardGrade, FlashCard, Rect } from '@/types';
+import { DEFAULT_DECK } from '@/lib/deck';
+export { DEFAULT_DECK, normaliseCard } from '@/lib/deck';
 import { repo } from './storageService';
 import { uid } from '@/lib/util';
 import { tr, L } from '@/i18n';
@@ -72,7 +74,6 @@ export function newCard(patch: Partial<FlashCard> = {}): FlashCard {
     kind: 'basic',
     docId: null,
     page: null,
-    deck: 'Общи',
     front: '',
     back: '',
     frontAsset: null,
@@ -90,6 +91,10 @@ export function newCard(patch: Partial<FlashCard> = {}): FlashCard {
     createdAt: now,
     updatedAt: now,
     ...patch,
+    // After the spread, never before it. `...patch` used to be able to put a
+    // card back to `deck: undefined`, and one line downstream sorts decks with
+    // `a.deck.localeCompare(...)` — which throws on the whole screen.
+    deck: patch.deck?.trim() || DEFAULT_DECK,
   };
 }
 

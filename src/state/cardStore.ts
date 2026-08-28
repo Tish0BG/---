@@ -1,25 +1,38 @@
 import { create } from 'zustand';
-import type { CardGrade, FlashCard } from '@/types';
+import type { CardGrade, Deck, FlashCard } from '@/types';
 import { repo } from '@/services/storageService';
 import { isDue, schedule } from '@/services/cardService';
+import { DEFAULT_DECK } from '@/lib/deck';
+import { SUBJECT_COLORS } from '@/state/workspaceStore';
+import { collatorOf, currentLang } from '@/i18n';
 
-/** Decks the student made by hand, including the still-empty ones. */
-interface DeckList {
+export { DEFAULT_DECK };
+
+/** What the meta bucket holds today. */
+interface StoredDecks {
+  decks: Deck[];
+  updatedAt: number;
+}
+
+/** What it held before decks had a colour: names and nothing else. */
+interface LegacyDeckList {
   list: string[];
   updatedAt: number;
 }
 
 const DECKS_KEY = 'decks';
-export const DEFAULT_DECK = 'Общи';  // kept as a stable key: renaming it would orphan every existing card
+
+/** The next colour a new deck gets, so a fresh box is never all one hue. */
+const colourFor = (index: number): string => SUBJECT_COLORS[index % SUBJECT_COLORS.length];
 
 interface CardStore {
   cards: FlashCard[];
   /**
-   * Deck names that exist on their own. A deck used to be nothing but a
-   * string repeated on every card, so an empty one vanished the moment it was
-   * made — and could not be picked for the next card.
+   * Decks that exist on their own. A deck used to be nothing but a string
+   * repeated on every card, so an empty one vanished the moment it was made —
+   * and could not be picked for the next card.
    */
-  deckNames: string[];
+  deckList: Deck[];
   loaded: boolean;
   /** null = every deck */
   deck: string | null;
@@ -34,7 +47,9 @@ interface CardStore {
   save(cards: FlashCard[]): Promise<void>;
   remove(ids: string[]): Promise<void>;
 
-  createDeck(name: string): Promise<string>;
+  createDeck(name: string, color?: string): Promise<string>;
+  /** repaints one divider */
+  recolourDeck(name: string, color: string): Promise<void>;
   renameDeck(from: string, to: string): Promise<void>;
   /** `withCards` also throws away everything inside it. */
   deleteDeck(name: string, withCards: boolean): Promise<void>;
@@ -48,7 +63,7 @@ interface CardStore {
 
 export const useCards = create<CardStore>((set, get) => ({
   cards: [],
-  deckNames: [],
+  deckList: [],
   loaded: false,
   deck: null,
   queue: [],
@@ -57,28 +72,72 @@ export const useCards = create<CardStore>((set, get) => ({
   answered: 0,
 
   async init() {
-    const [cards, decks] = await Promise.all([repo.listCards(), repo.getMeta<DeckList>(DECKS_KEY)]);
-    set({ cards, deckNames: decks?.list ?? [], loaded: true });
+    const [cards, saved] = await Promise.all([
+      repo.listCards(),
+      repo.getMeta<StoredDecks | LegacyDeckList>(DECKS_KEY),
+    ]);
+
+    // Names-only is the older shape; give each one a colour on the way past.
+    const stored: Deck[] = Array.isArray((saved as StoredDecks | undefined)?.decks)
+      ? (saved as StoredDecks).decks
+      : ((saved as LegacyDeckList | undefined)?.list ?? []).map((name, i) => ({
+          name,
+          color: colourFor(i),
+          createdAt: 0,
+        }));
+
+    /**
+     * Every deck a card claims to be in, made real.
+     *
+     * A card cut from a PDF was filed under the file's name without anyone
+     * registering that deck, so it existed only for as long as a card pointed
+     * at it — a divider that vanished when you emptied it. `Общи` had the same
+     * problem from the other end: `deleteDeck` sent cards there without ever
+     * creating it. Both are ordinary decks from here on.
+     */
+    const byName = new Map(stored.map((d) => [d.name, d]));
+    let added = false;
+    for (const card of cards) {
+      const name = card.deck?.trim();
+      if (!name || byName.has(name)) continue;
+      byName.set(name, { name, color: colourFor(byName.size), createdAt: card.createdAt });
+      added = true;
+    }
+
+    const deckList = [...byName.values()];
+    set({ cards, deckList, loaded: true });
+    if (added || !Array.isArray((saved as StoredDecks | undefined)?.decks)) {
+      await repo.setMeta<StoredDecks>(DECKS_KEY, { decks: deckList, updatedAt: Date.now() });
+    }
   },
 
-  async createDeck(name) {
+  async createDeck(name, color) {
     const clean = name.trim() || DEFAULT_DECK;
-    const list = get().deckNames;
-    if (!list.some((d) => d.toLowerCase() === clean.toLowerCase())) {
-      const next = [...list, clean];
-      set({ deckNames: next });
-      await repo.setMeta<DeckList>(DECKS_KEY, { list: next, updatedAt: Date.now() });
-    }
+    const list = get().deckList;
+    const already = list.find((d) => d.name.toLowerCase() === clean.toLowerCase());
+    if (already) return already.name;
+    const next = [...list, { name: clean, color: color ?? colourFor(list.length), createdAt: Date.now() }];
+    set({ deckList: next });
+    await repo.setMeta<StoredDecks>(DECKS_KEY, { decks: next, updatedAt: Date.now() });
     return clean;
+  },
+
+  async recolourDeck(name, color) {
+    const next = get().deckList.map((d) => (d.name === name ? { ...d, color } : d));
+    set({ deckList: next });
+    await repo.setMeta<StoredDecks>(DECKS_KEY, { decks: next, updatedAt: Date.now() });
   },
 
   async renameDeck(from, to) {
     const clean = to.trim();
     if (!clean || clean === from) return;
-    const next = get().deckNames.map((d) => (d === from ? clean : d));
-    if (!next.includes(clean)) next.push(clean);
-    set({ deckNames: [...new Set(next)] });
-    await repo.setMeta<DeckList>(DECKS_KEY, { list: get().deckNames, updatedAt: Date.now() });
+    // Renaming onto a name that already exists merges the two — the name is
+    // the key, so there is no third possibility. The screen warns first.
+    const next = get()
+      .deckList.map((d) => (d.name === from ? { ...d, name: clean } : d))
+      .filter((d, i, all) => all.findIndex((x) => x.name === d.name) === i);
+    set({ deckList: next });
+    await repo.setMeta<StoredDecks>(DECKS_KEY, { decks: next, updatedAt: Date.now() });
     const moved = get()
       .cards.filter((c) => c.deck === from)
       .map((c) => ({ ...c, deck: clean, updatedAt: Date.now() }));
@@ -90,11 +149,13 @@ export const useCards = create<CardStore>((set, get) => ({
     if (withCards) {
       if (inside.length) await get().remove(inside.map((c) => c.id));
     } else if (inside.length) {
+      // The cards need somewhere to be, and it has to be a deck that exists.
+      await get().createDeck(DEFAULT_DECK);
       await get().save(inside.map((c) => ({ ...c, deck: DEFAULT_DECK, updatedAt: Date.now() })));
     }
-    const next = get().deckNames.filter((d) => d !== name);
-    set({ deckNames: next, deck: get().deck === name ? null : get().deck });
-    await repo.setMeta<DeckList>(DECKS_KEY, { list: next, updatedAt: Date.now() });
+    const next = get().deckList.filter((d) => d.name !== name);
+    set({ deckList: next, deck: get().deck === name ? null : get().deck });
+    await repo.setMeta<StoredDecks>(DECKS_KEY, { decks: next, updatedAt: Date.now() });
   },
 
   async save(cards) {
@@ -164,19 +225,34 @@ export const dueCount = (cards: FlashCard[], deck: string | null = null): number
 
 export interface DeckSummary {
   deck: string;
+  color: string;
   total: number;
   due: number;
 }
 
-export function decks(cards: FlashCard[], names: string[] = []): DeckSummary[] {
+/**
+ * The decks, in the order a box of dividers actually stands: alphabetical.
+ *
+ * It used to sort by how many cards were waiting, descending — which meant the
+ * box rearranged itself every time you answered one. A drawer whose dividers
+ * move while you are reading them is not a drawer. What is waiting is a number
+ * on the tab now, not the reason the tab is where it is.
+ *
+ * `c.deck` is read defensively: a card restored from an old archive, or pulled
+ * from another device, can arrive without one, and this line used to be the
+ * `TypeError` that took the whole screen down.
+ */
+export function decks(cards: FlashCard[], deckList: Deck[] = []): DeckSummary[] {
   const now = Date.now();
   const map = new Map<string, DeckSummary>();
-  for (const name of names) map.set(name, { deck: name, total: 0, due: 0 });
+  for (const d of deckList) map.set(d.name, { deck: d.name, color: d.color, total: 0, due: 0 });
   for (const c of cards) {
-    const row = map.get(c.deck) ?? { deck: c.deck, total: 0, due: 0 };
+    const name = c.deck?.trim() || DEFAULT_DECK;
+    const row = map.get(name) ?? { deck: name, color: colourFor(map.size), total: 0, due: 0 };
     row.total++;
     if (isDue(c, now)) row.due++;
-    map.set(c.deck, row);
+    map.set(name, row);
   }
-  return [...map.values()].sort((a, b) => b.due - a.due || a.deck.localeCompare(b.deck, 'bg'));
+  const collator = collatorOf(currentLang());
+  return [...map.values()].sort((a, b) => collator.compare(a.deck, b.deck));
 }

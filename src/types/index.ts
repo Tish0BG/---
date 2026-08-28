@@ -297,6 +297,21 @@ export interface FlashCard {
 
 export type CardGrade = 'again' | 'hard' | 'good' | 'easy';
 
+/**
+ * A deck, which used to be nothing but a string repeated on every card.
+ *
+ * It became a record the day decks needed a colour of their own: a box of
+ * thirty dividers that are all the same grey is a box you read by squinting at
+ * names. The name is still the key — cards reference a deck by it — so this is
+ * a thin record and deliberately so.
+ */
+export interface Deck {
+  name: string;
+  /** hex, from the same palette the subjects use */
+  color: string;
+  createdAt: ISODate;
+}
+
 /* ------------------------------------------------------------ focus timer */
 
 export type TimerMode = 'work' | 'break' | 'long';

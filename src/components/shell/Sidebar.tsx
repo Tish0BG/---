@@ -123,7 +123,7 @@ export function Sidebar() {
         key={entry.id}
         onClick={() => useApp.getState().go(entry.id)}
         aria-current={active ? 'page' : undefined}
-        /* Named even while narrow. The label is rendered but invisible, and
+        /* Named even while narrow. The visible label is unmounted then, and
            the tooltip beside it is a floating div that no `aria-describedby`
            points at — so without this a screen reader announced eight
            unlabelled buttons. */
@@ -153,17 +153,19 @@ export function Sidebar() {
           )}
         </span>
 
-        {/* Kept in the tree rather than unmounted, so the reveal is a fade
-            instead of a pop. The rail clips its own overflow, so a label that
-            is 140 px wide inside a 68 px column simply is not there. */}
-        <span className="rail-fade flex-1 truncate text-left" data-off={open ? undefined : 'true'} aria-hidden={!open}>
-          {label}
-        </span>
-        {!!entry.badge && (
+        {/* Unmounted while narrow, not merely faded.
+            An invisible box is still a box: `opacity: 0` hides ink and keeps
+            the width, so a label and a count pill went on occupying 30-45 px
+            of a 43 px row. The row overflowed, `justify-center` gave up, and
+            the icon column zig-zagged left and right depending on whether a
+            count happened to be non-zero that morning. The reveal is still a
+            fade — it just comes from mounting now. */}
+        {open && (
+          <span className="animate-in flex-1 truncate text-left">{label}</span>
+        )}
+        {open && !!entry.badge && (
           <span
-            className="rail-fade t-num shrink-0 rounded-full px-1.5 py-px text-[11px] font-medium"
-            data-off={open ? undefined : 'true'}
-            aria-hidden={!open}
+            className="animate-in t-num shrink-0 rounded-full px-1.5 py-px text-[11px] font-medium"
             style={{
               background: entry.alert
                 ? 'color-mix(in srgb, var(--c-danger) 13%, transparent)'
@@ -174,6 +176,9 @@ export function Sidebar() {
             {entry.badge}
           </span>
         )}
+        {/* The dot replaces the pill rather than joining it. Both used to
+            render at once, and the dot landed on top of the invisible pill —
+            some 27 px away from the icon it was annotating. */}
         {!open && !!entry.badge && (
           <span
             className="absolute right-2 top-1.5 h-[6px] w-[6px] rounded-full"
@@ -266,14 +271,22 @@ export function Sidebar() {
             aria-label="Plauvia"
           >
             <PlauviaTile size={28} />
-            <span className="rail-fade" data-off={open ? undefined : 'true'} aria-hidden={!open}>
-              <PlauviaWordmark size={16.5} />
-            </span>
+            {/* The wordmark is text, and text does not shrink. Left in the
+                tree it pinned this button at 94 px inside a 67 px rail, and
+                unsafe centring sliced half the mark off the left edge. */}
+            {open && (
+              <span className="animate-in">
+                <PlauviaWordmark size={16.5} />
+              </span>
+            )}
           </button>
         </div>
 
         {/* ----------------------------------------------------- navigation */}
-        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-3 pb-2">
+        {/* `overflow-y: auto` alone computes `overflow-x` to `auto` too, and a
+            platform with non-overlay scrollbars then takes another 8-11 px out
+            of a 43 px row. Nothing here ever scrolls sideways. */}
+        <div className="scroll-thin min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 pb-2">
           <div className="flex flex-col gap-0.5">{primary.map(renderItem)}</div>
           <div className="my-3 h-px" style={{ background: 'var(--c-line)' }} />
           <div className="flex flex-col gap-0.5">{secondary.map(renderItem)}</div>
@@ -281,7 +294,7 @@ export function Sidebar() {
 
         {/* -------------------------------------------------------- account */}
         <div className="shrink-0 border-t border-line p-2">
-          <div className={`flex items-center gap-1 ${open ? '' : 'flex-col'}`}>
+          <div className={`flex items-center ${open ? 'gap-1' : 'flex-col gap-1'}`}>
             <Popover
               width={252}
               side="top"
@@ -317,23 +330,19 @@ export function Sidebar() {
                         </span>
                       )}
                     </span>
-                    <span
-                      className="rail-fade min-w-0 flex-1"
-                      data-off={open ? undefined : 'true'}
-                      aria-hidden={!open}
-                    >
-                      <span className="block truncate text-[13px] font-medium">
-                        {profile.name || t(L('Твоят профил', 'Your profile'))}
+                    {open && (
+                      <span className="animate-in min-w-0 flex-1">
+                        <span className="block truncate text-[13px] font-medium">
+                          {profile.name || t(L('Твоят профил', 'Your profile'))}
+                        </span>
+                        <span className="mt-0.5 block truncate text-[11.5px] text-muted">
+                          {t(S.level)} {level.level} · {t(levelTitle(level.level))}
+                        </span>
                       </span>
-                      <span className="mt-0.5 block truncate text-[11.5px] text-muted">
-                        {t(S.level)} {level.level} · {t(levelTitle(level.level))}
-                      </span>
-                    </span>
-                    {streak > 0 && (
+                    )}
+                    {open && streak > 0 && (
                       <span
-                        className="rail-fade t-num flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold"
-                        data-off={open ? undefined : 'true'}
-                        aria-hidden={!open}
+                        className="animate-in t-num flex shrink-0 items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[11px] font-semibold"
                         style={{
                           background: 'color-mix(in srgb, var(--c-ember) 16%, transparent)',
                           color: 'var(--c-ember)',
@@ -361,9 +370,7 @@ export function Sidebar() {
                 need 66 px; the rail's padding box gives them 52, and flex
                 answered that by squeezing the gap to nothing and pushing both
                 of them through the border on either side. */}
-            <div
-              className={`flex shrink-0 items-center gap-0.5 ${open ? '' : 'mt-1 flex-col'}`}
-            >
+            <div className={`flex shrink-0 items-center gap-0.5 ${open ? '' : 'flex-col'}`}>
               <NoticeInbox align={open ? 'end' : 'center'} side="top" />
               {modeControl}
             </div>

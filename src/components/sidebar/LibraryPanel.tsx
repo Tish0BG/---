@@ -6,6 +6,8 @@ import { Icon } from '../Icon';
 import { MenuItem, MenuSep, Popover, useConfirm } from '../ui';
 import { useT, L } from '@/i18n';
 import { openDoc } from '@/services/openDoc';
+import { collatorOf } from '@/i18n';
+import { useLang } from '@/i18n';
 
 /** Folder + document tree shown in the sidebar while reading. */
 export function LibraryPanel() {
@@ -14,12 +16,15 @@ export function LibraryPanel() {
   const [query, setQuery] = useState('');
   const { confirm, element } = useConfirm();
 
+  const collator = collatorOf(useLang());
+
+
   const roots = useMemo(
-    () => folders.filter((f) => !f.parentId).sort((a, b) => a.name.localeCompare(b.name, 'bg')),
+    () => folders.filter((f) => !f.parentId).sort((a, b) => collator.compare(a.name, b.name)),
     [folders],
   );
   const rootDocs = useMemo(
-    () => documents.filter((d) => !d.folderId).sort((a, b) => a.name.localeCompare(b.name, 'bg')),
+    () => documents.filter((d) => !d.folderId).sort((a, b) => collator.compare(a.name, b.name)),
     [documents],
   );
 

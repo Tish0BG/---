@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import type { TimerMode } from '@/types';
 import { useSettings } from '@/state/settingsStore';
 import { useLibrary } from '@/state/libraryStore';
 import { useViewer } from '@/state/viewerStore';
@@ -20,31 +19,10 @@ import { Icon } from '../Icon';
 import { tr, L } from '@/i18n';
 import { Toggle, useConfirm } from '../ui';
 import { Ring } from './Ring';
+import { MODES, MODE_COLOR, MODE_SHORT } from './modes';
 import { useApp } from '@/state/appStore';
 import { openDoc } from '@/services/openDoc';
 
-export const MODE_COLOR: Record<TimerMode, string> = {
-  work: 'var(--c-timer-focus)',
-  break: 'var(--c-rest)',
-  long: 'var(--c-deep)',
-};
-
-/**
- * What to write on top of `MODE_COLOR`, when the mode colour is a solid fill.
- *
- * Always use this instead of white. The focus colour follows the accent, and
- * the accent is ink in light and paper in dark — so a hard-coded white label
- * on the start button is invisible in exactly one of the two themes, which is
- * the sort of thing that ships.
- */
-export const MODE_INK: Record<TimerMode, string> = {
-  work: 'var(--c-timer-focus-ink)',
-  break: 'var(--c-rest-ink)',
-  long: 'var(--c-deep-ink)',
-};
-
-const MODES: TimerMode[] = ['work', 'break', 'long'];
-const SHORT_LABEL: Record<TimerMode, string> = { work: 'Работа', break: 'Почивка', long: 'Дълга' };
 
 /* ------------------------------------------------------------------ timer */
 
@@ -68,7 +46,7 @@ export function TimerTab() {
                 : { color: 'var(--c-muted)' }
             }
           >
-            {SHORT_LABEL[m]}
+            {tr(MODE_SHORT[m])}
           </button>
         ))}
       </div>
@@ -92,7 +70,7 @@ export function TimerTab() {
             background: `color-mix(in srgb, ${MODE_COLOR[mode]} 16%, transparent)`,
             color: MODE_COLOR[mode],
           }}
-          title={running ? 'Пауза (⌥Space)' : 'Старт (⌥Space)'}
+          title={tr(running ? L('Пауза (⌥Space)', 'Pause (⌥Space)') : L('Старт (⌥Space)', 'Start (⌥Space)'))}
         >
           <Icon name={running ? 'pause' : 'play'} size={22} />
         </button>
@@ -344,7 +322,14 @@ export function StatsTab() {
         className="btn w-full"
         style={{ color: 'var(--c-danger)' }}
         onClick={() =>
-          confirm('Да изтрия ли днешната статистика? Другите дни остават непокътнати.', () =>
+          confirm(
+          tr(
+            L(
+              'Да изтрия ли днешната статистика? Другите дни остават непокътнати.',
+              "Delete today's statistics? Every other day stays as it is.",
+            ),
+          ),
+          () =>
             void useTimer.getState().resetToday(),
           )
         }

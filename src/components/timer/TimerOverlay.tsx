@@ -2,26 +2,28 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import type { TimerMode } from '@/types';
 import { useSettings } from '@/state/settingsStore';
-import { MODE_LABEL, dayKey, formatClock, statsForDay, useTimer, type TimerTab } from '@/state/timerStore';
+import { MODE_LABEL, formatClock, useTimer, type TimerTab } from '@/state/timerStore';
 import { usePlanner } from '@/state/plannerStore';
 import { useApp } from '@/state/appStore';
 import { useWorkspace } from '@/state/workspaceStore';
-import { currentStreak } from '@/services/gameService';
-import { useT, useLang, L, clockTime, formatDuration } from '@/i18n';
+import { useT, useLang, tr, L, clockTime, formatDuration, type Msg } from '@/i18n';
+import { S } from '@/i18n/strings';
 import { Button, IconButton, ProgressRing } from '../kit';
 import { clamp } from '@/lib/util';
 import { Icon } from '../Icon';
 import { Ring } from './Ring';
-import { MODE_COLOR, MODE_INK, StatsTab, TasksTab, TimerSettingsTab, TimerTab as TimerScreen } from './TimerPanel';
+import { StatsTab, TasksTab, TimerSettingsTab, TimerTab as TimerScreen } from './TimerPanel';
+import { MODE_COLOR, MODE_INK } from './modes';
+import { RecapStats, RecapTasks } from './Recap';
 
 const MINI = { w: 132, h: 42 };
 const PANEL = { w: 322, h: 470 };
 
-const TABS: { id: TimerTab; icon: string; label: string }[] = [
-  { id: 'timer', icon: 'timer', label: 'Таймер' },
-  { id: 'tasks', icon: 'listTodo', label: 'Задачи' },
-  { id: 'stats', icon: 'barChart', label: 'Статистика' },
-  { id: 'settings', icon: 'sliders', label: 'Настройки' },
+const TABS: { id: TimerTab; icon: string; label: Msg }[] = [
+  { id: 'timer', icon: 'timer', label: L('Таймер', 'Timer') },
+  { id: 'tasks', icon: 'listTodo', label: L('Задачи', 'Tasks') },
+  { id: 'stats', icon: 'barChart', label: L('Статистика', 'Statistics') },
+  { id: 'settings', icon: 'sliders', label: L('Настройки', 'Settings') },
 ];
 
 /**
@@ -136,7 +138,7 @@ function MiniPill() {
       <button
         className="flex-1 cursor-pointer text-left text-[14px] font-medium tabular-nums"
         onClick={() => store().setView('panel')}
-        title="Отвори"
+        title={tr(L('Отвори', 'Open'))}
       >
         {formatClock(left)}
       </button>
@@ -144,7 +146,7 @@ function MiniPill() {
         className="icon-btn h-7 w-7"
         style={{ color: MODE_COLOR[mode] }}
         onClick={() => store().toggleRun()}
-        title={running ? 'Пауза' : 'Старт'}
+        title={tr(running ? S.pause : S.start)}
       >
         <Icon name={running ? 'pause' : 'play'} size={15} />
       </button>
@@ -186,14 +188,14 @@ function Panel() {
         {TABS.map((t) => (
           <button
             key={t.id}
-            title={t.label}
+            title={tr(t.label)}
             onClick={() => store().setTab(t.id)}
             className={`flex cursor-pointer items-center justify-center gap-1.5 rounded-lg px-2 py-1.5 text-[11px] transition-all ${
               tab === t.id ? 'btn-ghost-active flex-1' : 'text-muted hover:bg-surface-3'
             }`}
           >
             <Icon name={t.icon} size={14} />
-            {tab === t.id && <span className="truncate font-medium">{t.label}</span>}
+            {tab === t.id && <span className="truncate font-medium">{tr(t.label)}</span>}
           </button>
         ))}
       </nav>
@@ -257,7 +259,14 @@ function FullScreen() {
   const ring = Math.min(340, Math.max(210, Math.round(window.innerWidth * 0.26)));
 
   if (lastSession)
-    return <SessionComplete minutes={lastSession.minutes} accent={MODE_COLOR.work} ink={MODE_INK.work} />;
+    return (
+      <SessionComplete
+        minutes={lastSession.minutes}
+        taskIds={lastSession.taskIds}
+        accent={MODE_COLOR.work}
+        ink={MODE_INK.work}
+      />
+    );
 
   return (
     <div
@@ -411,16 +420,21 @@ function FullScreen() {
  * worth and the streak they keep alive — then offers the break, because the
  * break is the part people skip.
  */
-function SessionComplete({ minutes, accent, ink }: { minutes: number; accent: string; ink: string }) {
+function SessionComplete({
+  minutes,
+  taskIds,
+  accent,
+  ink,
+}: {
+  minutes: number;
+  taskIds: string[];
+  accent: string;
+  ink: string;
+}) {
   const t = useT();
   const lang = useLang();
-  const sessions = useTimer((s) => s.sessions);
-  const goal = useSettings((s) => s.timer.goal);
   const breakMinutes = useSettings((s) => s.timer.break);
   const store = useTimer.getState;
-
-  const today = statsForDay(sessions, dayKey());
-  const streak = currentStreak(sessions);
 
   return (
     <div
@@ -453,28 +467,12 @@ function SessionComplete({ minutes, accent, ink }: { minutes: number; accent: st
           )}
         </p>
 
-        <div className="mt-7 grid grid-cols-3 gap-2">
-          {[
-            { icon: 'bolt', value: `+${minutes}`, label: 'XP', tone: 'var(--c-brand)' },
-            {
-              icon: 'timer',
-              value: formatDuration(today.minutes, lang),
-              label: t(L(`от ${goal} мин`, `of ${goal} min`)),
-              tone: 'var(--c-aurora)',
-            },
-            {
-              icon: 'flame',
-              value: String(streak),
-              label: t(streak === 1 ? L('ден поред', 'day streak') : L('дни поред', 'day streak')),
-              tone: 'var(--c-ember)',
-            },
-          ].map((cell) => (
-            <div key={cell.label} className="card-quiet p-3">
-              <Icon name={cell.icon} size={15} style={{ color: cell.tone }} className="mx-auto" />
-              <div className="t-num mt-2 text-[17px] font-semibold leading-none">{cell.value}</div>
-              <div className="mt-1.5 text-[11px] text-muted">{cell.label}</div>
-            </div>
-          ))}
+        <div className="mt-7">
+          <RecapStats minutes={minutes} />
+        </div>
+
+        <div className="mt-4">
+          <RecapTasks taskIds={taskIds} />
         </div>
 
         <div className="mt-7 flex flex-wrap items-center justify-center gap-2">

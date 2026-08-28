@@ -13,6 +13,7 @@ import { S } from '@/i18n/strings';
 import { Button, Card, EmptyState as KitEmpty } from '../kit';
 import { openDoc } from '@/services/openDoc';
 import { newNote } from '@/services/newNote';
+import { collatorOf } from '@/i18n';
 
 type Scope = 'all' | 'pdf' | 'board' | 'note' | 'starred' | 'trash';
 
@@ -61,13 +62,15 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const { confirm, element } = useConfirm();
 
+  const collator = collatorOf(useLang());
+
   const path = folderPath(folders, activeFolderId);
   const childFolders = useMemo(
     () =>
       scope === 'trash' || query
         ? []
-        : folders.filter((f) => f.parentId === activeFolderId).sort((a, b) => a.name.localeCompare(b.name, 'bg')),
-    [folders, activeFolderId, scope, query],
+        : folders.filter((f) => f.parentId === activeFolderId).sort((a, b) => collator.compare(a.name, b.name)),
+    [folders, activeFolderId, scope, query, collator],
   );
 
   const visible = useMemo(() => {
@@ -86,7 +89,7 @@ export function Drive({ onNewBoard }: { onNewBoard: () => void }) {
     }
     const by = {
       recent: (a: DocumentMeta, b: DocumentMeta) => (b.openedAt ?? b.createdAt) - (a.openedAt ?? a.createdAt),
-      name: (a: DocumentMeta, b: DocumentMeta) => a.name.localeCompare(b.name, 'bg'),
+      name: (a: DocumentMeta, b: DocumentMeta) => collator.compare(a.name, b.name),
       progress: (a: DocumentMeta, b: DocumentMeta) => progressOf(b) - progressOf(a),
       size: (a: DocumentMeta, b: DocumentMeta) => b.size - a.size,
     }[sort];

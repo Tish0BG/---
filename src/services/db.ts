@@ -34,8 +34,10 @@ export const DB_NAME = 'studypdf';
  * v6 fixes a silent sync failure: four kinds of record were written without a
  * `updatedAt`, so the cloud never saw them. See the migration below.
  * v7 drops the goal store and the rows in it.
+ * v8 gives every flashcard a deck. Cards restored from an old archive could
+ * arrive without one, and a deckless card was a `TypeError` in the deck list.
  */
-export const DB_VERSION = 7;
+export const DB_VERSION = 8;
 
 export interface StudyDB extends DBSchema {
   folders: { key: string; value: Folder; indexes: { 'by-updated': number } };
@@ -222,6 +224,50 @@ export function getDB(): Promise<IDBPDatabase<StudyDB>> {
         // typed helper only knows the stores that still exist.
         const legacy = db as unknown as IDBDatabase;
         if (legacy.objectStoreNames.contains('goals')) legacy.deleteObjectStore('goals');
+
+        /* ------------------------------------------------------- v8 */
+
+        /**
+         * Every card gets a deck, and the deck is one you would have chosen.
+         *
+         * A card could exist with no deck at all — restored from a v1 archive,
+         * or pulled from the cloud before the repository learned to check.
+         * Putting all of them in one bucket would be correct and useless, so a
+         * card that knows its subject is filed under the subject's name and
+         * only the genuinely unattached ones share a drawer.
+         *
+         * Started in this tick like everything else in this block: the upgrade
+         * transaction commits the moment the microtask queue drains with no
+         * request outstanding, and each step here is chained off the last one's
+         * fulfilment, which keeps it open.
+         */
+        if (oldVersion > 0 && oldVersion < 8 && db.objectStoreNames.contains('cards')) {
+          void (async () => {
+            const bg = (() => {
+              try {
+                return localStorage.getItem('plauvia.lang') !== 'en';
+              } catch {
+                return true;
+              }
+            })();
+            const loose = bg ? 'Несортирани' : 'Unsorted';
+
+            const subjects = (await tx.objectStore('subjects').getAll()) as { id: string; name: string }[];
+            const nameOf = new Map(subjects.map((x) => [x.id, x.name]));
+
+            const store = tx.objectStore('cards');
+            let cursor = await store.openCursor();
+            while (cursor) {
+              const card = cursor.value as unknown as Record<string, unknown>;
+              const deck = typeof card.deck === 'string' ? card.deck.trim() : '';
+              if (!deck) {
+                const subject = nameOf.get(String(card.subjectId ?? ''));
+                await cursor.update({ ...card, deck: subject || loose } as never);
+              }
+              cursor = await cursor.continue();
+            }
+          })();
+        }
 
         // The timer's flat task list becomes planner items, so there is only
         // ever one place where "things I have to do" live.
